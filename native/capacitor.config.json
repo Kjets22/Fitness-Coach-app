@@ -1,0 +1,8 @@
+{
+  "appId": "com.optimalfit.app",
+  "appName": "OptimalFit",
+  "webDir": "www",
+  "server": {
+    "androidScheme": "https"
+  }
+}

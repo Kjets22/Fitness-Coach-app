@@ -1,0 +1,70 @@
+=========================================================================
+ OptimalFit - How to install the app on your phone (Samsung / Android)
+=========================================================================
+
+You have two files you can install directly (no app store needed):
+
+  OptimalFit-debug.apk    <- easiest for testing, install this one first
+  OptimalFit-release.apk  <- the final signed build (what Play users get)
+
+Both contain the exact same app. The debug one is meant for quick testing.
+(The .aab file is NOT installable - it is only for uploading to Google Play.)
+
+-------------------------------------------------------------------------
+ OPTION A - Easiest: copy the file to the phone (no cable needed)
+-------------------------------------------------------------------------
+1. Get OptimalFit-debug.apk onto the phone. Any of these work:
+     - Attach it to an email to yourself and open the mail on the phone
+     - Upload to Google Drive / OneDrive and download it on the phone
+     - Quick Share / Nearby Share from this PC (Windows "Quick Share"
+       works with Samsung phones)
+2. On the phone, open the "My Files" app -> Downloads -> tap
+   OptimalFit-debug.apk.
+3. The phone will say "For your security, your phone is not allowed to
+   install unknown apps from this source." Tap SETTINGS, then switch ON
+   "Allow from this source" (this applies only to My Files / the app you
+   opened it from), then go back.
+4. Tap the APK again -> Install.
+5. Google Play Protect may show "App scan recommended / Unsafe app
+   blocked" for apps it has never seen. Tap "More details" ->
+   "Install anyway" (this app never leaves your phone - all data is
+   stored on the device, nothing is uploaded anywhere).
+6. Open OptimalFit from the app drawer. Done.
+
+-------------------------------------------------------------------------
+ OPTION B - Via USB cable (classic developer way, needs this PC)
+-------------------------------------------------------------------------
+1. On the phone enable Developer options:
+   Settings -> About phone -> Software information -> tap "Build number"
+   SEVEN times ("Developer mode has been turned on").
+2. Settings -> Developer options -> switch ON "USB debugging".
+3. Connect the phone to this PC with a USB cable. On the phone, allow
+   "USB debugging" for this computer when the popup appears.
+4. On this PC, open PowerShell and run:
+
+     C:\Android\platform-tools\adb.exe install "C:\Users\kjets\optimal-fit\dist\OptimalFit-debug.apk"
+
+   (first run may print "waiting for device" until you accept the phone
+   popup; success prints "Success")
+5. Open OptimalFit on the phone.
+
+-------------------------------------------------------------------------
+ Updating / removing
+-------------------------------------------------------------------------
+- To update: install the newer APK the same way (same signature installs
+  over the old one; debug and release have DIFFERENT signatures, so
+  uninstall one before installing the other).
+- To remove: long-press the OptimalFit icon -> Uninstall.
+- Your logged data lives inside the app's WebView storage on the phone.
+  Use Settings -> Export inside the app to back it up as a JSON file
+  before uninstalling, and Import to bring it back.
+
+-------------------------------------------------------------------------
+ Notes
+-------------------------------------------------------------------------
+- The AI Coach tab in the native app will show its friendly "no server"
+  card - that feature pairs with the OptimalFit server on your PC
+  (Start OptimalFit (Phone).bat) and works in the phone browser/PWA
+  over your home WiFi. Everything else works fully offline.
+- Minimum Android version: 7.0 (API 24). Any Samsung from ~2016 on is fine.
+=========================================================================

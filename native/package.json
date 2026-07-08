@@ -1,0 +1,20 @@
+{
+  "name": "optimalfit-native",
+  "version": "1.0.0",
+  "description": "Capacitor native wrapper (Android + iOS) around the OptimalFit web app in ../app",
+  "private": true,
+  "scripts": {
+    "copy-web": "node scripts/copy-web.js",
+    "sync": "npm run copy-web && npx cap sync"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "dependencies": {
+    "@capacitor/android": "^8.4.1",
+    "@capacitor/cli": "^8.4.1",
+    "@capacitor/core": "^8.4.1",
+    "@capacitor/ios": "^8.4.1"
+  }
+}

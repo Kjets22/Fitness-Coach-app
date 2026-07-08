@@ -1,0 +1,553 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="color-scheme" content="dark light">
+<meta name="theme-color" content="#0a0e17">
+<title>OptimalFit</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<!-- iOS standalone (Add to Home Screen) -->
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="OptimalFit">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<!-- ===== App bar: logo + wordmark left, settings right ===== -->
+<header class="app-header">
+  <a class="brand" href="#dashboard" aria-label="OptimalFit dashboard">
+    <svg viewBox="0 0 48 48" width="30" height="30" aria-hidden="true">
+      <defs><linearGradient id="hdr-lg" x1="0" y1="0" x2="1" y2="1">
+        <stop offset="0" stop-color="#8b5cf6"/><stop offset="1" stop-color="#22d3ee"/>
+      </linearGradient></defs>
+      <rect x="2" y="2" width="44" height="44" rx="12" fill="url(#hdr-lg)"/>
+      <path d="M13 18v12M9 21v6M35 18v12M39 21v6" stroke="#fff" stroke-width="3" stroke-linecap="round"/>
+      <path d="M15 24h4l2-4 3.5 8 2.5-4h6" stroke="#fff" stroke-width="2.6" fill="none"
+        stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>
+    <span class="brand-word">Optimal<em>Fit</em></span>
+  </a>
+  <button class="header-btn" id="header-settings" data-tab="settings" aria-label="Settings">
+    <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
+      stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3.4"/>
+      <path d="M12 2.8v2.6M12 18.6v2.6M2.8 12h2.6M18.6 12h2.6M5.5 5.5l1.9 1.9M16.6 16.6l1.9 1.9M18.5 5.5l-1.9 1.9M7.4 16.6l-1.9 1.9"/></svg>
+  </button>
+</header>
+
+<div class="app-shell">
+
+  <!-- ===== Navigation: sidebar on desktop, 5-tab bottom bar on mobile.
+       Tracker tabs are always routable (#sleep etc.) — on mobile they are
+       reached through the Log action sheet instead of nav buttons. ===== -->
+  <nav class="nav" id="main-nav" aria-label="Main navigation">
+    <button class="nav-btn active" data-tab="dashboard" aria-label="Dashboard">
+      <span class="nav-ico"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3.5" y="3.5" width="7" height="7" rx="2"/><rect x="13.5" y="3.5" width="7" height="7" rx="2"/><rect x="3.5" y="13.5" width="7" height="7" rx="2"/><rect x="13.5" y="13.5" width="7" height="7" rx="2"/></svg></span>
+      <span class="nav-lbl">Dashboard</span>
+    </button>
+    <button class="nav-btn" data-tab="daily" aria-label="Daily water and steps">
+      <span class="nav-ico"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3.2s6 6.2 6 10a6 6 0 1 1-12 0c0-3.8 6-10 6-10Z"/><path d="M9.5 13.5a2.6 2.6 0 0 0 2 2.6"/></svg></span>
+      <span class="nav-lbl">Daily</span>
+    </button>
+    <button class="nav-btn nav-log" id="nav-log" data-tab="log" aria-label="Log an entry" aria-haspopup="dialog">
+      <span class="nav-ico"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 6v12M6 12h12"/></svg></span>
+      <span class="nav-lbl">Log</span>
+    </button>
+    <div class="nav-sec">Trackers</div>
+    <button class="nav-btn nav-sub" data-tab="sleep" aria-label="Sleep">
+      <span class="nav-ico"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20.5 13.2A8.2 8.2 0 1 1 10.8 3.5a6.6 6.6 0 0 0 9.7 9.7Z"/></svg></span>
+      <span class="nav-lbl">Sleep</span>
+    </button>
+    <button class="nav-btn nav-sub" data-tab="food" aria-label="Food">
+      <span class="nav-ico"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 7.2c-1.6-1.9-4.6-1.8-6 .5-1.7 2.6-.7 6.9 1.4 9.4 1 1.2 2.3 1.9 3.4 1.4.4-.2.9-.2 1.3 0 1.1.5 2.4-.2 3.4-1.4 2.1-2.5 3.1-6.8 1.4-9.4-1.4-2.3-4.4-2.4-5.9-.5Z"/><path d="M12 7.2c0-2.2 1.3-3.6 3.2-4"/></svg></span>
+      <span class="nav-lbl">Food</span>
+    </button>
+    <button class="nav-btn nav-sub" data-tab="exercise" aria-label="Exercise">
+      <span class="nav-ico"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6.8 6.8v10.4M3.6 9.2v5.6M17.2 6.8v10.4M20.4 9.2v5.6M6.8 12h10.4"/></svg></span>
+      <span class="nav-lbl">Exercise</span>
+    </button>
+    <button class="nav-btn nav-sub" data-tab="body" aria-label="Body">
+      <span class="nav-ico"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3.5" y="3.5" width="17" height="17" rx="4.5"/><path d="M8.2 11a4.2 4.2 0 0 1 7.6 0"/><path d="M12 10.4l1.8-1.8"/></svg></span>
+      <span class="nav-lbl">Body</span>
+    </button>
+    <div class="nav-sec">Coaching</div>
+    <button class="nav-btn" data-tab="insights" aria-label="Insights">
+      <span class="nav-ico"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 4.5l1.5 3.9 3.9 1.5-3.9 1.5L11 15.3l-1.5-3.9-3.9-1.5 3.9-1.5L11 4.5Z"/><path d="M18.5 14.5v5M16 17h5"/></svg></span>
+      <span class="nav-lbl">Insights</span>
+    </button>
+    <button class="nav-btn" data-tab="coach" aria-label="Coach">
+      <span class="nav-ico"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7a3.2 3.2 0 0 1 3.2-3.2h9.6A3.2 3.2 0 0 1 20 7v6a3.2 3.2 0 0 1-3.2 3.2H9.4l-4 3.3c-.6.4-1.4 0-1.4-.7V7Z"/></svg></span>
+      <span class="nav-lbl">Coach</span>
+    </button>
+  </nav>
+
+  <main class="content">
+
+    <!-- ===================== DASHBOARD ===================== -->
+    <section class="tab" id="tab-dashboard">
+      <div id="dash-hero">
+        <!-- greeting + readiness ring rendered by dashboard.js -->
+      </div>
+      <div class="stat-grid" id="dash-stats">
+        <!-- stat cards rendered by dashboard.js -->
+      </div>
+      <div id="dash-targets">
+        <!-- "today vs targets" strip rendered by dashboard.js (via goals/targets) -->
+      </div>
+      <div class="charts-grid" id="dash-charts">
+        <!-- trend charts rendered by dashboard.js (via charts.js) -->
+      </div>
+    </section>
+
+    <!-- ===================== DAILY (water + steps) ===================== -->
+    <section class="tab hidden" id="tab-daily">
+      <h1>Daily</h1>
+
+      <div class="card" id="water-card">
+        <h2>Water</h2>
+        <div id="water-progress"></div>
+        <div class="quick-row" id="water-quick"></div>
+        <form class="water-custom-row" id="water-form" novalidate>
+          <input type="number" id="water-custom-amt" min="1" max="10000" step="1"
+                 placeholder="custom amount" aria-label="Custom water amount">
+          <span class="muted" id="water-custom-unit">oz</span>
+          <button type="submit" class="btn">Add</button>
+        </form>
+        <p class="form-error" id="water-error" hidden></p>
+        <div id="water-today"></div>
+        <div class="chart-mini-label">Last 14 days</div>
+        <div id="water-chart"></div>
+      </div>
+
+      <div class="card" id="steps-card">
+        <h2>Steps</h2>
+        <div id="steps-progress"></div>
+        <form id="steps-form" novalidate>
+          <div class="form-row">
+            <label>Date
+              <input type="date" id="steps-date" required>
+            </label>
+            <label>Step count
+              <input type="number" id="steps-count" min="0" max="200000" step="1"
+                     placeholder="8000" required>
+            </label>
+          </div>
+          <p class="form-hint">One entry per day &mdash; saving the same date updates it.</p>
+          <p class="form-error" id="steps-error" hidden></p>
+          <div class="form-actions">
+            <button type="submit" class="btn primary">Save steps</button>
+          </div>
+        </form>
+        <div class="chart-mini-label">Last 14 days</div>
+        <div id="steps-chart"></div>
+      </div>
+    </section>
+
+    <!-- ===================== SLEEP ===================== -->
+    <section class="tab hidden" id="tab-sleep">
+      <h1>Sleep</h1>
+      <div class="today-strip" id="sleep-summary"></div>
+      <form class="card entry-form" id="sleep-form" novalidate>
+        <h2 id="sleep-form-title">Log sleep</h2>
+        <input type="hidden" id="sleep-edit-id" value="">
+        <div class="form-row">
+          <label>Wake-up date
+            <input type="date" id="sleep-date" required>
+          </label>
+          <label>Bed time
+            <input type="time" id="sleep-bed" required>
+          </label>
+          <label>Wake time
+            <input type="time" id="sleep-wake" required>
+          </label>
+        </div>
+        <div class="form-row">
+          <label class="seg-label">Quality (1 = terrible &middot; 5 = excellent)
+            <select id="sleep-quality" data-seg>
+              <option value="1">1 &mdash; terrible</option>
+              <option value="2">2 &mdash; poor</option>
+              <option value="3" selected>3 &mdash; okay</option>
+              <option value="4">4 &mdash; good</option>
+              <option value="5">5 &mdash; excellent</option>
+            </select>
+          </label>
+          <label class="grow">Notes
+            <input type="text" id="sleep-notes" maxlength="300" placeholder="optional">
+          </label>
+        </div>
+        <p class="form-hint" id="sleep-duration-preview"></p>
+        <p class="form-error" id="sleep-error" hidden></p>
+        <div class="form-actions">
+          <button type="submit" class="btn primary" id="sleep-submit">Add sleep entry</button>
+          <button type="button" class="btn ghost hidden" id="sleep-cancel-edit">Cancel edit</button>
+        </div>
+      </form>
+      <h2 class="list-heading">History</h2>
+      <div class="history-list" id="sleep-list"></div>
+    </section>
+
+    <!-- ===================== FOOD ===================== -->
+    <section class="tab hidden" id="tab-food">
+      <h1>Food</h1>
+      <div class="today-strip" id="food-summary"></div>
+      <div class="photo-area" id="food-photo-area"></div>
+      <form class="card entry-form" id="food-form" novalidate>
+        <h2 id="food-form-title">Log a meal</h2>
+        <input type="hidden" id="food-edit-id" value="">
+        <div class="form-row">
+          <label>Date
+            <input type="date" id="food-date" required>
+          </label>
+          <label>Time
+            <input type="time" id="food-time" required>
+          </label>
+          <label>Meal type
+            <select id="food-mealtype">
+              <option value="breakfast">Breakfast</option>
+              <option value="lunch">Lunch</option>
+              <option value="dinner">Dinner</option>
+              <option value="snack">Snack</option>
+              <option value="pre-workout">Pre-workout</option>
+              <option value="post-workout">Post-workout</option>
+            </select>
+          </label>
+        </div>
+        <div class="form-row">
+          <label class="grow">Food / meal name
+            <input type="text" id="food-name" required maxlength="120" placeholder="e.g. Chicken &amp; rice">
+          </label>
+          <label>Calories
+            <input type="number" id="food-calories" min="0" max="10000" step="1" placeholder="kcal">
+          </label>
+        </div>
+        <div class="form-row">
+          <label>Protein (g)
+            <input type="number" id="food-protein" min="0" max="1000" step="0.1">
+          </label>
+          <label>Carbs (g)
+            <input type="number" id="food-carbs" min="0" max="1000" step="0.1">
+          </label>
+          <label>Fat (g)
+            <input type="number" id="food-fat" min="0" max="1000" step="0.1">
+          </label>
+          <label class="grow">Notes
+            <input type="text" id="food-notes" maxlength="300" placeholder="optional">
+          </label>
+        </div>
+        <p class="form-error" id="food-error" hidden></p>
+        <div class="form-actions">
+          <button type="submit" class="btn primary" id="food-submit">Add meal</button>
+          <button type="button" class="btn ghost hidden" id="food-cancel-edit">Cancel edit</button>
+        </div>
+      </form>
+      <h2 class="list-heading">History</h2>
+      <div class="history-list" id="food-list"></div>
+    </section>
+
+    <!-- ===================== EXERCISE ===================== -->
+    <section class="tab hidden" id="tab-exercise">
+      <h1>Exercise</h1>
+      <div class="today-strip" id="exercise-summary"></div>
+      <form class="card entry-form" id="exercise-form" novalidate>
+        <h2 id="exercise-form-title">Log a workout</h2>
+        <input type="hidden" id="exercise-edit-id" value="">
+        <div class="form-row">
+          <label>Date
+            <input type="date" id="exercise-date" required>
+          </label>
+          <label>Start time
+            <input type="time" id="exercise-start" required>
+          </label>
+          <label>Type
+            <select id="exercise-type">
+              <option value="strength">Strength</option>
+              <option value="cardio">Cardio</option>
+              <option value="sports">Sports</option>
+              <option value="flexibility">Flexibility</option>
+              <option value="other">Other</option>
+            </select>
+          </label>
+          <label>Duration (min)
+            <input type="number" id="exercise-duration" min="1" max="600" step="1" required placeholder="60">
+          </label>
+        </div>
+        <div class="form-row">
+          <label class="seg-label">Intensity (1 = very light &middot; 5 = max)
+            <select id="exercise-intensity" data-seg>
+              <option value="1">1 &mdash; very light</option>
+              <option value="2">2 &mdash; light</option>
+              <option value="3" selected>3 &mdash; moderate</option>
+              <option value="4">4 &mdash; hard</option>
+              <option value="5">5 &mdash; max effort</option>
+            </select>
+          </label>
+          <label class="seg-label">Performance (1 = awful &middot; 5 = best)
+            <select id="exercise-performance" data-seg>
+              <option value="1">1 &mdash; awful</option>
+              <option value="2">2 &mdash; weak</option>
+              <option value="3" selected>3 &mdash; normal</option>
+              <option value="4">4 &mdash; strong</option>
+              <option value="5">5 &mdash; personal best</option>
+            </select>
+          </label>
+        </div>
+        <div class="ex-builder" id="exercise-builder">
+          <div class="ex-builder-head">Exercises &amp; sets <span class="ex-builder-hint">optional &mdash; weight &times; reps; leave weight empty for bodyweight</span></div>
+          <div id="exercise-ex-list"></div>
+          <div class="ex-add-row">
+            <input type="text" id="exercise-add-name" list="exercise-name-list" maxlength="80"
+                   placeholder="e.g. Bench Press" aria-label="Exercise name" autocomplete="off">
+            <datalist id="exercise-name-list"></datalist>
+            <button type="button" class="btn" id="exercise-add-btn">+ Add exercise</button>
+          </div>
+        </div>
+        <div class="form-row">
+          <label class="grow">Notes
+            <input type="text" id="exercise-notes" maxlength="300" placeholder="optional">
+          </label>
+        </div>
+        <p class="form-error" id="exercise-error" hidden></p>
+        <div class="form-actions">
+          <button type="submit" class="btn primary" id="exercise-submit">Add workout</button>
+          <button type="button" class="btn ghost hidden" id="exercise-cancel-edit">Cancel edit</button>
+        </div>
+      </form>
+      <h2 class="list-heading">History</h2>
+      <div class="history-list" id="exercise-list"></div>
+    </section>
+
+    <!-- ===================== BODY ===================== -->
+    <section class="tab hidden" id="tab-body">
+      <h1>Body metrics</h1>
+      <div class="today-strip" id="body-summary"></div>
+      <form class="card entry-form" id="body-form" novalidate>
+        <h2 id="body-form-title">Log measurements</h2>
+        <input type="hidden" id="body-edit-id" value="">
+        <div class="form-row">
+          <label>Date
+            <input type="date" id="body-date" required>
+          </label>
+          <label>Weight (<span id="body-weight-unit">kg</span>)
+            <input type="number" id="body-weight" min="20" max="900" step="0.1" required placeholder="75.0">
+          </label>
+          <label>Body fat (%)
+            <input type="number" id="body-fat" min="0" max="100" step="0.1" placeholder="optional">
+          </label>
+          <label>Muscle mass (%)
+            <input type="number" id="body-muscle" min="0" max="100" step="0.1" placeholder="optional">
+          </label>
+        </div>
+        <div class="form-row">
+          <label class="grow">Notes
+            <input type="text" id="body-notes" maxlength="300" placeholder="optional">
+          </label>
+        </div>
+        <p class="form-error" id="body-error" hidden></p>
+        <div class="form-actions">
+          <button type="submit" class="btn primary" id="body-submit">Add measurement</button>
+          <button type="button" class="btn ghost hidden" id="body-cancel-edit">Cancel edit</button>
+        </div>
+      </form>
+      <h2 class="list-heading">History</h2>
+      <div class="history-list" id="body-list"></div>
+    </section>
+
+    <!-- ===================== INSIGHTS ===================== -->
+    <section class="tab hidden" id="tab-insights">
+      <h1>Insights</h1>
+      <div id="goal-area">
+        <!-- goal setup / "your goal" card rendered by goals.js -->
+      </div>
+      <div id="insights-cards">
+        <!-- recommendation cards rendered by insights.js (via insights-engine.js) -->
+      </div>
+    </section>
+
+    <!-- ===================== COACH ===================== -->
+    <section class="tab hidden" id="tab-coach">
+      <h1>AI Coach</h1>
+      <div id="coach-status">
+        <!-- server / claude availability cards rendered by coach.js -->
+      </div>
+      <div class="card coach-card hidden" id="coach-chat">
+        <div class="coach-log" id="coach-log" aria-live="polite"></div>
+        <form class="coach-input-row" id="coach-form" novalidate>
+          <input type="text" id="coach-input" maxlength="1000" autocomplete="off"
+                 placeholder="Ask your coach&hellip; (answers take 10&ndash;60 s)">
+          <button type="submit" class="btn primary" id="coach-send">Send</button>
+        </form>
+      </div>
+      <p class="muted small">The coach runs locally through your own Claude Code subscription.
+      Only a compact summary of your data is sent to it &mdash; nothing leaves this machine
+      except that request.</p>
+    </section>
+
+    <!-- ===================== SETTINGS ===================== -->
+    <section class="tab hidden" id="tab-settings">
+      <h1>Settings</h1>
+
+      <div class="card">
+        <h2>Units</h2>
+        <div class="form-row">
+          <label>Weight unit
+            <select id="pref-weight-unit">
+              <option value="lb">Pounds (lb)</option>
+              <option value="kg">Kilograms (kg)</option>
+            </select>
+          </label>
+          <label>Water unit
+            <select id="pref-water-unit">
+              <option value="oz">Fluid ounces (oz)</option>
+              <option value="ml">Milliliters (ml)</option>
+            </select>
+          </label>
+        </div>
+        <p class="muted small">Data is always stored in metric &mdash; this only changes how it is shown and entered.</p>
+      </div>
+
+      <div class="card">
+        <h2>Backup</h2>
+        <p class="muted">Your data lives only in this browser (localStorage). Export regularly.</p>
+        <div class="form-actions">
+          <button type="button" class="btn primary" id="btn-export">Export data (JSON)</button>
+          <button type="button" class="btn" id="btn-import">Import data&hellip;</button>
+          <input type="file" id="import-file" accept=".json,application/json" hidden>
+        </div>
+        <p class="form-hint" id="settings-msg"></p>
+      </div>
+
+      <div class="card">
+        <h2>Import from health apps</h2>
+        <p class="muted small">
+          <strong>Apple Health (iPhone):</strong> Health app &rarr; your picture (top right) &rarr;
+          <em>Export All Health Data</em> &rarr; you get <strong>export.zip</strong>. Extract the zip
+          (tap it in the Files app, or copy it to this computer and unzip), then choose the
+          <strong>export.xml</strong> inside it here.<br>
+          <strong>Samsung Health:</strong> Samsung Health &rarr; &#8942; Settings &rarr;
+          <em>Download personal data</em>, then choose the
+          <strong>step_daily_trend&hellip;.csv</strong> (steps) or
+          <strong>weight&hellip;.csv</strong> (body weight) file here.
+        </p>
+        <div class="form-actions">
+          <button type="button" class="btn" id="btn-health-import">Choose health file&hellip;</button>
+          <input type="file" id="health-file" accept=".xml,.csv,.zip,text/xml,application/xml,text/csv" hidden>
+        </div>
+        <div id="health-progress" hidden></div>
+        <div id="health-preview"></div>
+        <p class="form-hint" id="health-msg"></p>
+      </div>
+
+      <div class="card">
+        <h2>Use on your phone</h2>
+        <p class="muted small">
+          On this PC, double-click <strong>&ldquo;Start OptimalFit (Phone).bat&rdquo;</strong> in the
+          optimal-fit folder. It starts the server in phone mode and prints the address and a
+          6-digit pairing code (needed once for the AI coach). Your phone must be on the
+          <strong>same WiFi</strong> as this PC. If Windows asks about the firewall, allow Python
+          on <em>private</em> networks.
+        </p>
+        <div id="phone-info"></div>
+        <p class="muted small">
+          Then on the phone, open the address shown and add it to your home screen:<br>
+          <strong>iPhone:</strong> Safari &rarr; Share button &rarr; <em>Add to Home Screen</em>.<br>
+          <strong>Android / Samsung:</strong> Chrome &rarr; &#8942; menu &rarr; <em>Add to Home screen</em>
+          (or <em>Install app</em>).
+        </p>
+        <p class="muted small">
+          Honest notes: your data lives in each device&rsquo;s own browser storage &mdash; the phone
+          starts empty; use Export on the PC and Import on the phone to move it. The AI coach only
+          works while the PC server is running.
+        </p>
+      </div>
+
+      <div class="card">
+        <h2>Demo data</h2>
+        <p class="muted">Generates ~60 days of realistic, correlated fake data (sleep, meals,
+        workouts, body metrics) so the dashboard and insights have something to chew on.</p>
+        <div class="form-actions">
+          <button type="button" class="btn" id="btn-demo">Load demo data</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>Intro</h2>
+        <p class="muted small">See the three-step welcome tour again.</p>
+        <div class="form-actions">
+          <button type="button" class="btn" id="btn-replay-intro">Replay intro</button>
+        </div>
+      </div>
+
+      <div class="card danger-card">
+        <h2>Danger zone</h2>
+        <div class="form-actions">
+          <button type="button" class="btn danger" id="btn-clear">Clear all data</button>
+        </div>
+      </div>
+
+      <p class="muted small">OptimalFit &mdash; zero-dependency local app. No data ever leaves this device.</p>
+    </section>
+
+  </main>
+</div>
+
+<!-- ===== Log action sheet (mobile "Log" tab): routes to the tracker tabs ===== -->
+<div class="sheet hidden" id="log-sheet" role="dialog" aria-modal="true" aria-label="Log an entry">
+  <div class="sheet-backdrop" data-close-sheet></div>
+  <div class="sheet-panel">
+    <div class="sheet-grab" aria-hidden="true"></div>
+    <h2>What do you want to log?</h2>
+    <div class="sheet-grid">
+      <a class="sheet-item" href="#sleep">
+        <span class="entry-ico"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20.5 13.2A8.2 8.2 0 1 1 10.8 3.5a6.6 6.6 0 0 0 9.7 9.7Z"/></svg></span>Sleep
+      </a>
+      <a class="sheet-item" href="#food">
+        <span class="entry-ico"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 7.2c-1.6-1.9-4.6-1.8-6 .5-1.7 2.6-.7 6.9 1.4 9.4 1 1.2 2.3 1.9 3.4 1.4.4-.2.9-.2 1.3 0 1.1.5 2.4-.2 3.4-1.4 2.1-2.5 3.1-6.8 1.4-9.4-1.4-2.3-4.4-2.4-5.9-.5Z"/><path d="M12 7.2c0-2.2 1.3-3.6 3.2-4"/></svg></span>Food
+      </a>
+      <a class="sheet-item" href="#exercise">
+        <span class="entry-ico"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6.8 6.8v10.4M3.6 9.2v5.6M17.2 6.8v10.4M20.4 9.2v5.6M6.8 12h10.4"/></svg></span>Exercise
+      </a>
+      <a class="sheet-item" href="#body">
+        <span class="entry-ico"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3.5" y="3.5" width="17" height="17" rx="4.5"/><path d="M8.2 11a4.2 4.2 0 0 1 7.6 0"/><path d="M12 10.4l1.8-1.8"/></svg></span>Body
+      </a>
+    </div>
+    <button type="button" class="btn ghost sheet-cancel" data-close-sheet>Cancel</button>
+  </div>
+</div>
+
+<!-- ===== Food photo estimate panel (food-photo.js renders into this) ===== -->
+<div class="sheet hidden" id="photo-modal" role="dialog" aria-modal="true" aria-label="Estimate food from photo"></div>
+
+<!-- ===== First-run onboarding overlay (onboarding.js) ===== -->
+<div id="onboarding" class="hidden"></div>
+
+<!-- Plain scripts (NOT modules) loaded in dependency order so the app also works from file:// -->
+<script src="js/util.js"></script>
+<script src="js/icons.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/storage.js"></script>
+<script src="js/units.js"></script>
+<script src="js/sleep.js"></script>
+<script src="js/food.js"></script>
+<script src="js/food-photo.js"></script>
+<script src="js/exercise.js"></script>
+<script src="js/body.js"></script>
+<script src="js/charts.js"></script>
+<script src="js/insights-engine.js"></script>
+<script src="js/strength-engine.js"></script>
+<script src="js/targets-engine.js"></script>
+<script src="js/goals.js"></script>
+<script src="js/daily.js"></script>
+<script src="js/dashboard.js"></script>
+<script src="js/insights.js"></script>
+<script src="js/coach.js"></script>
+<script src="js/demo.js"></script>
+<script src="js/health-import.js"></script>
+<script src="js/settings.js"></script>
+<script src="js/onboarding.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>

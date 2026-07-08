@@ -1,0 +1,183 @@
+/* ============================================================
+   util.js — shared helpers under the single global namespace.
+   Loaded first; every other script hangs off window.OF.
+   Plain script (no ES modules) so the app works from file://.
+   ============================================================ */
+
+window.OF = window.OF || {};
+
+OF.util = (function () {
+  "use strict";
+
+  /** Unique id: timestamp + random suffix (good enough for local data). */
+  function uid() {
+    return Date.now().toString(36) + "-" + Math.random().toString(36).slice(2, 9);
+  }
+
+  /** Today's date as YYYY-MM-DD in LOCAL time (not UTC). */
+  function todayISO(offsetDays) {
+    var d = new Date();
+    if (offsetDays) d.setDate(d.getDate() + offsetDays);
+    return d.getFullYear() + "-" +
+      String(d.getMonth() + 1).padStart(2, "0") + "-" +
+      String(d.getDate()).padStart(2, "0");
+  }
+
+  /** Current local time as HH:MM. */
+  function nowTime() {
+    var d = new Date();
+    return String(d.getHours()).padStart(2, "0") + ":" +
+      String(d.getMinutes()).padStart(2, "0");
+  }
+
+  /** "HH:MM" -> minutes since midnight, or null if malformed. */
+  function timeToMinutes(t) {
+    if (typeof t !== "string") return null;
+    var m = /^(\d{1,2}):(\d{2})$/.exec(t.trim());
+    if (!m) return null;
+    var h = parseInt(m[1], 10), min = parseInt(m[2], 10);
+    if (h > 23 || min > 59) return null;
+    return h * 60 + min;
+  }
+
+  /**
+   * Sleep duration in minutes from bed time to wake time.
+   * If wake <= bed we assume the sleep crossed midnight.
+   */
+  function sleepDurationMin(bedTime, wakeTime) {
+    var b = timeToMinutes(bedTime), w = timeToMinutes(wakeTime);
+    if (b === null || w === null) return null;
+    var dur = w - b;
+    if (dur <= 0) dur += 24 * 60; // crossed midnight
+    return dur;
+  }
+
+  /** 465 -> "7h 45m" */
+  function fmtDuration(min) {
+    if (min == null || isNaN(min)) return "?";
+    var h = Math.floor(min / 60), m = Math.round(min % 60);
+    return h + "h " + (m < 10 ? "0" : "") + m + "m";
+  }
+
+  /** "2026-07-07" -> "Tue, Jul 7" (falls back to raw string on bad input). */
+  function fmtDate(iso) {
+    var m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso || "");
+    if (!m) return iso || "?";
+    var d = new Date(+m[1], +m[2] - 1, +m[3]);
+    return d.toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" });
+  }
+
+  /** Escape text for safe insertion into innerHTML. */
+  function esc(s) {
+    return String(s == null ? "" : s)
+      .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+  }
+
+  /**
+   * Small fixed toast for storage errors / data warnings.
+   * kind: "error" (default, red) or "warn" (amber).
+   * Uses textContent, so the message is never interpreted as HTML.
+   */
+  var toastTimer = null;
+  function toast(message, kind) {
+    var el = document.getElementById("of-toast");
+    if (!el) {
+      el = document.createElement("div");
+      el.id = "of-toast";
+      (document.body || document.documentElement).appendChild(el);
+    }
+    el.className = "toast " + (kind === "warn" ? "toast-warn" : "toast-error");
+    el.textContent = message;
+    // Force a restyle so back-to-back toasts still animate.
+    el.classList.add("show");
+    if (toastTimer) clearTimeout(toastTimer);
+    toastTimer = setTimeout(function () { el.classList.remove("show"); }, 6000);
+  }
+
+  /**
+   * Small progress bar HTML. frac 0..1 (clamped), color is a CSS
+   * string like "var(--accent-2)". Pure presentational markup.
+   */
+  function progressBar(frac, color) {
+    var pct = Math.max(0, Math.min(1, isFinite(frac) ? frac : 0)) * 100;
+    return '<div class="progress"><div class="progress-fill" style="width:' +
+      pct.toFixed(1) + '%;background:' + (color || "var(--accent)") + '"></div></div>';
+  }
+
+  /**
+   * Circular progress ring as an SVG string (presentational only).
+   * frac 0..1 (clamped). opts: { size, stroke, color ("var(--x)" or
+   * "grad" for the brand gradient), value (text inside), sub (small
+   * text under the value) }. All text goes through esc().
+   */
+  var ringSeq = 0;
+  function progressRing(frac, opts) {
+    opts = opts || {};
+    var size = opts.size || 64;
+    var stroke = opts.stroke || Math.max(5, Math.round(size / 11));
+    var r = (size - stroke) / 2;
+    var c = 2 * Math.PI * r;
+    var f = Math.max(0, Math.min(1, isFinite(frac) ? frac : 0));
+    var off = c * (1 - f);
+    var half = size / 2;
+    var color = opts.color || "var(--accent)";
+    var defs = "";
+    if (color === "grad") {
+      var gid = "ofrg" + (++ringSeq);
+      defs = '<defs><linearGradient id="' + gid + '" x1="0" y1="0" x2="1" y2="1">' +
+        '<stop offset="0" stop-color="var(--g1)"/><stop offset="1" stop-color="var(--g2)"/>' +
+        '</linearGradient></defs>';
+      color = "url(#" + gid + ")";
+    }
+    var valSize = Math.round(size * (opts.sub ? 0.24 : 0.26));
+    var out = '<svg class="ring" width="' + size + '" height="' + size +
+      '" viewBox="0 0 ' + size + " " + size + '" role="img" aria-hidden="true">' + defs +
+      '<circle class="ring-bg" cx="' + half + '" cy="' + half + '" r="' + r +
+      '" stroke-width="' + stroke + '"/>' +
+      '<circle class="ring-fg" cx="' + half + '" cy="' + half + '" r="' + r +
+      '" stroke-width="' + stroke + '" stroke="' + color +
+      '" stroke-dasharray="' + c.toFixed(2) + '" stroke-dashoffset="' + off.toFixed(2) + '"/>';
+    if (opts.value != null) {
+      out += '<text class="ring-val" x="' + half + '" y="' +
+        (half + (opts.sub ? -1 : valSize * 0.36)) + '" text-anchor="middle" font-size="' +
+        valSize + '">' + esc(opts.value) + '</text>';
+    }
+    if (opts.sub) {
+      out += '<text class="ring-sub" x="' + half + '" y="' + (half + valSize * 0.85) +
+        '" text-anchor="middle" font-size="' + Math.round(size * 0.13) + '">' +
+        esc(opts.sub) + '</text>';
+    }
+    return out + "</svg>";
+  }
+
+  /** Parse a number field; returns null for empty, NaN for garbage. */
+  function numOrNull(v) {
+    if (v === "" || v == null) return null;
+    var n = parseFloat(v);
+    return isNaN(n) ? NaN : n;
+  }
+
+  /** Sort key for date+time strings; newest first when used with .sort(). */
+  function byNewest(a, b) {
+    var ka = (a.date || "") + "T" + (a.time || a.startTime || a.wakeTime || "00:00");
+    var kb = (b.date || "") + "T" + (b.time || b.startTime || b.wakeTime || "00:00");
+    return kb < ka ? -1 : kb > ka ? 1 : 0;
+  }
+
+  return {
+    uid: uid,
+    todayISO: todayISO,
+    nowTime: nowTime,
+    timeToMinutes: timeToMinutes,
+    sleepDurationMin: sleepDurationMin,
+    fmtDuration: fmtDuration,
+    fmtDate: fmtDate,
+    esc: esc,
+    toast: toast,
+    progressBar: progressBar,
+    progressRing: progressRing,
+    numOrNull: numOrNull,
+    byNewest: byNewest
+  };
+})();

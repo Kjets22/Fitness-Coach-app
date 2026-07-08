@@ -1,0 +1,7 @@
+com.samsung.shealth.step_daily_trend,100001,3
+binning_data,count,create_time,datauuid,day_time,deviceuuid,distance,pkg_name,source_type,speed,update_time
+,8800,2026-06-28 00:00:00.000,uuid-8800,1782604800000,dev1,8800,com.sec.android.app.shealth,0,1.2,2026-06-28 23:59:00.000
+,9100,2026-06-28 00:00:00.000,uuid-9100,1782604800000,dev1,9100,com.sec.android.app.shealth,-2,1.2,2026-06-28 23:59:00.000
+,10450,2026-06-29 00:00:00.000,uuid-10450,1782691200000,dev1,10450,com.sec.android.app.shealth,-2,1.2,2026-06-29 23:59:00.000
+,9900,2026-06-29 00:00:00.000,uuid-9900,1782691200000,dev1,9900,com.sec.android.app.shealth,0,1.2,2026-06-29 23:59:00.000
+,7300,2026-06-30 00:00:00.000,uuid-7300,1782777600000,dev1,7300,com.sec.android.app.shealth,-2,1.2,2026-06-30 23:59:00.000

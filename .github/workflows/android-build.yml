@@ -1,0 +1,88 @@
+# OptimalFit — Android cloud build (so releases never depend on one PC).
+#
+# Builds the signed release AAB (Google Play upload artifact) + release APK
+# on a GitHub-hosted Ubuntu runner. Trigger manually from the Actions tab.
+#
+# REQUIRED repository secrets (Settings -> Secrets and variables -> Actions):
+#   ANDROID_KEYSTORE_BASE64  dist/optimalfit-release.keystore as base64:
+#                            PowerShell: [Convert]::ToBase64String([IO.File]::ReadAllBytes("dist\optimalfit-release.keystore"))
+#   KEYSTORE_PASSWORD        store password (see dist/SIGNING-INFO.txt — keep it offline!)
+#   KEY_ALIAS                key alias (dist/SIGNING-INFO.txt; "optimalfit")
+#   KEY_PASSWORD             key password (dist/SIGNING-INFO.txt)
+#
+# NOTE: dist/ (keystore, passwords, built artifacts) is .gitignore'd and must
+# NEVER be committed — the keystore travels only inside these secrets.
+
+name: Android build (AAB + APK)
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build-android:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repo
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install Capacitor deps
+        working-directory: native
+        run: npm ci
+
+      - name: Sync web assets into the Android project
+        working-directory: native
+        run: npm run copy-web && npx cap sync android
+
+      - name: Materialize signing keystore from secrets
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+        run: |
+          mkdir -p dist
+          echo -n "$ANDROID_KEYSTORE_BASE64" | base64 --decode > dist/optimalfit-release.keystore
+          # app/build.gradle reads <repo>/dist/keystore.properties (see P2-3 notes)
+          cat > dist/keystore.properties <<EOF
+          storeFile=$GITHUB_WORKSPACE/dist/optimalfit-release.keystore
+          storePassword=$KEYSTORE_PASSWORD
+          keyAlias=$KEY_ALIAS
+          keyPassword=$KEY_PASSWORD
+          EOF
+
+      - name: Build signed release AAB + APK
+        working-directory: native/android
+        run: |
+          chmod +x gradlew
+          ./gradlew bundleRelease assembleRelease
+
+      - name: Verify signatures
+        run: |
+          jarsigner -verify native/android/app/build/outputs/bundle/release/app-release.aab
+          BUILD_TOOLS=$(ls "$ANDROID_HOME/build-tools" | sort -V | tail -n 1)
+          "$ANDROID_HOME/build-tools/$BUILD_TOOLS/apksigner" verify --print-certs \
+            native/android/app/build/outputs/apk/release/app-release.apk
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: OptimalFit-android-release
+          path: |
+            native/android/app/build/outputs/bundle/release/app-release.aab
+            native/android/app/build/outputs/apk/release/app-release.apk
+          if-no-files-found: error
+
+      # Reminder: bump versionCode (+1) and versionName in
+      # native/android/app/build.gradle before every Google Play upload —
+      # Play permanently rejects a reused versionCode.

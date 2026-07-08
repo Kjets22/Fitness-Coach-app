@@ -1,0 +1,94 @@
+=========================================================================
+ OptimalFit - Android build info
+=========================================================================
+Build date      : 2026-07-08 (rebuilt by Builder-7, P2-11 — workout set
+                  logging + training-effectiveness engine: new
+                  js/strength-engine.js, exercise sets builder, strength
+                  insight cards, demo strength sets, sw v9 [no-op'd in
+                  native]; previous rebuild by Builder-6, P2-9 food photo;
+                  earlier Fixer-3 P2-7 splash, iOS-1 P2-4 icons; original
+                  build by Android-1, P2-3)
+
+App identity
+  applicationId : com.optimalfit.app
+  versionCode   : 1
+  versionName   : 1.0.0
+  label         : OptimalFit
+
+SDK levels (from native/android/variables.gradle - Capacitor 8.4.1 template)
+  minSdk        : 24  (Android 7.0)
+  targetSdk     : 36
+  compileSdk    : 36  (platformBuildVersionName 16)
+
+Toolchain
+  JDK           : Temurin 21.0.11+10 (C:\Program Files\Eclipse Adoptium\jdk-21.0.11.10-hotspot)
+                  NOTE: task spec said JDK 17, but Capacitor 8 generates
+                  sourceCompatibility Java 21 in capacitor.build.gradle
+                  (regenerated on every cap sync), so JDK 21 is required.
+  Android SDK   : C:\Android (cmdline-tools 11076708, platform-tools 37.0.0,
+                  platforms;android-36, build-tools;36.0.0)
+  Gradle        : 8.14.3 (wrapper) / AGP 8.13.0
+  Node          : v24.18.0 (C:\Program Files\nodejs)
+
+Web snapshot built (webDir = native/www, mirrored from app/)
+  Synced        : 2026-07-08 via `npm run sync` (Builder-7, P2-11)
+  Snapshot      : everything above PLUS the P2-11 strength feature
+                  (NEW js/strength-engine.js; exercise.js sets builder +
+                  set-summary history; index.html builder markup; storage.js
+                  exercises import sanitizer; insights.js "Strength &
+                  lifting" cards; coach.js strengthTraining context; demo.js
+                  strength sets via a second seeded stream; builder/lift-row
+                  styles in css/style.css). 32 files; www/sw.js is the
+                  intentional self-unregistering no-op (by design; real
+                  app/sw.js is at VERSION v9).
+
+Launcher icons (P2-4, iOS-1): default Capacitor robot REPLACED with the
+  OptimalFit brand icon (violet->cyan gradient + white dumbbell) in all
+  mipmap densities incl. adaptive foreground + solid #8B5CF6 adaptive
+  background color; unreferenced robot vector XMLs (drawable/,
+  drawable-v24/) removed. Regenerate: python native\scripts\gen_native_icons.py
+
+Splash screens (P2-7, Fixer-3): default gray Capacitor splash REPLACED with
+  the brand splash (deep #0a0e17 background, violet->cyan gradient dumbbell
+  mark centered at ~25% width) in all 11 drawable*/splash.png densities
+  (default + land/port x mdpi..xxxhdpi, template sizes kept) and the iOS
+  Splash.imageset (3x 2732x2732). Regenerate: python native\scripts\gen_native_splash.py
+
+Artifacts (SHA-256) — rebuilt 2026-07-08 with the P2-11 strength feature,
+  same versionCode 1 (nothing was uploaded to Play yet, so no bump needed)
+  OptimalFit-debug.apk    4,245,912 B  010DAD56C2AEF26A620C3C347BAE6A8E58E65A50FBF67E65C3A320EF3E0E3751
+                          (debug-signed with the standard Android debug key)
+  OptimalFit-release.apk  3,228,294 B  55D3F3BDC2B97D33FE50FBC1522081FD86445E78D114E24C0C2E83C40C5D1383
+                          (signed: CN=OptimalFit, SHA-256 cert digest
+                           7e4cb149115790dc9973af7781834f09d6e028b1211777c73a6df5b5ccfcd9e1)
+  OptimalFit-release.aab  3,064,632 B  FEC5CE8673DD36E5FBDA1866F12B6BA876139F7ABBB8570E63BEF0B54601E491
+                          (jarsigner: "jar verified" - upload THIS to Google Play)
+
+Verification performed (re-run after the P2-11 rebuild)
+  - apksigner verify --print-certs on release APK: OK, cert digest matches
+    the original 7e4cb1...d9e1 (same keystore)
+  - jarsigner -verify on AAB: jar verified
+  - assets/public/js/strength-engine.js, exercise.js and demo.js inside the
+    release APK are byte-identical to their app/js versions;
+    assets/public/sw.js is the intentional no-op (the bumped v9 sw.js
+    applies to the browser/PWA build only)
+  - earlier P2-9/P2-7 checks (food-photo.js, brand splash at 11 configs,
+    storage.js clamps, "this device" copy) untouched by this rebuild
+
+Rebuild recipe (after any app/ change - e.g. next release):
+  1. Bump versionCode (+1) and versionName in
+     native\android\app\build.gradle (Play rejects reused versionCodes)
+  2. In PowerShell:
+       $env:JAVA_HOME = "C:\Program Files\Eclipse Adoptium\jdk-21.0.11.10-hotspot"
+       $env:PATH = "$env:JAVA_HOME\bin;C:\Program Files\nodejs;$env:PATH"
+       $env:GRADLE_OPTS = "-Djavax.net.ssl.trustStoreType=Windows-ROOT"
+       cd C:\Users\kjets\optimal-fit\native
+       npm run sync
+       cd android
+       .\gradlew.bat assembleDebug bundleRelease assembleRelease
+  3. Artifacts appear under native\android\app\build\outputs\
+     (apk\debug, apk\release, bundle\release) - copy to dist\
+  Signing is automatic: app\build.gradle reads dist\keystore.properties.
+  (GRADLE_OPTS line is needed because this machine's network intercepts
+   TLS; the Windows cert store trusts it, the JDK's bundled one doesn't.)
+=========================================================================

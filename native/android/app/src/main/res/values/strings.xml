@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">OptimalFit</string>
+    <string name="title_activity_main">OptimalFit</string>
+    <string name="package_name">com.optimalfit.app</string>
+    <string name="custom_url_scheme">com.optimalfit.app</string>
+</resources>

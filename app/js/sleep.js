@@ -1,0 +1,195 @@
+/* ============================================================
+   sleep.js — sleep tracker: form + history list.
+   Record: { date (wake-up date), bedTime, wakeTime, quality 1-5,
+             durationMin (computed, crosses midnight), notes }
+   Supports add, edit (form reuse) and delete.
+   ============================================================ */
+
+window.OF = window.OF || {};
+
+OF.sleep = (function () {
+  "use strict";
+  var U = OF.util, S = OF.storage;
+  var els = {};
+
+  function init() {
+    els.form = document.getElementById("sleep-form");
+    els.editId = document.getElementById("sleep-edit-id");
+    els.date = document.getElementById("sleep-date");
+    els.bed = document.getElementById("sleep-bed");
+    els.wake = document.getElementById("sleep-wake");
+    els.quality = document.getElementById("sleep-quality");
+    els.notes = document.getElementById("sleep-notes");
+    els.error = document.getElementById("sleep-error");
+    els.preview = document.getElementById("sleep-duration-preview");
+    els.submit = document.getElementById("sleep-submit");
+    els.cancel = document.getElementById("sleep-cancel-edit");
+    els.title = document.getElementById("sleep-form-title");
+    els.list = document.getElementById("sleep-list");
+    els.summary = document.getElementById("sleep-summary");
+
+    setDefaults();
+    els.form.addEventListener("submit", onSubmit);
+    els.cancel.addEventListener("click", exitEditMode);
+    els.bed.addEventListener("input", updatePreview);
+    els.wake.addEventListener("input", updatePreview);
+    // Event delegation for edit/delete buttons in the history list.
+    els.list.addEventListener("click", onListClick);
+    renderList();
+  }
+
+  function setDefaults() {
+    els.date.value = U.todayISO();
+    els.bed.value = "23:00";
+    els.wake.value = "07:00";
+    els.quality.value = "3";
+    els.notes.value = "";
+    if (OF.ui) OF.ui.syncSegs(); // reflect onto the rating pills
+    updatePreview();
+  }
+
+  function updatePreview() {
+    var dur = U.sleepDurationMin(els.bed.value, els.wake.value);
+    els.preview.textContent = dur != null ? "Duration: " + U.fmtDuration(dur) : "";
+  }
+
+  function showError(msg) {
+    els.error.textContent = msg;
+    els.error.hidden = !msg;
+  }
+
+  function readForm() {
+    var date = els.date.value;
+    var bed = els.bed.value;
+    var wake = els.wake.value;
+    if (!date) return { err: "Please pick the wake-up date." };
+    if (!bed || U.timeToMinutes(bed) === null) return { err: "Please enter a valid bed time." };
+    if (!wake || U.timeToMinutes(wake) === null) return { err: "Please enter a valid wake time." };
+    var dur = U.sleepDurationMin(bed, wake);
+    if (dur > 20 * 60) return { err: "That is over 20 hours of sleep — double-check the times." };
+    var quality = parseInt(els.quality.value, 10);
+    if (!(quality >= 1 && quality <= 5)) return { err: "Quality must be between 1 and 5." };
+    return {
+      rec: {
+        date: date,
+        bedTime: bed,
+        wakeTime: wake,
+        quality: quality,
+        durationMin: dur,
+        notes: els.notes.value.trim()
+      }
+    };
+  }
+
+  function onSubmit(e) {
+    e.preventDefault();
+    var r = readForm();
+    if (r.err) { showError(r.err); return; }
+    showError("");
+    var editId = els.editId.value;
+    if (editId) {
+      if (!S.update("sleep", editId, r.rec)) {
+        showError("Could not save — browser storage is full or blocked. Your entry was NOT saved.");
+        return;
+      }
+      exitEditMode();
+    } else {
+      if (!S.add("sleep", r.rec)) {
+        showError("Could not save — browser storage is full or blocked. Your entry was NOT saved.");
+        return;
+      }
+      setDefaults();
+    }
+    renderList();
+    OF.dashboard && OF.dashboard.refresh();
+  }
+
+  function enterEditMode(rec) {
+    els.editId.value = rec.id;
+    els.date.value = rec.date;
+    els.bed.value = rec.bedTime;
+    els.wake.value = rec.wakeTime;
+    els.quality.value = String(rec.quality);
+    els.notes.value = rec.notes || "";
+    if (OF.ui) OF.ui.syncSegs();
+    els.title.textContent = "Edit sleep entry";
+    els.submit.textContent = "Save changes";
+    els.cancel.classList.remove("hidden");
+    updatePreview();
+    els.form.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+
+  function exitEditMode() {
+    els.editId.value = "";
+    els.title.textContent = "Log sleep";
+    els.submit.textContent = "Add sleep entry";
+    els.cancel.classList.add("hidden");
+    showError("");
+    setDefaults();
+  }
+
+  function onListClick(e) {
+    var btn = e.target.closest("button[data-act]");
+    if (!btn) return;
+    var id = btn.getAttribute("data-id");
+    if (btn.getAttribute("data-act") === "del") {
+      if (confirm("Delete this sleep entry?")) {
+        S.remove("sleep", id);
+        if (els.editId.value === id) exitEditMode();
+        renderList();
+        OF.dashboard && OF.dashboard.refresh();
+      }
+    } else {
+      var rec = S.get("sleep", id);
+      if (rec) enterEditMode(rec);
+    }
+  }
+
+  /** Today's summary strip above the form. */
+  function renderSummary() {
+    if (!els.summary) return;
+    var arr = S.getAll("sleep");
+    if (!arr.length) { els.summary.innerHTML = ""; return; }
+    var latest = arr.slice().sort(U.byNewest)[0];
+    var cutoff = U.todayISO(-6);
+    var week = arr.filter(function (r) { return r.date >= cutoff && isFinite(Number(r.durationMin)); });
+    var avg = week.length
+      ? week.reduce(function (n, r) { return n + Number(r.durationMin); }, 0) / week.length
+      : null;
+    els.summary.innerHTML =
+      '<span class="entry-ico">' + OF.icons.get("moon") + '</span>' +
+      '<span>' + (latest.date === U.todayISO() ? "Last night" : "Last sleep") + ': <strong>' +
+      U.esc(U.fmtDuration(latest.durationMin)) + '</strong> · quality ' +
+      U.esc(String(latest.quality)) + '/5</span>' +
+      (avg != null ? '<span>7-day avg <strong>' + U.esc(U.fmtDuration(avg)) + '</strong></span>' : '');
+  }
+
+  function renderList() {
+    renderSummary();
+    var arr = S.getAll("sleep").slice().sort(U.byNewest);
+    if (!arr.length) {
+      els.list.innerHTML = '<div class="empty-state">' + OF.icons.badge("moon") +
+        '<p>No sleep logged yet — add last night above and your nights show up here.</p></div>';
+      return;
+    }
+    els.list.innerHTML = arr.map(function (r) {
+      var stars = "★".repeat(r.quality || 0) + "☆".repeat(Math.max(0, 5 - (r.quality || 0)));
+      return '<div class="entry">' +
+        '<span class="entry-ico">' + OF.icons.get("moon") + '</span>' +
+        '<div class="entry-main">' +
+          '<div class="entry-title">' + U.esc(U.fmtDate(r.date)) + ' &mdash; ' +
+            U.esc(U.fmtDuration(r.durationMin)) + '</div>' +
+          '<div class="entry-sub">' + U.esc(r.bedTime) + ' &rarr; ' + U.esc(r.wakeTime) +
+            (r.notes ? ' &middot; ' + U.esc(r.notes) : '') + '</div>' +
+        '</div>' +
+        '<span class="entry-badge" title="Quality">' + stars + '</span>' +
+        '<div class="entry-actions">' +
+          '<button class="btn mini" data-act="edit" data-id="' + U.esc(r.id) + '">Edit</button>' +
+          '<button class="btn mini danger" data-act="del" data-id="' + U.esc(r.id) + '">Delete</button>' +
+        '</div>' +
+      '</div>';
+    }).join("");
+  }
+
+  return { init: init, renderList: renderList };
+})();

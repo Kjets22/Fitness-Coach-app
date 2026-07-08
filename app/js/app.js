@@ -36,6 +36,7 @@ OF.app = (function () {
     if (name === "insights" && OF.insights) OF.insights.refresh();
     if (name === "coach" && OF.coach) OF.coach.onEnter();
     if (name === "food" && OF.foodPhoto) OF.foodPhoto.onEnter(); // photo-estimate server check
+    if (name === "body" && OF.physique) OF.physique.onEnter();   // physique-photo server check
   }
 
   function currentTabFromHash() {
@@ -99,6 +100,7 @@ OF.app = (function () {
     if (OF.foodPhoto) OF.foodPhoto.init();
     OF.exercise.init();
     OF.body.init();
+    if (OF.physique) OF.physique.init();
     OF.goals.init();
     OF.daily.init();
     OF.dashboard.init();

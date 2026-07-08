@@ -17,7 +17,7 @@ OF.storage = (function () {
   "use strict";
 
   var PREFIX = "optimalfit.";
-  var TYPES = ["sleep", "food", "exercise", "body", "water", "steps", "goal", "adjustments"];
+  var TYPES = ["sleep", "food", "exercise", "body", "water", "steps", "goal", "adjustments", "physique"];
   var SCHEMA_VERSION = 2;
 
   function key(type) {
@@ -161,8 +161,14 @@ OF.storage = (function () {
     water: ["amountMl"],
     steps: ["count"],
     goal: ["targetAmountKg", "heightCm", "age"],
-    adjustments: ["delta", "from", "to"]
+    adjustments: ["delta", "from", "to"],
+    physique: ["bodyFatMidpoint", "bodyFatRangeLow", "bodyFatRangeHigh"]
   };
+
+  /* Physique enum + region vocab (mirrors serve.py /api/physique). */
+  var PHYS_MUSCULARITY = ["low", "below-average", "average", "above-average", "high"];
+  var PHYS_CONFIDENCE = ["low", "medium", "high"];
+  var PHYS_REGIONS = ["shoulders", "chest", "arms", "back", "core", "legs"];
 
   /** Lenient numeric coercion for imported fields: number, or null. */
   function coerceNum(v) {
@@ -192,7 +198,11 @@ OF.storage = (function () {
       bodyFatPct: { min: 0, max: 100 }, muscleMassPct: { min: 0, max: 100 }
     },
     water: { amountMl: { min: 0, max: 10000 } },
-    steps: { count: { min: 0, max: 200000 } }
+    steps: { count: { min: 0, max: 200000 } },
+    physique: {
+      bodyFatMidpoint: { min: 3, max: 60 },
+      bodyFatRangeLow: { min: 3, max: 60 }, bodyFatRangeHigh: { min: 3, max: 60 }
+    }
   };
 
   /** Clamp a coerced number into its field range (null passes through). */
@@ -245,6 +255,67 @@ OF.storage = (function () {
   }
 
   /**
+   * Enum coercion helper: lowercased trimmed match against `allowed`,
+   * else the default. Non-strings collapse to the default.
+   */
+  function coerceEnum(v, allowed, dflt) {
+    if (typeof v === "string") {
+      var s = v.trim().toLowerCase();
+      if (allowed.indexOf(s) !== -1) return s;
+    }
+    return dflt;
+  }
+
+  /** Trim + slice a value to a string of at most `n` chars ("" for non-strings). */
+  function capStr(v, n) {
+    return typeof v === "string" ? v.trim().slice(0, n) : "";
+  }
+
+  /** Clamp an imported string array: ≤ maxItems entries, each ≤ itemLen chars. */
+  function capStrList(v, maxItems, itemLen) {
+    if (!Array.isArray(v)) return [];
+    var out = [];
+    for (var i = 0; i < v.length && out.length < maxItems; i++) {
+      var s = capStr(v[i], itemLen);
+      if (s) out.push(s);
+    }
+    return out;
+  }
+
+  /**
+   * Sanitize an imported physique record's non-numeric fields in place:
+   * enum coercion (muscularity/confidence), region map (6 known keys,
+   * each ≤60 chars), strengths/focusAreas arrays (≤6 items, ≤80 chars),
+   * and length-capped assessment/notes. Numeric body-fat fields are handled
+   * by the NUM_FIELDS/clampNum pass; here we also enforce low ≤ high and
+   * midpoint inside [low, high]. Strings are escaped at RENDER, never here.
+   */
+  function sanitizePhysique(rec) {
+    rec.muscularity = coerceEnum(rec.muscularity, PHYS_MUSCULARITY, "average");
+    rec.confidence = coerceEnum(rec.confidence, PHYS_CONFIDENCE, "low");
+    var src = (rec.regions && typeof rec.regions === "object" && !Array.isArray(rec.regions))
+      ? rec.regions : {};
+    var regions = {};
+    PHYS_REGIONS.forEach(function (r) { regions[r] = capStr(src[r], 60); });
+    rec.regions = regions;
+    rec.strengths = capStrList(rec.strengths, 6, 80);
+    rec.focusAreas = capStrList(rec.focusAreas, 6, 80);
+    rec.overallAssessment = capStr(rec.overallAssessment, 600);
+    rec.notes = capStr(rec.notes, 600);
+    rec.analyzed = rec.analyzed !== false; // saved records are analyzed=true
+    var lo = rec.bodyFatRangeLow, hi = rec.bodyFatRangeHigh;
+    if (lo != null && hi != null && lo > hi) {
+      rec.bodyFatRangeLow = hi; rec.bodyFatRangeHigh = lo;
+      lo = rec.bodyFatRangeLow; hi = rec.bodyFatRangeHigh;
+    }
+    if (rec.bodyFatMidpoint != null) {
+      if (lo != null && rec.bodyFatMidpoint < lo) rec.bodyFatMidpoint = lo;
+      if (hi != null && rec.bodyFatMidpoint > hi) rec.bodyFatMidpoint = hi;
+    }
+    return rec;
+  }
+
+  /**
    * Normalize one imported record: coerce expected numeric fields,
    * default missing enum fields, stringify foreign ids. Returns a
    * cleaned copy, or null if the record lacks the essential `date`.
@@ -261,6 +332,7 @@ OF.storage = (function () {
       if (exs) rec.exercises = exs; else delete rec.exercises;
     }
     if (type === "food" && !rec.mealType) rec.mealType = "snack";
+    if (type === "physique") sanitizePhysique(rec);
     if (type === "sleep" && rec.durationMin == null) {
       rec.durationMin = clampNum(type, "durationMin",
         coerceNum(OF.util.sleepDurationMin(rec.bedTime, rec.wakeTime)));

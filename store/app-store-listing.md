@@ -63,14 +63,14 @@ PRIVATE BY ARCHITECTURE, NOT BY PROMISE
 • Works fully offline
 
 OPTIONAL AI COACH — ON YOUR OWN TERMS
-Tech-savvy? Run the free companion program on your own computer and pair your phone to it over your home Wi-Fi. Ask questions in plain language ("Plan my workouts for next week") and get answers grounded in your actual logs. It can even estimate a meal's calories and macros from a photo — you review and edit every number before saving, and the photo goes only to your own computer, never to us. The coach talks only to YOUR computer — never to a cloud service of ours. Skip it entirely and every other feature still works.
+Tech-savvy? Run the free companion program on your own computer and pair your phone to it over your home Wi-Fi. Ask questions in plain language ("Plan my workouts for next week") and get answers grounded in your actual logs. It can even estimate a meal's calories and macros from a photo, or give a supportive, body-neutral read on your physique — body-composition and muscle-development estimates that help set your targets. Your photos go only to your own computer, are analyzed there and deleted right after, never to us. The coach talks only to YOUR computer — never to a cloud service of ours. Skip it entirely and every other feature still works.
 
 HONEST LIMITS
 OptimalFit is a fitness tool, not a medical device. Its insights are statistics on your own logs, not medical advice — always check with a professional before big changes. Because your data never touches a server, back it up with the built-in export.
 
 Track everything. Learn what works for you. Keep it all to yourself.
 ```
-(~3,150 characters — under the 4,000 limit)
+(~3,280 characters — under the 4,000 limit)
 
 ## Keywords (max 100 chars, comma-separated, no spaces needed)
 

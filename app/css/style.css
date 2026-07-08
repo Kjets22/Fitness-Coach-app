@@ -1172,6 +1172,57 @@ input[type="checkbox"] { transition: none; }
 }
 .photo-notes { margin: 0 0 var(--sp-2); }
 
+/* ---------- 19c. Physique photo analysis (physique.js / insights) ---------- */
+.phys-privacy {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  margin: 0 0 var(--sp-3);
+  line-height: 1.4;
+}
+.phys-privacy .ico { width: 15px; height: 15px; flex: 0 0 auto; margin-top: 2px; color: var(--accent-2); }
+.phys-musc { font-size: 1rem; }
+.phys-bf { margin: 0 0 var(--sp-2); font-weight: 600; }
+.phys-regions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px var(--sp-3);
+  margin: var(--sp-2) 0 var(--sp-3);
+}
+.phys-region {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 6px 10px;
+  background: var(--bg-2);
+  border: 1px solid var(--card-edge);
+  border-radius: var(--r-sm);
+  font-size: 0.85rem;
+}
+.phys-region-name { color: var(--text-dim); font-weight: 600; }
+.phys-region-note { text-align: right; }
+.phys-chip-group {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin: 0 0 var(--sp-2);
+}
+.phys-chip-label { font-size: 0.78rem; color: var(--text-dim); font-weight: 600; margin-right: 2px; }
+.phys-chip {
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: var(--r-full);
+  font-size: 0.8rem;
+  font-weight: 550;
+  border: 1px solid var(--card-edge);
+}
+.phys-chip.good { color: var(--accent-2); border-color: color-mix(in srgb, var(--accent-2) 40%, transparent); background: color-mix(in srgb, var(--accent-2) 12%, transparent); }
+.phys-chip.focus { color: var(--warn); border-color: color-mix(in srgb, var(--warn) 40%, transparent); background: color-mix(in srgb, var(--warn) 12%, transparent); }
+.phys-assessment { margin: var(--sp-2) 0; line-height: 1.5; }
+.phys-notes, .phys-disclaimer { margin: 0 0 var(--sp-2); line-height: 1.4; }
+.physique-card .phys-regions { margin-top: var(--sp-3); }
+
 /* ---------- 20. Mobile (<720px): bottom tab bar ---------- */
 @media (max-width: 719px) {
   .app-shell { flex-direction: column-reverse; min-height: auto; }

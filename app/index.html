@@ -324,6 +324,7 @@
     <section class="tab hidden" id="tab-body">
       <h1>Body metrics</h1>
       <div class="today-strip" id="body-summary"></div>
+      <div class="photo-area" id="body-photo-area"></div>
       <form class="card entry-form" id="body-form" novalidate>
         <h2 id="body-form-title">Log measurements</h2>
         <input type="hidden" id="body-edit-id" value="">
@@ -520,6 +521,7 @@
 
 <!-- ===== Food photo estimate panel (food-photo.js renders into this) ===== -->
 <div class="sheet hidden" id="photo-modal" role="dialog" aria-modal="true" aria-label="Estimate food from photo"></div>
+<div class="sheet hidden" id="physique-modal" role="dialog" aria-modal="true" aria-label="Analyze physique from photo"></div>
 
 <!-- ===== First-run onboarding overlay (onboarding.js) ===== -->
 <div id="onboarding" class="hidden"></div>
@@ -535,6 +537,7 @@
 <script src="js/food-photo.js"></script>
 <script src="js/exercise.js"></script>
 <script src="js/body.js"></script>
+<script src="js/physique.js"></script>
 <script src="js/charts.js"></script>
 <script src="js/insights-engine.js"></script>
 <script src="js/strength-engine.js"></script>

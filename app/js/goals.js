@@ -51,10 +51,15 @@ OF.goals = (function () {
   function currentTargets() {
     var goal = activeGoal();
     if (!goal) return null;
+    // Body fat: a measured Body-record % always wins; else fall back to the
+    // latest physique-photo estimate (labeled so nothing is double-counted).
+    var bf = OF.targets.effectiveBodyFat(S.getAll("body"), S.getAll("physique"));
     return OF.targets.computeTargets(goal, {
       weightKg: OF.targets.latestWeightKg(S.getAll("body")),
       exerciseMinToday: exerciseMinToday(),
-      adjTotal: adjTotal()
+      adjTotal: adjTotal(),
+      bodyFatPct: bf ? bf.pct : null,
+      bodyFatSource: bf ? bf.source : null
     });
   }
 
@@ -503,6 +508,13 @@ OF.goals = (function () {
         learnedFromData: live.ready ? live.blendedMaintenance : null,
         adaptiveAdjustmentTotal: targets.adjTotal
       };
+      if (targets.bodyFatPct != null) {
+        out.bodyFat = {
+          pct: targets.bodyFatPct,
+          source: targets.bodyFatSource, // "measured" | "photo" (estimate)
+          leanMassKg: targets.leanMassKg
+        };
+      }
     } else if (targets) {
       out.dailyTargets = "unavailable: " + targets.message;
     }

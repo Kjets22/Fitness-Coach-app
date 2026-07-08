@@ -140,7 +140,8 @@ OF.settings = (function () {
     refreshAllViews();
     msg("Demo data loaded: " + c.sleep + " sleep, " + c.food + " food, " +
         c.exercise + " exercise, " + c.body + " body, " + c.water + " water, " +
-        c.steps + " steps records" + (c.goal ? " + a demo lean-bulk goal" : "") + ".");
+        c.steps + " steps records" + (c.physique ? " + " + c.physique + " physique analyses" : "") +
+        (c.goal ? " + a demo lean-bulk goal" : "") + ".");
   }
 
   /* ---------- Clear ---------- */

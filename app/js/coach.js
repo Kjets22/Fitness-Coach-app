@@ -193,6 +193,25 @@ OF.coach = (function () {
       return (b.date || "") < (a.date || "") ? -1 : 1;
     })[0] || null;
 
+    // Latest physique-photo analysis (compact — body-fat range, muscularity,
+    // top focus areas, date) so the coach can tailor training/target advice.
+    var physiqueRecs = S.getAll("physique");
+    var latestPhysique = physiqueRecs.slice().sort(function (a, b) {
+      return (b.date || "") < (a.date || "") ? -1 : 1;
+    })[0] || null;
+    var physique = null;
+    if (latestPhysique) {
+      physique = {
+        date: latestPhysique.date,
+        estBodyFatRangePct: [latestPhysique.bodyFatRangeLow, latestPhysique.bodyFatRangeHigh],
+        estBodyFatMidpointPct: latestPhysique.bodyFatMidpoint,
+        muscularity: latestPhysique.muscularity,
+        topFocusAreas: (latestPhysique.focusAreas || []).slice(0, 3),
+        topStrengths: (latestPhysique.strengths || []).slice(0, 3),
+        note: "visual photo estimate, not a medical measurement"
+      };
+    }
+
     // Goal, targets, progress, adaptation history (compact, from goals.js).
     var goalCoaching = null;
     try {
@@ -275,7 +294,8 @@ OF.coach = (function () {
         weightKg: latestBody.weightKg,
         bodyFatPct: latestBody.bodyFatPct,
         muscleMassPct: latestBody.muscleMassPct
-      } : null
+      } : null,
+      physique: physique
     };
   }
 

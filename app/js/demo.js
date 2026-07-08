@@ -127,7 +127,7 @@ OF.demo = (function () {
   function generate(days) {
     days = days || 60;
     var rnd = prng(1337);
-    var counts = { sleep: 0, food: 0, exercise: 0, body: 0, water: 0, steps: 0, goal: 0 };
+    var counts = { sleep: 0, food: 0, exercise: 0, body: 0, water: 0, steps: 0, goal: 0, physique: 0 };
 
     // Lean-bulk body story: flat first half, then a slow climb (see header).
     var weight0 = 82.5, fat0 = 21.0, muscle0 = 38.5;
@@ -361,6 +361,55 @@ OF.demo = (function () {
           notes: ""
         })) counts.body++;
       }
+    }
+
+    /* ---------- PHYSIQUE analyses (two, telling the lean-bulk progress
+       story) — on their OWN seeded stream so the rnd()/rnd2() sequences
+       above stay byte-identical. Only added when none exist yet. ---------- */
+    if (!S.getAll("physique").length) {
+      var rnd3 = prng(4321); // third stream — never touches rnd or rnd2
+      var early = new Date(); early.setDate(early.getDate() - (days - 4));
+      var recent = new Date(); recent.setDate(recent.getDate() - 2);
+      var jit = function () { return Math.round((rnd3() - 0.5) * 2) / 10; }; // ±0.1
+      // Early: ~20% body fat, average development.
+      if (S.add("physique", {
+        date: isoDate(early),
+        bodyFatMidpoint: 20 + jit(),
+        bodyFatRangeLow: 18, bodyFatRangeHigh: 22,
+        muscularity: "average",
+        regions: {
+          shoulders: "average", chest: "average", arms: "developing",
+          back: "average", core: "some definition", legs: "average"
+        },
+        strengths: ["Balanced overall base", "Good posture"],
+        focusAreas: ["Build overall muscle", "Add shoulder width"],
+        overallAssessment: "A solid, balanced starting point. With consistent " +
+          "training and enough protein you have plenty of room to add muscle " +
+          "while keeping body fat in check.",
+        confidence: "medium",
+        notes: "Visual estimate, not a medical body-composition measurement. " +
+          "Lighting and pose affect the read."
+      })) counts.physique++;
+      // Recent: ~17% body fat, above-average, shoulders now the lagging area.
+      if (S.add("physique", {
+        date: isoDate(recent),
+        bodyFatMidpoint: 17 + jit(),
+        bodyFatRangeLow: 15, bodyFatRangeHigh: 19,
+        muscularity: "above-average",
+        regions: {
+          shoulders: "a lagging area to prioritize", chest: "well-developed",
+          arms: "well-developed", back: "above average",
+          core: "visible definition", legs: "above average"
+        },
+        strengths: ["Chest and arms filling out", "Leaner midsection", "Good back width"],
+        focusAreas: ["Prioritize shoulders", "Keep progressive overload"],
+        overallAssessment: "Clear progress since your first photo — you look leaner " +
+          "and more muscular, especially through the chest and arms. Shoulders are " +
+          "the main area to prioritize next to round out your frame.",
+        confidence: "medium",
+        notes: "Visual estimate, not a medical body-composition measurement. " +
+          "Front-lit, form-fitting photos give the most consistent reads."
+      })) counts.physique++;
     }
 
     return counts;

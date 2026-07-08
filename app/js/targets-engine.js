@@ -100,6 +100,30 @@ OF.targets = (function () {
     return isFinite(n) ? n : null;
   }
 
+  /**
+   * effectiveBodyFat(body, physique) -> null or { pct, source, date }.
+   * A MEASURED body-fat % (from a Body record) always wins; only when no
+   * body record carries a body-fat % do we fall back to the most recent
+   * physique-photo estimate (bodyFatMidpoint). Never double-counts — the
+   * two sources are mutually exclusive by design. `source` is "measured"
+   * or "photo" so callers can label it "(estimated from your photo)".
+   */
+  function effectiveBodyFat(body, physique) {
+    var m = null;
+    (body || []).forEach(function (r) {
+      if (num(r.bodyFatPct) == null) return;
+      if (!m || (r.date || "") > (m.date || "")) m = r;
+    });
+    if (m) return { pct: num(m.bodyFatPct), source: "measured", date: m.date };
+    var p = null;
+    (physique || []).forEach(function (r) {
+      if (num(r.bodyFatMidpoint) == null) return;
+      if (!p || (r.date || "") > (p.date || "")) p = r;
+    });
+    if (p) return { pct: num(p.bodyFatMidpoint), source: "photo", date: p.date };
+    return null;
+  }
+
   /** Latest weight (kg) from body records, or null. */
   function latestWeightKg(body) {
     var best = null;
@@ -160,11 +184,19 @@ OF.targets = (function () {
     var fatG = Math.round(0.8 * kg);
     var carbsG = Math.max(0, Math.round((calories - proteinG * 4 - fatG * 9) / 4));
     var exH = (num(opts.exerciseMinToday) || 0) / 60;
+    // Body-fat % (measured wins; else estimated from a physique photo). It
+    // does not change the calorie/protein/carb numbers above — it is echoed
+    // here, clearly sourced, so the goal card, coach context and insights can
+    // reference it ("~18%, estimated from your photo") without recomputing.
+    var bf = num(opts.bodyFatPct);
     return {
       status: "ok",
       goalType: goal.type,
       label: t.label,
       weightKg: kg,
+      bodyFatPct: bf,
+      bodyFatSource: bf != null ? (opts.bodyFatSource || "measured") : null,
+      leanMassKg: bf != null ? round2(kg * (1 - bf / 100)) : null,
       maintenanceKcal: Math.round(maint.kcal),
       maintenanceMethod: maint.method,
       bmr: maint.bmr,
@@ -443,6 +475,7 @@ OF.targets = (function () {
     dayNum: dayNum,
     isoFromDayNum: isoFromDayNum,
     latestWeightKg: latestWeightKg,
+    effectiveBodyFat: effectiveBodyFat,
     maintenanceEstimate: maintenanceEstimate,
     computeTargets: computeTargets,
     computeAdaptation: computeAdaptation,

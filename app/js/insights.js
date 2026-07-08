@@ -427,6 +427,95 @@ OF.insights = (function () {
 
   function plural(n, w) { return n + " " + w + (n === 1 ? "" : "s"); }
 
+  /* ---------- physique (photo-analysis) card ---------- */
+
+  var MUSC_LABEL = {
+    "low": "Low", "below-average": "Below average", "average": "Average",
+    "above-average": "Above average", "high": "High"
+  };
+  var REGION_ORDER = ["shoulders", "chest", "arms", "back", "core", "legs"];
+  var REGION_LABEL = {
+    shoulders: "Shoulders", chest: "Chest", arms: "Arms",
+    back: "Back", core: "Core", legs: "Legs"
+  };
+
+  function physChips(list, cls) {
+    if (!list || !list.length) return "";
+    return list.map(function (s) {
+      return '<span class="phys-chip ' + cls + '">' + e(s) + '</span>';
+    }).join("");
+  }
+
+  function physiqueCard() {
+    var recs = S.getAll("physique").slice().sort(function (a, b) {
+      return (a.date || "") < (b.date || "") ? -1 : 1; // oldest -> newest
+    });
+    var heading = '<h2 class="list-heading">Physique</h2>';
+    if (!recs.length) {
+      return heading + card("Physique analysis", needTag(),
+        e("No physique photo analyzed yet."),
+        e("On the Body tab, tap “Analyze physique from photo” to get a body-neutral " +
+          "visual estimate of your body composition and muscle development — it helps " +
+          "tailor your calorie, protein and training targets.") +
+        ' <a href="#body">Go to Body tab</a>', null, "bodyscan");
+    }
+    var latest = recs[recs.length - 1];
+    var musc = MUSC_LABEL[latest.muscularity] || "Average";
+    var low = latest.bodyFatRangeLow, high = latest.bodyFatRangeHigh, mid = latest.bodyFatMidpoint;
+
+    var headline = (low != null && high != null)
+      ? e("Estimated body fat: " + low + "–" + high + "%") +
+        (mid != null ? ' <span class="muted">' + e("(midpoint ~" + mid + "%)") + '</span>' : '')
+      : e("Analyzed " + latest.date);
+
+    var sub = [];
+    // Progress line when 2+ analyses exist (body-fat midpoint change since first).
+    if (recs.length >= 2) {
+      var first = recs[0];
+      if (num(first.bodyFatMidpoint) != null && num(mid) != null) {
+        var d = Math.round((mid - first.bodyFatMidpoint) * 10) / 10;
+        var word = d < 0 ? "down " + Math.abs(d) : d > 0 ? "up " + d : "unchanged";
+        sub.push('<p class="muted">' + e("Since your first analysis (" + first.date + "): " +
+          "estimated body fat " + word + (d === 0 ? "" : " pts") +
+          " across " + recs.length + " analyses.") + '</p>');
+      }
+    }
+    // Regions with a note.
+    var regionRows = [];
+    var regions = latest.regions || {};
+    REGION_ORDER.forEach(function (k) {
+      if (!regions[k]) return;
+      regionRows.push('<div class="phys-region"><span class="phys-region-name">' +
+        e(REGION_LABEL[k]) + '</span><span class="phys-region-note">' + e(regions[k]) + '</span></div>');
+    });
+    if (regionRows.length) sub.push('<div class="phys-regions">' + regionRows.join("") + '</div>');
+
+    if (latest.strengths && latest.strengths.length) {
+      sub.push('<div class="phys-chip-group"><span class="phys-chip-label">Strengths</span>' +
+        physChips(latest.strengths, "good") + '</div>');
+    }
+    if (latest.focusAreas && latest.focusAreas.length) {
+      sub.push('<div class="phys-chip-group"><span class="phys-chip-label">Focus areas</span>' +
+        physChips(latest.focusAreas, "focus") + '</div>');
+    }
+    if (latest.overallAssessment) {
+      sub.push('<p class="phys-assessment">' + e(latest.overallAssessment) + '</p>');
+    }
+    sub.push('<p class="muted small">' + e("Analyzed " + latest.date +
+      " · visual estimate, not a medical measurement.") + '</p>');
+
+    var tag = confTag((latest.confidence === "high" || latest.confidence === "medium")
+      ? latest.confidence : "low");
+    return heading + card("Muscular development: " + musc, tag,
+      headline, sub.join(""), "physique-card", "bodyscan");
+  }
+
+  function num(v) {
+    if (v == null || v === "") return null;
+    var n = Number(v);
+    return isFinite(n) ? n : null;
+  }
+
   function strengthCards(data, gi) {
     if (!OF.strength) return "";
     var goalType = gi && gi.goal ? gi.goal.type : null;
@@ -508,7 +597,8 @@ OF.insights = (function () {
       sleepCard(r) +
       foodCard(r, gi, intake) +
       trendsCard(r, gi) +
-      strengthCards(data, gi);
+      strengthCards(data, gi) +
+      physiqueCard();
   }
 
   return { init: init, refresh: refresh };

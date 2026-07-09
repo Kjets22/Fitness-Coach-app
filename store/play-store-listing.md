@@ -154,7 +154,7 @@ Play Console → App content → Data safety.
 
 ## App access (for review)
 
-- **Some functionality is restricted** → the community requires an account (free, in-app email+password signup). Provide Google a test account: create one in the app before submitting (e.g. `playreview.optimalfit@gmail.com` + password) and paste the credentials into App access. All tracking/coach functionality is available without any login.
+- **Some functionality is restricted** → the community requires an account (free, in-app email+password signup). A reviewer demo account is already created and pre-confirmed on the backend, with a populated Home feed (it follows active users and shows a verified Receipt). **Its email + password are in the gitignored local file `.env.reviewer`** (not committed to the public repo) — paste them into Play Console → App access. Username: `optimalfit_demo`. All tracking/coach functionality is available without any login.
 - Reviewer note: "All fitness data is stored locally on the device — to see the app with data, open Settings → Load demo data. The Community tab is opt-in: sign in with the provided test account to view feed, posting, report/block, and in-app account deletion. The AI Coach tab requires a self-hosted companion server on the user's own PC and shows a friendly explanation card without it — expected behavior, not an error."
 
 ## Screenshots & graphics

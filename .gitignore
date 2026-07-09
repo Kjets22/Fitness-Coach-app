@@ -15,6 +15,7 @@
 *.env.local
 supabase/.temp/
 # Backend test-user credentials (created via the Auth Admin API; never commit)
+.env.reviewer
 .env.test-users
 
 # --- SECRETS: Android signing (see dist/SIGNING-INFO.txt) ---

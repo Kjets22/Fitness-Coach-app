@@ -160,7 +160,7 @@ user runs on their own personal computer over their own Wi-Fi. Without it, the
 tab shows a friendly explanation card — expected behavior, not a bug.
 ```
 
-- **Sign-in required?** For the community only. Provide a demo account: create one in the app before submitting (e.g. `applereview.optimalfit@gmail.com` + password) and fill it into the demo-account fields.
+- **Sign-in required?** For the community only (everything else — tracking, insights, the coach engine — works with no account). A ready-to-use reviewer demo account has been created and pre-confirmed on the backend; its Home feed is already populated (it follows active users and shows a verified Receipt) so the reviewer sees a working community immediately. **The email + password are in the gitignored local file `.env.reviewer`** (never committed to the public repo) — paste them into the App Store Connect "Sign-in required → User name / Password" review fields. Username: `optimalfit_demo`.
 - **Contact:** Qualixo22@gmail.com (add your name + phone in App Store Connect — Apple requires all three for the review contact).
 
 ## URLs

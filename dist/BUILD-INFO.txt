@@ -1,31 +1,36 @@
 =========================================================================
  OptimalFit - Android + iOS build info
 =========================================================================
-Build date      : 2026-07-08 (Phase 3 social build — rebuilt by Infra-3 on
-                  the macOS machine against the FROZEN Phase-3 app/ web code
-                  [social + Receipts complete, QA-passed]. This SUPERSEDES
-                  the Infra-2 pipeline-proof build [same day] which bundled
-                  the pre-Phase-3 (P2-12 physique) snapshot. The native
-                  toolchain/recipe is unchanged from Infra-2; only the web
-                  snapshot advanced, so the artifact hashes below are new.)
+Build date      : 2026-07-09 (Phase 3 + polish build — the FINAL native
+                  rebuild by Infra-4 on the macOS machine against the
+                  FROZEN Phase-3 app/ web code PLUS the post-Phase-3 polish
+                  fixes. This SUPERSEDES the Infra-3 Phase-3 build
+                  [2026-07-08]. The native toolchain/recipe is unchanged;
+                  the web snapshot and iOS Info.plist advanced, so the
+                  artifact hashes below are new.)
 
-*** WHAT CHANGED vs the Infra-2 (pre-Phase-3) build ***
-  The bundled web app now includes the Phase-3 social stack:
-    js/vendor/supabase.js  (vendored supabase-js 2.110.1)
-    js/social-api.js  js/social.js  js/social-compose.js
-    js/social-profile.js  js/receipts.js
-  plus Phase-3 edits to app.js/coach.js/dashboard.js/insights.js/
-  onboarding.js/index.html/css. Community is the 6th nav tab.
-  Service worker: app/sw.js is now VERSION "v12" (was v11 at P3-5, bumped
-  to v12 at P3-6/Receipts). NOTE: www/sw.js remains the intentional
-  self-unregistering no-op — the v12 version lives in the REAL app/sw.js
-  (the PWA worker); never "fix" the native no-op.
+*** WHAT CHANGED vs the Infra-3 (Phase-3) build — "Phase 3 + polish" ***
+  1. iOS share fix: app/js/receipts.js now uses dataUrlToBlob() so the
+     Receipt card shares correctly through the iOS share sheet.
+  2. Service worker: app/sw.js bumped to VERSION "v13" (was v12 at
+     Phase-3/Receipts). NOTE: www/sw.js remains the intentional
+     self-unregistering no-op — the v13 version lives in the REAL app/sw.js
+     (the PWA worker); never "fix" the native no-op.
+  3. iOS camera/photo crash fix: native/ios/App/App/Info.plist gained the
+     three usage strings NSCameraUsageDescription,
+     NSPhotoLibraryUsageDescription and NSPhotoLibraryAddUsageDescription.
+     Without these iOS terminates the app the moment it touches the camera
+     or photo library (meal / physique / community photos, Receipt save).
+     These strings are VERIFIED PRESENT IN THE BUILT PRODUCT (see below),
+     not just the source plist.
+  4. New iOS export option plists exist for a later signed export:
+     native/ios/exportOptions.plist and exportOptions-development.plist.
   js file count: 31 (30 top-level app/js + js/vendor/supabase.js), mirrored
   byte-identically into both android assets/public/js and ios
   App/App/public/js (31 = 31 = 31). copy-web reports 39 total files copied.
 
-*** KEYSTORE — PROVISIONAL (unchanged from Infra-2) ***
-  A FRESH keystore generated on this Mac (2026-07-08, Infra-2) is reused:
+*** KEYSTORE — PROVISIONAL (unchanged from Infra-2/Infra-3) ***
+  A keystore generated on this Mac (2026-07-08, Infra-2) is reused:
     dist/optimalfit-release.keystore (PKCS12, alias optimalfit, RSA 2048,
     10000 days, CN=OptimalFit)
     cert SHA-256: 5bf1776f8d7cbcaa1aef15a459e6e772bbdd839a7d82674ca58bb64a7fe216a8
@@ -49,73 +54,83 @@ App identity
 SDK levels (from native/android/variables.gradle - Capacitor 8.4.1 template)
   minSdk 24 (Android 7.0) / targetSdk 36 / compileSdk 36
 
-Toolchain (macOS, Apple Silicon) — unchanged from Infra-2
-  JDK           : Homebrew OpenJDK 23 (/opt/homebrew/opt/openjdk). Capacitor
-                  8 generates sourceCompatibility Java 21 in
-                  capacitor.build.gradle; JDK 23 compiles targeting 21 fine.
+Toolchain (macOS, Apple Silicon) — unchanged from Infra-2/Infra-3
+  JDK           : Homebrew OpenJDK (/opt/homebrew/opt/openjdk). Capacitor 8
+                  generates sourceCompatibility Java 21 in
+                  capacitor.build.gradle; the Homebrew JDK compiles fine.
   Android SDK   : /Users/krishjetly/Library/Android/sdk
                   (cmdline-tools, platform-tools, platforms;android-36,
                   build-tools;36.0.0)
   Gradle        : 8.14.3 (wrapper) / AGP 8.13.0
-  Xcode         : 26.6 (17F113); iOS 26.5 simulator runtime installed.
+  Xcode         : 26.6 (17F113); iPhone 17 simulator runtime installed.
 
 Web snapshot built (webDir = native/www, mirrored from app/)
-  Synced        : 2026-07-08 via `npm run sync` (Infra-3). copy-web mirrored
+  Synced        : 2026-07-09 via `npm run sync` (Infra-4). copy-web mirrored
                   app/ -> native/www (39 files) and replaced sw.js with the
                   self-unregistering no-op; cap sync populated both
                   android assets/public and ios App/App/public.
-  Content       : FROZEN Phase-3 app/ (social + Receipts).
+  Content       : FROZEN Phase-3 app/ + polish (iOS share fix, sw v13).
 
-Artifacts (SHA-256) — Phase 3 social build, rebuilt 2026-07-08 (Infra-3).
-  Hashes differ from the Infra-2 build because the web snapshot advanced to
-  Phase 3 (+ normal local build nondeterminism); signing key is the same.
-  OptimalFit-debug.apk    4,319,914 B  8a2879bfa86a921985d49871374b233f0e8dc1bb2eb5c6a097dc01812d7295dd
+Artifacts (SHA-256) — Phase 3 + polish build, rebuilt 2026-07-09 (Infra-4).
+  Hashes differ from the Infra-3 build because the web snapshot advanced
+  (receipts.js share fix, sw v13) + normal local build nondeterminism;
+  signing key is the same.
+  OptimalFit-debug.apk    4,333,689 B  8bfdf592bee979e2c302aa36bd519eceb0bb3288a16efc4c938bef585b7c268d
                           (debug-signed with this Mac's standard debug key —
                            VERIFIED deliverable)
-  OptimalFit-release.apk  3,338,651 B  6083257ae3ef3c76d585260d324086c80735483e9f76c93e9c97bec7d439d890
+  OptimalFit-release.apk  3,339,271 B  7e511c6c2180099ec8148b58e3dc8a2f74b9f22f935fc39e3412cf0e8789a174
                           (signed: CN=OptimalFit, cert SHA-256
                            5bf1776f8d7cbcaa1aef15a459e6e772bbdd839a7d82674ca58bb64a7fe216a8)
-  OptimalFit-release.aab  3,177,619 B  aeac6dcaa28b96f0ecc015a43991e79ff7f784a59c5941e466873d8adc63b8b0
+  OptimalFit-release.aab  3,178,232 B  60c64437e91d04a85d4a4e6919085dbdb82570ee2b8249b84593720e5568402d
                           (jarsigner: "jar verified" — upload THIS to Play,
                            after the user resolves the keystore + bumps
                            versionCode)
 
-Verification performed (2026-07-08, Infra-3)
+Verification performed (2026-07-09, Infra-4)
   - apksigner verify --print-certs on release APK: OK, cert SHA-256
     5bf1776f...16a8 matches the provisional keystore.
   - jarsigner -verify on AAB: "jar verified" (self-signed / no-timestamp
     warnings expected for a provisional key).
-  - Phase-3 byte-identity INSIDE the debug APK (unzip assets/public/js/… |
-    diff vs app/js/…):
-      js/social.js   IDENTICAL (sha256 8d6b669a…396a60)
-      js/receipts.js IDENTICAL (sha256 dfc288d6…33dc3)
-    confirming the Phase-3 web code is really bundled.
-  - www/sw.js is the intentional no-op (unchanged, by design).
+  - Polish byte-identity INSIDE the debug APK (unzip assets/public/js/
+    receipts.js | diff vs app/js/receipts.js):
+      js/receipts.js IDENTICAL — sha256
+      17d16cf0a546d4e9eb97de324e8adeeb04d3df4ba7ba260782505f3ff84e2d27
+      and contains the dataUrlToBlob() iOS share fix, confirming the polish
+      web code is really bundled.
+  - www/sw.js is the intentional no-op (unchanged, by design); the v13
+    worker lives in app/sw.js.
 
-iOS (Phase 3, all three levels — Infra-3, 2026-07-08)
+iOS (Phase 3 + polish, all three levels — Infra-4, 2026-07-09)
   1. COMPILES: xcodebuild -project native/ios/App/App.xcodeproj -scheme App
        -destination 'platform=iOS Simulator,id=<udid>' CODE_SIGNING_ALLOWED=NO
        build  ->  ** BUILD SUCCEEDED **
   2. RUNS: installed + launched com.optimalfit.app on the iPhone 17
-     simulator (iOS 26.5, udid 5BFE0D39-9D1F-400E-8175-693BA6070BCB). App
-     started and rendered the onboarding/welcome screen without crashing;
-     the copy now shows the Phase-3 honest wording ("An optional community
-     lets you share only what you choose"), confirming the Phase-3 bundle.
-     Screenshot via `simctl io <udid> screenshot` (in Infra-3 scratchpad,
-     optimalfit-p3-sim.png). Community is the 6th tab, reachable past
-     onboarding.
-  3. ARCHIVES: xcodebuild archive -project native/ios/App/App.xcodeproj
-       -scheme App -configuration Release
-       -archivePath ~/Library/Developer/Xcode/Archives/2026-07-08/OptimalFit-p3-unsigned.xcarchive
-       -destination 'generic/platform=iOS' CODE_SIGNING_ALLOWED=NO
+     simulator (udid 5BFE0D39-9D1F-400E-8175-693BA6070BCB). App started and
+     rendered the onboarding/welcome screen without crashing.
+     Screenshot via `simctl io <udid> screenshot` (Infra-4 scratchpad,
+     optimalfit-final-sim.png).
+  3. CAMERA STRING VERIFIED IN BUILD: plutil -p on the BUILT sim
+     App.app/Info.plist AND on the archived App.app/Info.plist both show all
+     three usage strings present:
+       NSCameraUsageDescription
+       NSPhotoLibraryUsageDescription
+       NSPhotoLibraryAddUsageDescription
+     (Not merely in the source plist — confirmed in the built product, which
+      is what fixes the camera/photo-library launch crash.)
+  4. ARCHIVES: xcodebuild archive -project native/ios/App/App.xcodeproj
+       -scheme App -configuration Release CODE_SIGNING_ALLOWED=NO
+       -archivePath <scratch>/OptimalFit-final.xcarchive
+       -destination 'generic/platform=iOS'
      ->  ** ARCHIVE SUCCEEDED **  (UNSIGNED; signing/export needs an Apple
-     Developer team — cloud-CI route in docs/IOS-SHIP-GUIDE.md is the backup)
-     Archive path:
-       /Users/krishjetly/Library/Developer/Xcode/Archives/2026-07-08/OptimalFit-p3-unsigned.xcarchive
+     Developer team — exportOptions.plist + cloud-CI route in
+     docs/IOS-SHIP-GUIDE.md is the backup). The archived
+     App.app/Info.plist carries all 3 usage strings.
+     Archive path (this run, in the Infra-4 scratchpad):
+       <scratchpad>/OptimalFit-final.xcarchive
   Capacitor 8 iOS uses Swift Package Manager (capacitor-swift-pm 8.4.1
   resolved from GitHub) — NO CocoaPods, no Podfile; do not install Pods.
 
-Rebuild recipe — macOS (THIS machine) — VERIFIED WORKING 2026-07-08 by Infra-3
+Rebuild recipe — macOS (THIS machine) — VERIFIED WORKING 2026-07-09 by Infra-4
   One-time setup (already done on this Mac; only redo on a fresh machine):
     - Android cmdline-tools under ~/Library/Android/sdk/cmdline-tools/latest
     - yes | sdkmanager --licenses
@@ -128,7 +143,7 @@ Rebuild recipe — macOS (THIS machine) — VERIFIED WORKING 2026-07-08 by Infra
       Gradle downloads fail with "problem accessing trust store". The
       user-home gradle.properties overrides it for BOTH the wrapper JVM
       and the daemon. GRADLE_OPTS / CLI -D do NOT stick for the wrapper.
-      Infra-3 VERIFIED this file was still present; do NOT edit the tracked
+      Infra-4 VERIFIED this file was still present; do NOT edit the tracked
       project file (would dirty git).
     - native/android/local.properties:  sdk.dir=/Users/krishjetly/Library/Android/sdk
     - dist/optimalfit-release.keystore + dist/keystore.properties
@@ -153,6 +168,8 @@ Rebuild recipe — macOS (THIS machine) — VERIFIED WORKING 2026-07-08 by Infra
        and update the hashes here (shasum -a 256).
     Signing is automatic: app/build.gradle reads dist/keystore.properties.
     iOS: build for a booted sim (CODE_SIGNING_ALLOWED=NO), install+launch
-    com.optimalfit.app, then archive to a *.xcarchive with
-    -destination 'generic/platform=iOS' CODE_SIGNING_ALLOWED=NO.
+    com.optimalfit.app, VERIFY the camera usage string is in the built
+    App.app/Info.plist (plutil -p ... | grep -i camera), then archive to a
+    *.xcarchive with -destination 'generic/platform=iOS'
+    CODE_SIGNING_ALLOWED=NO.
 =========================================================================

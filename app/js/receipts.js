@@ -820,34 +820,66 @@ OF.receipts = (function () {
     return canvas;
   }
 
-  /** Render to PNG and share (Web Share API w/ files) or download. */
+  /** Decode a "data:image/png;base64,…" URL into a Blob synchronously.
+      Kept sync (no toBlob/await) so navigator.share below runs inside the
+      tap's transient activation — iOS/WKWebView drops activation across the
+      async toBlob callback, which makes share() throw NotAllowedError. */
+  function dataUrlToBlob(dataUrl) {
+    var comma = dataUrl.indexOf(",");
+    var meta = dataUrl.slice(5, comma);            // e.g. "image/png;base64"
+    var isB64 = /;base64/i.test(meta);
+    var mime = meta.split(";")[0] || "image/png";
+    var body = dataUrl.slice(comma + 1);
+    var bytes;
+    if (isB64) {
+      var bin = atob(body);
+      bytes = new Uint8Array(bin.length);
+      for (var i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+    } else {
+      bytes = new TextEncoder().encode(decodeURIComponent(body));
+    }
+    return new Blob([bytes], { type: mime });
+  }
+
+  /** Render to PNG and share (Web Share API w/ files) or download. Everything
+      up to the share() call is synchronous so it stays inside the user
+      gesture (required by iOS/WKWebView). */
   function exportImage(receipt, verified, format) {
-    var canvas;
+    var canvas, blob;
     try {
       canvas = renderToCanvas(receipt, verified, format);
+      blob = dataUrlToBlob(canvas.toDataURL("image/png"));
     } catch (e) {
       U.toast("Couldn't render the image.", "error");
       return;
     }
-    canvas.toBlob(function (blob) {
-      if (!blob) { U.toast("Couldn't create the image.", "error"); return; }
-      var name = "optimalfit-receipt-" + (receipt && receipt.type || "stat") + "-" + U.todayISO() + ".png";
-      var file = null;
-      try { file = new File([blob], name, { type: "image/png" }); } catch (e) { /* older browsers */ }
-      if (file && navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
-        navigator.share({ files: [file], title: "OptimalFit receipt" }).catch(function () { /* user cancelled */ });
-        return;
-      }
-      var url = URL.createObjectURL(blob);
-      var a = document.createElement("a");
-      a.href = url;
-      a.download = name;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      setTimeout(function () { URL.revokeObjectURL(url); }, 2000);
-      U.toast("Receipt image saved.", "warn");
-    }, "image/png");
+    if (!blob || !blob.size) { U.toast("Couldn't create the image.", "error"); return; }
+    var name = "optimalfit-receipt-" + (receipt && receipt.type || "stat") + "-" + U.todayISO() + ".png";
+    var file = null;
+    try { file = new File([blob], name, { type: "image/png" }); } catch (e) { /* older browsers */ }
+    if (file && navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
+      navigator.share({ files: [file], title: "OptimalFit receipt" }).catch(function (err) {
+        // AbortError = user dismissed the sheet; anything else = fall back to a save.
+        if (err && (err.name === "AbortError" || /abort|cancel/i.test(String(err.message || "")))) return;
+        downloadBlob(blob, name);
+      });
+      return;
+    }
+    downloadBlob(blob, name);
+  }
+
+  function downloadBlob(blob, name) {
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement("a");
+    a.href = url;
+    a.download = name;
+    a.rel = "noopener";
+    a.target = "_blank";        // desktop honors download; a WKWebView that
+    document.body.appendChild(a); // ignores it opens the image so it can be saved
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(function () { URL.revokeObjectURL(url); }, 4000);
+    U.toast("Receipt image saved.", "warn");
   }
 
   /** Small chooser sheet (story / square) on the shared social sheets. */

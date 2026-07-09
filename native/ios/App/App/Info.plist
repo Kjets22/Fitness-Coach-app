@@ -26,6 +26,12 @@
 	<false/>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
+	<key>NSCameraUsageDescription</key>
+	<string>OptimalFit uses the camera so you can photograph a meal, a physique progress photo, or a community post image. Photos of meals and physiques are analyzed on your own device; a photo is only used for the action you chose.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>OptimalFit lets you choose a photo from your library for meal or physique analysis, your profile picture, or a community post. Meal and physique photos are analyzed on your device; profile and post images upload only when you choose to post.</string>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>OptimalFit can save a Receipt card image to your Photos so you can share your progress.</string>
 	<key>UILaunchStoryboardName</key>
 	<string>LaunchScreen</string>
 	<key>UIMainStoryboardFile</key>

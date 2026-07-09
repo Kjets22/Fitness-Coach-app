@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<!--
+  OptimalFit — DEVELOPMENT export options.
+  Use this to export an App.ipa you can install on your OWN registered iPhone
+  for testing BEFORE submitting to the App Store. Your device's UDID must be
+  registered in your Apple Developer account (Xcode does this automatically
+  when you first run on the plugged-in device). Replace REPLACE_WITH_TEAM_ID.
+
+    xcodebuild -exportArchive \
+      -archivePath <path>/OptimalFit.xcarchive \
+      -exportOptionsPlist native/ios/exportOptions-development.plist \
+      -exportPath <path>/export-dev
+-->
+<dict>
+	<key>method</key>
+	<string>development</string>
+	<key>destination</key>
+	<string>export</string>
+	<key>teamID</key>
+	<string>REPLACE_WITH_TEAM_ID</string>
+	<key>signingStyle</key>
+	<string>automatic</string>
+	<key>stripSwiftSymbols</key>
+	<true/>
+</dict>
+</plist>

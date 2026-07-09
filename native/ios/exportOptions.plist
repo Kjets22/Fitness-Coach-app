@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<!--
+  OptimalFit — App Store export options for `xcodebuild -exportArchive`.
+
+  HOW TO USE
+  1. Enroll in the Apple Developer Program ($99/yr) and find your 10-char
+     Team ID at https://developer.apple.com/account → Membership.
+  2. Replace the REPLACE_WITH_TEAM_ID placeholder below with that Team ID.
+  3. Export:
+       xcodebuild -exportArchive \
+         -archivePath <path>/OptimalFit.xcarchive \
+         -exportOptionsPlist native/ios/exportOptions.plist \
+         -exportPath <path>/export
+     With `signingStyle=automatic` and a Team ID, Xcode (when signed in to
+     your developer Apple ID under Xcode → Settings → Accounts) will create /
+     download the App Store distribution certificate and provisioning profile
+     for com.optimalfit.app automatically, producing App.ipa in <path>/export.
+
+  For a DEVELOPMENT build to side-load onto your own iPhone for testing,
+  see exportOptions-development.plist in this folder.
+-->
+<dict>
+	<key>method</key>
+	<string>app-store-connect</string>
+	<key>destination</key>
+	<string>export</string>
+	<key>teamID</key>
+	<string>REPLACE_WITH_TEAM_ID</string>
+	<key>signingStyle</key>
+	<string>automatic</string>
+	<key>uploadSymbols</key>
+	<true/>
+	<key>stripSwiftSymbols</key>
+	<true/>
+	<key>manageAppVersionAndBuildNumber</key>
+	<false/>
+</dict>
+</plist>

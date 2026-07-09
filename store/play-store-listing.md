@@ -159,7 +159,9 @@ Play Console → App content → Data safety.
 
 ## Screenshots & graphics
 
-- **Phone screenshots:** use `store/screenshots/play-1080x2160-*.png` (1080×2160 = exactly 2:1 — Play requires each screenshot's longer side ≤ 2× its shorter side; min 2, max 8). Consider regenerating to add a community/Receipts screen (`store/tools/shoot.js`).
+- **Phone screenshots:** use `store/screenshots/play-1080x2160-*.png` (1080×2160 = exactly 2:1 — Play requires each screenshot's longer side ≤ 2× its shorter side; min 2, max 8). Regenerated 2026-07-09 to feature the Phase-3 verified-social side (Community + Receipts) alongside the coach engine — same 8-shot story as iOS (see the table in `app-store-listing.md` → Screenshots). Regenerate with `node store/tools/shoot.js` (serve `app/` on :8673 first). Zero LLM calls; the feed is a deterministic in-page mock — no backend writes.
+
+  The set, in order: `01-dashboard`, `02-insights-goal`, `03-food-tracker`, `04-coach-chat`, `05-community-feed-verified` (**hero** — "This week's drop" verified Receipt card with e1RM sparkline next to a normal post), `06-receipt-share` (PR Receipt being shared), `07-leaderboard` (honest check-in streaks), `08-profile-stats`. Play shows the first 2–8 in order, so the hero at #5 sits within a swipe of the top; if trimming to fewer, keep #1, #2, #5.
 - **App icon:** 512×512 PNG required for Play Console — export/upscale from `app/icons/icon-512.png` (already 512×512).
 - **Feature graphic:** 1024×500 PNG **required** — use `store/feature-graphic-1024x500.png`. Regenerate with `node feature-graphic.js` in `store/tools/`.
 

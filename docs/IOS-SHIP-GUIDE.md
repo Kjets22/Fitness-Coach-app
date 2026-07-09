@@ -60,6 +60,78 @@ Simplest if you have any access to a Mac made in the last ~5 years.
    the privacy questions per `store/` pack, attach the uploaded build, and
    **Submit for Review**.
 
+### Path A (command-line) — the exact archive → export → upload sequence
+
+If you prefer the terminal to the Xcode GUI (or want a repeatable release
+script), this is the precise pipeline. It has been dry-run on this project up
+to the signing boundary, so the ONLY thing missing is your Apple cert + team.
+
+**0. One-time signing setup (needs the $99 account).** Sign in to Xcode with
+your developer Apple ID (Xcode → Settings → Accounts → **+**). Then find your
+10-character Team ID at https://developer.apple.com/account → Membership, and
+paste it into `native/ios/exportOptions.plist` in place of
+`REPLACE_WITH_TEAM_ID`. With `signingStyle=automatic`, Xcode auto-creates the
+App Store distribution certificate and the `com.optimalfit.app` provisioning
+profile for you — no manual CSR/`.p12` juggling (that manual route is only
+needed for the Mac-less cloud path, Path B below).
+
+**1. Sync the latest web build and archive** (run from repo `native/`):
+```
+npm ci && npm run sync              # refreshes native/ios/App/App/public/
+cd ios/App
+xcodebuild archive \
+  -project App.xcodeproj \
+  -scheme App \
+  -configuration Release \
+  -destination 'generic/platform=iOS' \
+  -archivePath "$HOME/OptimalFit.xcarchive"
+```
+(No `CODE_SIGNING_ALLOWED=NO` here — for a real upload you WANT it signed.
+Automatic signing picks up the cert/profile from step 0. A build-only proof
+that skips signing was already verified with
+`... -archivePath <scratch>/OptimalFit.xcarchive CODE_SIGNING_ALLOWED=NO` and
+**ARCHIVE SUCCEEDED**, with all three photo/camera usage strings confirmed
+baked into the archived `App.app/Info.plist`.)
+
+**2. Export a signed `App.ipa`:**
+```
+xcodebuild -exportArchive \
+  -archivePath "$HOME/OptimalFit.xcarchive" \
+  -exportOptionsPlist ../../ios/exportOptions.plist \
+  -exportPath "$HOME/OptimalFit-export"
+```
+The signed `App.ipa` lands in `$HOME/OptimalFit-export/`.
+
+> **Where it stops without the cert (verified):** running step 2 today, with
+> no distribution certificate installed, fails at exactly this point:
+> ```
+> error: exportArchive No signing certificate "iOS Distribution" found
+> error: exportArchive No profiles for 'com.optimalfit.app' were found
+> ```
+> That is the *entire* remaining gap. Completing step 0 (enroll + sign in +
+> set the Team ID) resolves both errors — nothing else in the project needs
+> to change.
+
+**3. Upload to App Store Connect** (create the app record first, per step 7
+above). Either:
+```
+xcrun altool --upload-app -f "$HOME/OptimalFit-export/App.ipa" \
+  -t ios --apiKey <KEY_ID> --apiIssuer <ISSUER_ID>
+```
+(App Store Connect → Users and Access → Integrations → App Store Connect API →
+**Generate API Key**, role App Manager; place the downloaded `AuthKey_<KEY_ID>.p8`
+in `~/.appstoreconnect/private_keys/`.) Or, simpler, open the free
+**Transporter** app from the Mac App Store and drag `App.ipa` in. The build
+appears under TestFlight in ~15 minutes; attach it to version 1.0.0 and
+**Submit for Review**.
+
+**Device test before shipping (optional).** To side-load onto your own iPhone
+first, archive as above, then export with the development variant:
+`xcodebuild -exportArchive -archivePath "$HOME/OptimalFit.xcarchive"
+-exportOptionsPlist ../../ios/exportOptions-development.plist -exportPath
+"$HOME/OptimalFit-dev"` (your device UDID must be registered — Xcode does this
+automatically the first time you run on the plugged-in device).
+
 ## Path B — no Mac at all (GitHub Actions)
 
 GitHub gives you free macOS build minutes (2,000 free minutes/month on
@@ -192,7 +264,16 @@ harder at these apps. What matters, and how this app answers it:
 - Bundle id: `com.optimalfit.app` · Display name: `OptimalFit`
 - Version: `MARKETING_VERSION 1.0.0`, `CURRENT_PROJECT_VERSION 1` (bump the
   build number for every App Store Connect upload)
-- Deployment target: iOS 15.0 · iPhone + iPad
+- Deployment target: iOS 15.0 · iPhone only (`TARGETED_DEVICE_FAMILY = 1`)
+- Privacy usage strings in `Info.plist` (required — the web UI opens camera /
+  photo-library file inputs, so their absence would CRASH the app on first tap
+  and is an automatic App Review rejection): `NSCameraUsageDescription`,
+  `NSPhotoLibraryUsageDescription`, `NSPhotoLibraryAddUsageDescription`. No
+  location / HealthKit / contacts / microphone keys are present — the app must
+  not ask for permissions it never uses. App Transport Security uses the secure
+  default (no `NSAllowsArbitraryLoads`); the WebView serves local assets over
+  Capacitor's own scheme and Supabase is reached over TLS, so no ATS loosening
+  is needed.
 - Icon: `Assets.xcassets/AppIcon.appiconset/AppIcon-512@2x.png` — 1024×1024
   RGB **without** alpha (Apple rejects alpha here); regenerate with
   `python native/scripts/gen_native_icons.py` if the brand changes

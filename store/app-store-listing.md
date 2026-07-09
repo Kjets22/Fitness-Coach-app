@@ -170,8 +170,23 @@ tab shows a friendly explanation card — expected behavior, not a bug.
 
 ## Screenshots
 
-- **iPhone 6.7"/6.9" (required set):** use `store/screenshots/iphone67-1290x2796-*.png` (1290×2796). Consider regenerating to include a community/Receipts screen (`store/tools/shoot.js`).
+- **iPhone 6.7"/6.9" (required set):** use `store/screenshots/iphone67-1290x2796-*.png` (1290×2796, exact). Regenerated 2026-07-09 to tell the two-sided story — the on-device coach engine PLUS the opt-in verified-social side (Community + Receipts). Regenerate anytime with `node store/tools/shoot.js` (serve the app first: `cd app && python3 -m http.server 8673`). Zero LLM calls (coach is mocked); the social feed is a deterministic in-page mock — no backend writes.
 - **iPad:** NOT needed. OptimalFit is iPhone-only (`TARGETED_DEVICE_FAMILY = "1"`). If a future version adds iPad support ("1,2"), a 13" iPad screenshot set (2064×2752) becomes mandatory.
+
+**The 8-shot set (in order) + suggested overlay captions.** App Store has no hard caption char cap (text is baked into the image), but keep overlays short — counts below target a ≤35-char one-liner that reads on a phone thumbnail.
+
+| # | File (`iphone67-1290x2796-…`) | What it shows | Caption | Chars |
+|---|---|---|---|---|
+| 1 | `01-dashboard.png` | Readiness ring, weight/sleep/calorie cards, goal progress, today-vs-targets rings | `Your whole day, one glance` | 26 |
+| 2 | `02-insights-goal.png` | On-device stats engine: goal card + data-driven narrative | `Insights only YOUR data can give` | 32 |
+| 3 | `03-food-tracker.png` | Food logging with calories + macros | `Log food in seconds` | 19 |
+| 4 | `04-coach-chat.png` | AI coach chat grounded in the user's own logs | `A coach that knows your logs` | 28 |
+| 5 | `05-community-feed-verified.png` | **HERO** — "This week's drop": a **Verified by data** Receipt card (gradient border, e1RM sparkline, "6 sessions over 7 weeks") above a normal post | `Wins proven by data — Receipts` | 30 |
+| 6 | `06-receipt-share.png` | Sharing a Squat PR Receipt: card preview + "the server re-checks it and awards the Verified badge" | `Share the proof, never raw logs` | 31 |
+| 7 | `07-leaderboard.png` | Friends/gym leaderboards ranked by real check-in streaks & verified receipts | `Honest boards — show up to climb` | 32 |
+| 8 | `08-profile-stats.png` | Public profile: local training stats line + your verified Receipt posts | `Your profile, your stats` | 24 |
+
+Hero = #5 (the Receipt differentiator). If uploading fewer than 8, keep #1, #2, #5 at minimum. A matching Google Play set (1080×2160, 2:1) exists at `play-1080x2160-*.png`.
 
 ## What's New (Phase 3 update)
 

@@ -184,3 +184,8 @@ OptimalFit-debug.apk  e40b897cb1b5b47213c519cc485ce3b9517cb11b39fa9cf3b73b4b8797
 OptimalFit-release.apk  4b3f81d19b7445069b74eb1a16f7d66d83f98994db35030b7bef6e045dd56f5c
 OptimalFit-release.aab  e09eb2cdc4f59d87961a6a6a1c059319dc10039d592c143acf3bd4f9aef30e16
 iOS archive: OptimalFit-final.xcarchive (unsigned, 3 camera/photo usage strings verified). versionCode 1 (bump on first upload).
+
+=== v17 rebuild (2026-07-09) — visual polish + centered Log FAB ===
+OptimalFit-debug.apk  6c0aca77ad427b1bf406a024961567755666bc4ed15e9e1984cfee25a69ab691
+OptimalFit-release.apk  a0969ae2a37862f02e4f8c18d203cdadbe2d45c28b54822b6711ab58408b6d69
+OptimalFit-release.aab  ce04d3cb69fb80097fe912b775c248b778d6b87739f2c35d2284f7dd255e8560

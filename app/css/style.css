@@ -160,9 +160,12 @@ h2 { font-size: var(--fs-3); font-weight: 700; letter-spacing: -0.01em; margin: 
   letter-spacing: -0.01em;
 }
 .brand svg { display: block; }
-.brand-word em { font-style: normal; }
-.brand-word {
-  background: linear-gradient(90deg, var(--text) 0%, var(--text) 47%, var(--g1) 53%, var(--g2) 100%);
+.brand-word { color: var(--text); }
+/* gradient the "Fit" <em> exactly (was a positional 47/53% stop that bled into
+   "Optimal" since that word is ~70% of the lockup width) */
+.brand-word em {
+  font-style: normal;
+  background: linear-gradient(90deg, var(--g1), var(--g2));
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
@@ -1019,6 +1022,9 @@ input[type="checkbox"], input[type="radio"] { -webkit-appearance: auto; appearan
   gap: var(--sp-3);
   margin-bottom: var(--sp-3);
 }
+/* an odd last item (e.g. "Water & steps") spans both columns so it doesn't
+   sit alone half-width and wrap awkwardly */
+.sheet-grid .sheet-item:last-child:nth-child(odd) { grid-column: 1 / -1; }
 .sheet-item {
   display: flex;
   align-items: center;
@@ -1288,8 +1294,17 @@ input[type="checkbox"], input[type="radio"] { -webkit-appearance: auto; appearan
 
   /* mobile shows exactly 5 destinations: sections + tracker/settings
      buttons live in the Log sheet / header gear instead */
+  /* Mobile bar = 4 destinations (Dashboard, Insights, Coach, Community) split
+     2-2 around a truly-centered raised Log FAB. Daily (water/steps) moves into
+     the Log sheet as a log action, so nothing is lost. */
   .nav-sec, .nav-sub { display: none; }
+  .nav-btn[data-tab="daily"] { display: none; }
   .nav-log { display: flex; }
+  .nav-btn[data-tab="dashboard"] { order: 1; }
+  .nav-btn[data-tab="insights"]  { order: 2; }
+  .nav-log                       { order: 3; }
+  .nav-btn[data-tab="coach"]     { order: 4; }
+  .nav-btn[data-tab="community"] { order: 5; }
 
   .nav-btn {
     flex-direction: column;
@@ -1307,20 +1322,29 @@ input[type="checkbox"], input[type="radio"] { -webkit-appearance: auto; appearan
   .nav-lbl { font-size: 0.62rem; font-weight: 650; letter-spacing: 0.01em; }
   .nav-ico { width: auto; }
 
-  /* Log gets the gradient treatment but sits INLINE with the other tabs
-     (6 destinations can't center a raised FAB — a floating pill at position
-     3-of-6 read as off-center; an even row of 6 with Log color-distinct is
-     clean and lines up). */
+  /* Log = the centered raised circular FAB (the focal "do" action). Lift the
+     whole BUTTON (not just the icon) so the protruding top of the circle stays
+     inside the tappable box; label-less (aria-label keeps a11y). */
+  .nav-log {
+    flex: 1;
+    overflow: visible;
+    transform: translateY(-14px);
+  }
+  .nav-log .nav-lbl { display: none; }
   .nav-log .nav-ico {
-    width: 34px; height: 34px;
+    width: 52px; height: 52px;
     border-radius: var(--r-full);
     background: var(--grad);
     color: #fff;
     align-items: center;
-    box-shadow: var(--e1);
+    border: 2px solid color-mix(in srgb, var(--bg) 70%, transparent);
+    box-shadow: var(--e2), 0 6px 18px color-mix(in srgb, var(--g1) 45%, transparent);
+    transition: box-shadow var(--dur) var(--ease), transform var(--dur) var(--ease);
   }
-  .nav-log .nav-ico .ico { width: 20px; height: 20px; }
-  .nav-log.active .nav-ico { box-shadow: var(--e1), 0 0 0 3px var(--accent-soft); }
+  .nav-log .nav-ico .ico { width: 24px; height: 24px; }
+  .nav-log:active { transform: translateY(-14px) scale(0.94); }
+  .nav-log:active .nav-ico { box-shadow: var(--e1), 0 3px 10px color-mix(in srgb, var(--g1) 40%, transparent); }
+  .nav-log.active .nav-ico { box-shadow: var(--e2), 0 0 0 3px var(--accent-soft); }
 
   /* clear the bottom nav + the iOS home indicator (safe area) */
   .content { padding-bottom: calc(96px + env(safe-area-inset-bottom, 0px)); }
@@ -1861,4 +1885,172 @@ input[type="checkbox"], input[type="radio"] { -webkit-appearance: auto; appearan
 @media (prefers-color-scheme: light) {
   .nav-btn { color: #46526a; }
   .nav-btn.active { color: #4a30c0; }
+}
+
+/* ============================================================
+   26. Pre-ship visual polish (design-audit high-impact set)
+   Additive refinements over existing selectors — tokens only,
+   dark+light safe, >=44px targets preserved, degrade gracefully.
+   ============================================================ */
+
+/* [dashboard] Tabular numerals + crisper value block across all dashboard numbers */
+.stat-value,
+.stat-value .unit,
+.ring-val, .ring-sub,
+.chip,
+.target-cell-val {
+  font-variant-numeric: tabular-nums;
+}
+.stat-value {
+  line-height: 1.1;   /* was default 1.5 — tightens the value into a solid block */
+}
+
+/* [dashboard] Lit-from-above depth on stat cards (gradient + inset highlight) */
+.stat-card {
+  background: linear-gradient(180deg, var(--card-2), var(--card));
+  box-shadow: var(--e1), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+}
+.stat-card:hover {
+  box-shadow: var(--e2), inset 0 1px 0 rgba(255, 255, 255, 0.07);
+}
+
+/* [dashboard] Soft focal glow behind the readiness ring */
+.hero-ring { position: relative; isolation: isolate; }
+.hero-ring::before {
+  content: "";
+  position: absolute;
+  top: -6px; left: 50%;
+  width: 88px; height: 88px;   /* ring is 76px; halo sits just outside it */
+  transform: translateX(-50%);
+  border-radius: var(--r-full);
+  background: radial-gradient(circle, var(--accent-soft) 0%, transparent 68%);
+  z-index: -1;
+  pointer-events: none;
+}
+.hero-ring .ring-fg {
+  filter: drop-shadow(0 1px 4px rgba(2, 6, 16, 0.5));
+}
+
+/* [dashboard] Crisper delta chips with a hairline edge */
+.chip {
+  padding: 3px 10px;              /* was 2px 9px */
+  border: 1px solid transparent;
+}
+.chip-up { border-color: color-mix(in srgb, var(--accent-2) 24%, transparent); }
+.chip-down { border-color: color-mix(in srgb, var(--danger) 24%, transparent); }
+.chip-flat { border-color: var(--card-edge); }
+
+/* [insights] Give the goal card the plan card's premium treatment (wash + elevation) */
+.goal-card {
+  position: relative;
+  box-shadow: var(--e2);
+}
+.goal-card::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: linear-gradient(135deg, rgba(52, 211, 153, 0.08), rgba(34, 211, 238, 0.05));
+  pointer-events: none;
+}
+.goal-card > * { position: relative; }
+
+/* [insights] Define the confidence & verdict pills with tinted borders */
+.conf { letter-spacing: 0.01em; }
+.conf-high   { border-color: color-mix(in srgb, var(--accent-2) 34%, transparent); }
+.conf-medium { border-color: color-mix(in srgb, var(--warn)    34%, transparent); }
+.conf-bad    { border-color: color-mix(in srgb, var(--danger)  34%, transparent); }
+.conf-low    { border-color: var(--card-edge); }
+/* optional: same treatment for the +/- delta chips */
+.chip-up   { border: 1px solid color-mix(in srgb, var(--accent-2) 30%, transparent); }
+.chip-down { border: 1px solid color-mix(in srgb, var(--danger)  30%, transparent); }
+
+/* [forms] Enclose the 1-5 rating pills in a real segmented-control track */
+.seg {
+  display: flex;
+  gap: 4px;
+  padding: 3px;
+  background: var(--bg-2);
+  border: 1px solid var(--card-edge);
+  border-radius: var(--r-md);
+}
+.seg-btn {
+  border: none;
+  background: transparent;
+  border-radius: var(--r-sm);
+}
+.seg-btn:hover {
+  background: var(--card);
+  border-color: transparent;
+  color: var(--text);
+}
+
+/* [forms] Make the rest-timer a gradient hero readout instead of a flat box */
+.rt-display {
+  padding: var(--sp-5) var(--sp-3);
+  background: linear-gradient(180deg, var(--card-2), var(--bg-2));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
+}
+@media (prefers-color-scheme: dark) {
+  .rt-time {
+    background: var(--grad);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    -webkit-text-fill-color: transparent;
+  }
+  .rt-finished .rt-time {
+    -webkit-text-fill-color: var(--accent-2);
+  }
+}
+
+/* [community] Flagship: make the "Verified by data" receipt a premium, trustworthy artifact */
+/* app/css/style.css — override the existing .soc-receipt / .soc-verified / .soc-receipt-metric rules (~L1633-1652) */
+.soc-receipt {
+  padding: var(--sp-3) var(--sp-4);
+  box-shadow: var(--e1), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  background:
+    linear-gradient(180deg,
+      color-mix(in srgb, var(--g1) 7%, var(--card-2)),
+      var(--card-2) 62%) padding-box,
+    var(--grad) border-box;
+}
+/* verified-only: extra brand glow so it clearly outranks a plain "Receipt" block */
+.soc-receipt:has(.soc-verified) {
+  box-shadow:
+    var(--e2),
+    0 0 0 1px color-mix(in srgb, var(--g2) 22%, transparent),
+    inset 0 1px 0 rgba(255, 255, 255, 0.06);
+}
+/* the checkmark becomes a real, recognizable verified pill */
+.soc-verified {
+  padding: 3px 9px 3px 7px;
+  border-radius: var(--r-full);
+  background: var(--accent-2-soft);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent-2) 32%, transparent);
+}
+/* the hero number earns more presence */
+.soc-receipt-metric { font-size: 1.5rem; line-height: 1.15; margin: 2px 0; }
+
+/* [community] Avatar "coin" treatment — glossy monogram + soft lift, everywhere at once */
+/* app/css/style.css — augment the existing avatar rules (~L1530-1542) */
+.soc-ava { box-shadow: var(--e1); }
+.soc-ava-txt {
+  box-shadow:
+    var(--e1),
+    inset 0 1px 1px rgba(255, 255, 255, 0.22),
+    inset 0 -2px 3px rgba(2, 6, 16, 0.18);
+}
+.soc-ava-lg { box-shadow: var(--e2); }
+
+/* [community] Make receipt data-viz emit brand light (7-day streak cells + sparkline glow) */
+/* app/css/style.css — augment .rc-day / .rc-spark (~L1655-1662) */
+.rc-day { box-shadow: inset 0 1px 2px rgba(2, 6, 16, 0.22); }
+.rc-day.on {
+  box-shadow:
+    0 1px 6px color-mix(in srgb, var(--g2) 40%, transparent),
+    inset 0 1px 0 rgba(255, 255, 255, 0.25);
+}
+.rc-spark {
+  filter: drop-shadow(0 1px 4px color-mix(in srgb, var(--accent-2) 45%, transparent));
 }

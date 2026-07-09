@@ -31,12 +31,12 @@
   h2 { font-size: 21px; margin: 34px 0 10px; }
   ul { padding-left: 22px; }
   li { margin: 6px 0; }
-  .medical {
+  .medical, .changed {
     background: var(--card); border: 1px solid var(--border);
     border-left: 4px solid var(--warn); border-radius: 12px;
     padding: 16px 20px; margin: 20px 0;
   }
-  .medical strong { color: var(--warn); }
+  .medical strong, .changed strong { color: var(--warn); }
   .contact {
     background: var(--card); border: 1px solid var(--border); border-radius: 12px;
     padding: 16px 20px; margin-top: 12px;
@@ -49,20 +49,25 @@
 <div class="wrap">
   <span class="logo">OptimalFit</span>
   <h1>Terms of Service</h1>
-  <div class="meta">Effective date: July 7, 2026 &middot; Applies to the OptimalFit app on Google Play, the Apple App Store, and the OptimalFit web/PWA version ("the App").</div>
+  <div class="meta">Effective date: July 8, 2026 &middot; Applies to the OptimalFit app on Google Play, the Apple App Store, and the OptimalFit web/PWA version ("the App").</div>
 
-  <p>By downloading or using OptimalFit, you agree to these terms. If you do not agree, please do not use the App.</p>
+  <p>By downloading or using OptimalFit, you agree to these terms. If you do not agree, please do not use the App. <strong>Creating a community account additionally requires you to acknowledge these terms at sign-up.</strong></p>
+
+  <div class="changed">
+    <strong>What changed:</strong> these terms were materially updated on July 8, 2026 to cover the new optional community features (accounts, posts, comments, check-ins). Sections 5&ndash;9 are new or substantially revised.
+  </div>
 
   <h2>1. What OptimalFit is</h2>
-  <p>OptimalFit is a personal fitness-tracking tool. You log sleep, food, exercise, body metrics, water, and steps; the App analyzes that data <strong>on your device</strong> and shows trends, statistics, and suggestions (for example, which time of day your workouts tend to go best). An optional "Coach" feature can generate conversational answers about your data using a companion program that you run on your own computer.</p>
+  <p>OptimalFit is a personal fitness-tracking tool. You log sleep, food, exercise, body metrics, water, and steps; the App analyzes that data <strong>on your device</strong> and shows trends, statistics, and suggestions. An optional "Coach" feature can generate conversational answers about your data using a companion program that you run on your own computer. An <strong>optional community</strong> lets you create an account, follow other users, and share posts you explicitly choose to publish — including "Receipt" stat cards, gym check-ins, and photos. Using the community is entirely optional; every tracking and coaching feature works without an account.</p>
 
   <h2>2. NOT medical advice — health disclaimer</h2>
   <div class="medical">
     <p><strong>OptimalFit is not a medical device and does not provide medical advice, diagnosis, or treatment.</strong></p>
     <ul>
-      <li>Everything the App shows — insights, readiness scores, calorie and macronutrient targets, weight-change projections, training suggestions, rest-day recommendations, and any Coach responses — is <strong>general fitness information computed from data you entered</strong>. It is not personalized medical, nutritional, or health advice from a professional.</li>
+      <li>Everything the App shows — insights, readiness scores, calorie and macronutrient targets, weight-change projections, training suggestions, rest-day recommendations, any Coach responses, and any community benchmarks — is <strong>general fitness information</strong>. It is not personalized medical, nutritional, or health advice from a professional.</li>
       <li>The App's calculations use common population-level formulas and simple statistics on your own logs. They can be wrong for you personally, especially if you have a medical condition, are pregnant, are under 18, are recovering from injury or an eating disorder, or take medication that affects weight, sleep, or exercise capacity.</li>
       <li><strong>Always consult a qualified healthcare professional</strong> before starting or changing a diet, exercise program, or weight goal, and before acting on anything the App suggests. Never disregard professional medical advice, or delay seeking it, because of something the App displayed.</li>
+      <li>Content posted by other users in the community is their opinion and experience, not advice. Do not copy someone else's targets, lifts, or diet without professional guidance.</li>
       <li>If you feel pain, dizziness, or other warning signs during exercise, stop and seek medical help. If you believe you may have a medical emergency, call your local emergency number immediately.</li>
       <li>Calorie targets are capped by common-sense limits in the App, but only you and your doctor can decide what intake is safe for you.</li>
     </ul>
@@ -70,55 +75,90 @@
 
   <h2>3. Your data and your responsibility</h2>
   <ul>
-    <li>All data you enter is stored locally on your device. We have no copy and no access. (See the <a href="./privacy-policy.html">Privacy Policy</a> for details.)</li>
-    <li><strong>You are responsible for backing up your data</strong> using the built-in export feature. If your device is lost, reset, or its storage is cleared by the operating system, we cannot recover anything.</li>
+    <li>All data you log is stored locally on your device; only content you explicitly publish to the community is stored on our servers. (See the <a href="./privacy-policy.html">Privacy Policy</a> for exactly what is and is not collected.)</li>
+    <li><strong>You are responsible for backing up your local data</strong> using the built-in export feature. If your device is lost, reset, or its storage is cleared by the operating system, we cannot recover your logs.</li>
     <li>You are responsible for the accuracy of what you log; the App's outputs are only as good as its inputs.</li>
   </ul>
 
   <h2>4. The optional AI Coach</h2>
   <ul>
     <li>The Coach feature requires a companion program that you install and run on your own computer, using your own AI assistant subscription. We do not provide, host, or bill for that AI service.</li>
-    <li>Coach answers are generated by an AI language model. <strong>They may be inaccurate, incomplete, or unsuitable for your situation, and they are not medical advice</strong> (see Section 2). Use your judgment and your doctor's guidance, not the Coach's, for health decisions.</li>
+    <li>Coach answers are generated by an AI language model. <strong>They may be inaccurate, incomplete, or unsuitable for your situation, and they are not medical advice</strong> (see Section 2).</li>
     <li>Your use of the underlying AI service is subject to that provider's own terms.</li>
   </ul>
 
-  <h2>5. Acceptable use</h2>
-  <p>You agree not to:</p>
+  <h2>5. Community accounts and age requirement</h2>
   <ul>
-    <li>reverse the App's intended use to harm yourself or others (for example, using it to pursue dangerous weight loss);</li>
-    <li>attempt to interfere with other people's devices or networks using the App's local-network pairing feature;</li>
-    <li>redistribute the App in violation of the store's terms under which you obtained it.</li>
+    <li>Creating a community account requires a valid email address and a password.</li>
+    <li><strong>You must be at least 13 years old</strong> (or the higher minimum age in your region) to create an account. Sign-up includes an age confirmation; accounts found to belong to children under 13 will be deleted.</li>
+    <li>You are responsible for keeping your credentials secure and for activity on your account.</li>
+    <li>You may delete your account at any time inside the App. Deletion removes your profile, posts, images, likes, comments, check-ins, follows, and benchmark contributions (see the Privacy Policy).</li>
   </ul>
 
-  <h2>6. Intellectual property</h2>
-  <p>The App, including its code, design, icons, and text, is the property of the developer. You receive a personal, non-exclusive, non-transferable license to use the App on devices you own or control, as permitted by the app store from which you downloaded it. Your data is yours — we claim no rights over anything you log or export.</p>
+  <h2>6. Community rules — acceptable use and objectionable content</h2>
+  <p>The community exists to share training progress kindly and honestly. When you post, comment, check in, or set up a profile, you agree <strong>not</strong> to publish or do any of the following:</p>
+  <ul>
+    <li><strong>Nudity or sexualized content</strong> — including sexualized physique photos; progress photos must be non-explicit and appropriate for a general audience.</li>
+    <li><strong>Harassment, bullying, or threats</strong> — no dogpiling, body-shaming, insults, or intimidation of any user.</li>
+    <li><strong>Hate</strong> — no content attacking people based on race, ethnicity, religion, sex, gender identity, sexual orientation, disability, or similar characteristics.</li>
+    <li><strong>Promotion of dangerous behavior</strong> — no content promoting eating disorders, starvation diets, dangerous weight-loss or weight-gain practices, steroid or PED sourcing, or self-harm.</li>
+    <li><strong>Spam or scams</strong> — no bulk posting, pyramid/MLM recruitment, fake giveaways, or link farms.</li>
+    <li><strong>Impersonation</strong> — no pretending to be another person, brand, or an OptimalFit team member; usernames and profiles must not be deceptive.</li>
+    <li><strong>Illegal content</strong> or content you don't have the right to share (see Section 8 on copyright).</li>
+    <li><strong>Attacking the service</strong> — no attempts to scrape other users' data, bypass rate limits or access rules, or interfere with the App's local-network pairing feature or servers.</li>
+  </ul>
+  <p>You also agree not to reverse the App's intended use to harm yourself or others (for example, using it to pursue dangerous weight loss), and not to redistribute the App in violation of the store terms under which you obtained it.</p>
 
-  <h2>7. Disclaimer of warranties</h2>
-  <p>The App is provided <strong>"as is" and "as available"</strong>, without warranties of any kind, express or implied, including fitness for a particular purpose, accuracy, or uninterrupted availability. We do not warrant that insights, targets, projections, or Coach answers are correct, complete, or suitable for your goals or health situation.</p>
+  <h2>7. Moderation, reporting, and blocking</h2>
+  <ul>
+    <li><strong>Report:</strong> every post, comment, and user profile has a report option. You can also email reports to Qualixo22@gmail.com.</li>
+    <li><strong>Auto-hide:</strong> a post reported by 3 or more distinct users is automatically hidden pending review.</li>
+    <li><strong>Block:</strong> you can block any user; blocking hides content in both directions — they no longer see your content and you no longer see theirs.</li>
+    <li><strong>Our rights:</strong> we may remove or hide any content, and warn, suspend, or permanently terminate any account, that in our judgment violates these terms or harms the community — with or without prior notice. We are not obligated to pre-screen content, but we may.</li>
+    <li><strong>Terms acknowledgment:</strong> account sign-up requires acknowledging these terms, including this section.</li>
+  </ul>
 
-  <h2>8. Limitation of liability</h2>
-  <p>To the maximum extent permitted by applicable law, the developer shall not be liable for any indirect, incidental, special, consequential, or punitive damages, or for personal injury, health outcomes, loss of data, or loss of profits, arising from or related to your use of (or inability to use) the App. Where liability cannot be excluded, it is limited to the amount you paid for the App (which, for a free app, is zero) or the minimum amount required by law.</p>
+  <h2>8. Your content and license</h2>
+  <ul>
+    <li><strong>Your content stays yours.</strong> You retain all rights to what you post.</li>
+    <li>By publishing content to the community you grant us a <strong>limited, non-exclusive, revocable, royalty-free license</strong> to host, store, display, and distribute that content <strong>solely for the purpose of operating and providing the community service</strong> (for example, showing your post to your followers, serving your avatar, and including verified Receipt numbers in k-anonymous aggregate benchmarks). This license ends for a piece of content when you delete it, and entirely when you delete your account, except for the brief period needed to purge copies from serving infrastructure.</li>
+    <li>We do not sell your content, use it for advertising, or claim ownership of it.</li>
+    <li><strong>Copyright / takedown:</strong> if you believe content in the community infringes your copyright or other rights, email <strong>Qualixo22@gmail.com</strong> with (a) a link/screenshot identifying the content, (b) proof of your rights, and (c) your contact details. We will review and remove infringing content promptly. Repeat infringers' accounts will be terminated.</li>
+    <li>Only post images and text you have the right to share, and don't post other people's personal information.</li>
+  </ul>
+
+  <h2>9. Community availability</h2>
+  <p>The community is a free online service and may be interrupted, rate-limited, changed, or discontinued. If we ever discontinue it, we will give reasonable notice in the App so you can save anything you want to keep; your on-device data would be unaffected.</p>
+
+  <h2>10. Intellectual property</h2>
+  <p>The App, including its code, design, icons, and text, is the property of the developer. You receive a personal, non-exclusive, non-transferable license to use the App on devices you own or control, as permitted by the app store from which you downloaded it. Your data is yours — we claim no rights over anything you log or export, and only the limited operating license in Section 8 over what you post.</p>
+
+  <h2>11. Disclaimer of warranties</h2>
+  <p>The App is provided <strong>"as is" and "as available"</strong>, without warranties of any kind, express or implied, including fitness for a particular purpose, accuracy, or uninterrupted availability. We do not warrant that insights, targets, projections, Coach answers, community benchmarks, or other users' content are correct, complete, or suitable for your goals or health situation.</p>
+
+  <h2>12. Limitation of liability</h2>
+  <p>To the maximum extent permitted by applicable law, the developer shall not be liable for any indirect, incidental, special, consequential, or punitive damages, or for personal injury, health outcomes, loss of data, loss of profits, or harm arising from other users' content or conduct, arising from or related to your use of (or inability to use) the App. Where liability cannot be excluded, it is limited to the amount you paid for the App (which, for a free app, is zero) or the minimum amount required by law.</p>
   <p>Some jurisdictions do not allow certain exclusions or limitations; in those places, these sections apply only to the extent permitted.</p>
 
-  <h2>9. Apple App Store / Google Play terms</h2>
+  <h2>13. Apple App Store / Google Play terms</h2>
   <p>If you obtained the App from the Apple App Store or Google Play, the standard licensed-application terms of that store also apply, including Apple's Licensed Application End User License Agreement where relevant. Apple and Google are not responsible for the App and have no obligation to provide support or maintenance for it.</p>
 
-  <h2>10. Changes to the App or these terms</h2>
-  <p>We may update the App and these terms over time. Material changes to the terms will be reflected by a new effective date above and noted in the App's update notes. Continuing to use the App after a change means you accept the updated terms.</p>
+  <h2>14. Changes to the App or these terms</h2>
+  <p>We may update the App and these terms over time. Material changes to the terms will be reflected by a new effective date above and noted in the App's update notes. Continuing to use the App (or keeping a community account) after a change means you accept the updated terms.</p>
 
-  <h2>11. Termination</h2>
-  <p>You can stop using the App at any time by uninstalling it; since all data is local, uninstalling (or clearing the App's storage) removes your data from the device. These terms end when you stop using the App, except for sections that by their nature survive (disclaimers, limitation of liability).</p>
+  <h2>15. Termination</h2>
+  <p>You can stop using the App at any time by uninstalling it; local data is removed with the App's storage, and you can delete your community account (and its server data) in-app first. We may suspend or terminate community accounts as described in Section 7. These terms end when you stop using the App, except for sections that by their nature survive (disclaimers, limitation of liability, license wind-down).</p>
 
-  <h2>12. Governing law</h2>
+  <h2>16. Governing law</h2>
   <p>These terms are governed by the laws of your country or state of residence to the extent required by consumer law there; otherwise, by the laws of the developer's place of residence, without regard to conflict-of-law rules.</p>
 
-  <h2>13. Contact</h2>
+  <h2>17. Contact</h2>
   <div class="contact">
-    Questions about these terms:<br>
+    Questions about these terms, reports, or takedown requests:<br>
     <strong>Email:</strong> Qualixo22@gmail.com
   </div>
 
-  <footer>OptimalFit — all data stays on your device. See the <a href="./privacy-policy.html">Privacy Policy</a>.</footer>
+  <footer>OptimalFit — local by default; the community is opt-in and per-post. See the <a href="./privacy-policy.html">Privacy Policy</a>.</footer>
 </div>
 </body>
 </html>

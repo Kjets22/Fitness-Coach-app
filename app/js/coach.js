@@ -253,6 +253,16 @@ OF.coach = (function () {
       strength = { error: "strength engine failed: " + e.message };
     }
 
+    // Community benchmarks (P3-6): compact, clearly-labeled anonymized
+    // aggregates from the in-memory cache only (never a network wait here;
+    // ≤600 bytes, top-2 lifts). The on-device engine stays source of truth.
+    var communityBenchmarks = null;
+    try {
+      communityBenchmarks = OF.receipts ? OF.receipts.coachBenchmarks() : null;
+    } catch (e) {
+      communityBenchmarks = null;
+    }
+
     return {
       today: U.todayISO(),
       recordCounts: {
@@ -263,6 +273,7 @@ OF.coach = (function () {
       goalCoaching: goalCoaching,
       adherence14d: adherence,
       strengthTraining: strength,
+      communityBenchmarks: communityBenchmarks,
       insights: insights,
       last14days: {
         sleep: {

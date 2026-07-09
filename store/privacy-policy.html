@@ -7,12 +7,12 @@
 <style>
   :root {
     --bg: #ffffff; --fg: #1a2233; --muted: #5b6577; --card: #f4f6fa;
-    --accent: #7c4dff; --accent2: #0891b2; --border: #e3e7ef;
+    --accent: #7c4dff; --accent2: #0891b2; --border: #e3e7ef; --warn: #b45309;
   }
   @media (prefers-color-scheme: dark) {
     :root {
       --bg: #0a0e17; --fg: #e8ecf4; --muted: #9aa5b8; --card: #131c30;
-      --accent: #8b5cf6; --accent2: #22d3ee; --border: #24304a;
+      --accent: #8b5cf6; --accent2: #22d3ee; --border: #24304a; --warn: #f59e0b;
     }
   }
   * { box-sizing: border-box; }
@@ -32,9 +32,15 @@
   .tldr {
     background: var(--card); border: 1px solid var(--border);
     border-left: 4px solid var(--accent); border-radius: 12px;
-    padding: 16px 20px; margin: 0 0 32px;
+    padding: 16px 20px; margin: 0 0 20px;
   }
   .tldr strong { color: var(--accent2); }
+  .changed {
+    background: var(--card); border: 1px solid var(--border);
+    border-left: 4px solid var(--warn); border-radius: 12px;
+    padding: 16px 20px; margin: 0 0 32px;
+  }
+  .changed strong { color: var(--warn); }
   h2 { font-size: 22px; margin: 36px 0 10px; }
   ul { padding-left: 22px; }
   li { margin: 6px 0; }
@@ -52,14 +58,18 @@
   <header>
     <span class="logo">OptimalFit</span>
     <h1>Privacy Policy</h1>
-    <div class="meta">Effective date: July 7, 2026 &middot; Applies to the OptimalFit app on Google Play, the Apple App Store, and the OptimalFit web/PWA version.</div>
+    <div class="meta">Effective date: July 8, 2026 &middot; Applies to the OptimalFit app on Google Play, the Apple App Store, and the OptimalFit web/PWA version.</div>
   </header>
 
-  <div class="tldr">
-    <strong>The short version:</strong> OptimalFit does not collect your data. Everything you log — sleep, food, exercise, weight, body measurements, water, steps, and goals — is stored <strong>only on your own device</strong>. There are no accounts, no analytics, no advertising, no tracking, and no company servers. We never see your data, so we cannot sell it, share it, lose it, or be forced to hand it over.
+  <div class="changed">
+    <strong>What changed:</strong> this policy was materially updated on July 8, 2026. The previous version (July 7, 2026) truthfully said "we collect nothing" because the app had no online features at all. OptimalFit now offers an <strong>optional, opt-in social community</strong>. If you create a community account, some data you explicitly choose to share is stored on our servers — this policy describes exactly what, where, and how to delete it. If you never create an account, nothing has changed: the app still collects nothing.
   </div>
 
-  <h2>What data the app handles</h2>
+  <div class="tldr">
+    <strong>The short version:</strong> OptimalFit is <strong>local by default</strong>. Everything you log — sleep, food, exercise, weight, body measurements, water, steps, and goals — is stored <strong>only on your own device</strong>, exactly as before. No account is needed for any tracking or coaching feature, and there are still no analytics, no advertising, no tracking, and no telemetry — anywhere in the app, signed in or not. The community is <strong>opt-in</strong>: if you choose to create an account, we store the account itself and the things you explicitly publish (posts, likes, comments, your profile). We never upload your private logs, your unposted photos, or anything you didn't deliberately hit "share" on.
+  </div>
+
+  <h2>Local by default: what never leaves your device</h2>
   <p>OptimalFit lets you log health and fitness information such as:</p>
   <ul>
     <li>Sleep times and sleep quality ratings</li>
@@ -68,49 +78,74 @@
     <li>Body metrics (weight, body fat %, muscle mass %)</li>
     <li>Water intake and daily steps</li>
     <li>A fitness goal and personal profile details you choose to enter (height, age, sex, activity level)</li>
+    <li>Photos you analyze with the optional coach (meal or physique photos)</li>
   </ul>
-  <p><strong>All of this stays in local storage on your device.</strong> It is processed on your device by the app itself (for charts, insights, and recommendations) and is never transmitted to us or to anyone else.</p>
+  <p><strong>All of this stays in local storage on your device.</strong> It is processed on your device by the app itself (for charts, insights, and recommendations). The coach engine runs fully on-device. None of this raw data is ever transmitted to us — whether or not you have a community account.</p>
 
-  <h2>What we collect</h2>
-  <p><strong>Nothing.</strong> OptimalFit has:</p>
+  <h2>Opt-in community: what we collect if you create an account</h2>
+  <p>If you choose to sign up for the OptimalFit community, we collect and store:</p>
   <ul>
-    <li><strong>No accounts</strong> — you never register, and no identifier is created for you.</li>
-    <li><strong>No analytics or telemetry</strong> — the app does not phone home, count usage, or report crashes to us.</li>
+    <li><strong>Account:</strong> your email address and a password. The password is hashed by our authentication provider (Supabase Auth); we never see or store it in plain text. Your email is used for sign-in and account management only — not for marketing.</li>
+    <li><strong>Profile:</strong> a username, a display name, and — only if you add them — an avatar image and a short bio.</li>
+    <li><strong>Content you explicitly publish:</strong> workout, meal, and photo posts (with any images you attach), and "Receipt" cards — small stat cards computed by your on-device coach (for example an estimated-1RM trend, a consistency grid, or a weight-trend summary). <strong>A Receipt contains only the numbers shown on the card, never the underlying logs.</strong> Every post is shared per-post, by an explicit action from you; nothing is auto-published.</li>
+    <li><strong>Social activity:</strong> who you follow, likes, and comments.</li>
+    <li><strong>Gym check-ins:</strong> the gym name you type and the date. <strong>No GPS or location data is collected — the app never accesses your location.</strong> A check-in is just text you chose to post.</li>
+    <li><strong>Anonymized benchmark contributions:</strong> if you publish verified Receipt posts, the numbers on them may contribute to anonymized, aggregate community benchmarks (for example "median estimated 1RM for your cohort"). These aggregates are <strong>k-anonymous</strong>: a cohort statistic is only ever served when at least 5 distinct users have contributed to it, and no individual's numbers are ever exposed through benchmarks.</li>
+  </ul>
+  <p>That is the complete list. Community features do not read or upload anything else from your device.</p>
+
+  <h2>Where community data lives</h2>
+  <p>Community data is stored with <strong>Supabase</strong> (our hosting provider) in a hosted Postgres database and file storage, located in the <strong>United States</strong>. Supabase processes this data on our behalf to run the service. Data is encrypted in transit (HTTPS). Images you post are stored in Supabase Storage.</p>
+  <p>We do <strong>not</strong> sell your data, share it with data brokers or advertisers, or give any third party access to it beyond Supabase acting as our hosting processor.</p>
+
+  <h2>Retention and deletion</h2>
+  <ul>
+    <li>Community data is kept for as long as your account exists.</li>
+    <li><strong>You can delete your account at any time, inside the app.</strong> Account deletion cascades: it deletes your profile, your posts, your uploaded images (the image files themselves are removed from storage), your likes, your comments, your check-ins, your follow relationships, and your benchmark contributions.</li>
+    <li>You can also delete individual posts, comments, and check-ins at any time.</li>
+    <li>Deleting your account does not touch your local tracking data — that stays on your device, under your control, as always.</li>
+  </ul>
+
+  <h2>What we still never collect</h2>
+  <p>Even with a community account:</p>
+  <ul>
+    <li><strong>Your raw logs</strong> — sleep, food, workout, weight, and body-fat history never leave your device. Only the summary numbers on a Receipt card you chose to post are shared.</li>
+    <li><strong>Photos you don't post</strong> — coach photo analysis (meals, physique) stays on your own machines; only images you explicitly attach to a post are uploaded.</li>
+    <li><strong>No analytics or telemetry</strong> — the app does not phone home, count usage, or report crashes to us. We added none in this update.</li>
     <li><strong>No advertising and no ad SDKs.</strong></li>
-    <li><strong>No third-party services</strong> — no data is shared with any third party, because no data ever leaves your device in the first place.</li>
-    <li><strong>No server of ours</strong> — we do not operate any backend that receives user data.</li>
+    <li><strong>No tracking and no sale of data</strong> — ever, for any user.</li>
+    <li><strong>No location</strong> — the app never requests or collects GPS/location data. Gym check-ins are text you type.</li>
+    <li><strong>No contact-list access</strong> — finding people works by username, not by uploading your contacts.</li>
   </ul>
 
   <h2>Health-file import happens on your device</h2>
   <p>You can optionally import an Apple Health export file or Samsung Health CSV files. These files are read and processed <strong>entirely inside the app on your device</strong>. The file contents are never uploaded anywhere.</p>
 
   <h2>The optional AI Coach (self-hosted, your own computer)</h2>
-  <p>OptimalFit includes an optional "Coach" feature. It only works if <strong>you</strong> run a small companion program on <strong>your own personal computer</strong> and pair your device to it with a code shown on that computer's screen. When you ask the coach a question:</p>
-  <ul>
-    <li>A short, computed summary of your fitness data (not your full history) is sent <strong>from your device to your own computer over your own local network</strong>, to generate the answer.</li>
-    <li>This traffic goes to a machine you own and control. It does not pass through our servers — we have none.</li>
-    <li>If you never set up the coach, nothing is ever transmitted at all; every other feature works fully offline.</li>
-  </ul>
-  <p>Note: the coach program on your computer uses your own AI assistant subscription (which you set up yourself on that computer). Your use of that assistant is governed by its provider's terms and privacy policy — that relationship is between you and that provider, on your own machine.</p>
+  <p>The optional "Coach" feature is unchanged: it only works if <strong>you</strong> run a small companion program on <strong>your own personal computer</strong> and pair your device to it over your own local network. Coach questions and photo analysis go only to your own machine — never to our servers. If you have a community account, the coach can additionally <strong>fetch</strong> anonymous aggregate benchmark percentiles from our server to enrich its advice (a download of cohort statistics, not an upload of your logs).</p>
 
   <h2>Your data, your control</h2>
   <ul>
-    <li><strong>Export:</strong> you can export all of your data to a file at any time from Settings.</li>
-    <li><strong>Delete:</strong> you can erase all data at any time from Settings ("Clear all data"), or by uninstalling the app / clearing the app's storage. Because the data exists only on your device, deleting it there deletes it everywhere — there is no server copy to chase.</li>
-    <li><strong>Backup responsibility:</strong> because we hold no copy, we also cannot restore your data. Please use the export feature to make your own backups.</li>
+    <li><strong>Export:</strong> you can export all of your local data to a file at any time from Settings.</li>
+    <li><strong>Delete local data:</strong> erase everything on-device anytime from Settings ("Clear all data") or by uninstalling the app.</li>
+    <li><strong>Delete community data:</strong> delete individual posts anytime, or delete your whole account in-app — the cascade described above removes everything server-side.</li>
+    <li><strong>Backup responsibility:</strong> we hold no copy of your local logs, so we cannot restore them. Please use the export feature.</li>
   </ul>
 
   <h2>Data security</h2>
-  <p>Your data never travels over the internet, which removes the most common risks. On the device, data is stored in the app's private local storage. The optional coach connection is limited to your own local (home) network and protected by a pairing code. We recommend the same common-sense device protections you already use: a device passcode and, if you make export backups, storing them somewhere safe.</p>
+  <p>Local data never travels over the internet. Community data travels over HTTPS to Supabase, where passwords are hashed and data is stored in access-controlled infrastructure. Per-user access rules ensure users can only modify their own content. The optional coach connection remains limited to your own local network with a pairing code.</p>
 
   <h2>Children's privacy</h2>
-  <p>OptimalFit is not directed at children under 13 (or the equivalent minimum age in your region), and it is not intended for their use. We do not knowingly collect personal information from anyone — including children — because the app collects no personal information at all. If you are a parent or guardian and prefer your child not use the app, simply uninstall it; no data about the child exists anywhere but that device.</p>
+  <p>The tracking features have no accounts and collect nothing. <strong>Community accounts require you to be at least 13 years old</strong> (or the higher minimum age in your region). The sign-up flow includes an age confirmation, and we do not knowingly allow accounts for children under 13. If you believe a child under 13 has created an account, contact us and we will delete it and its data.</p>
+
+  <h2>Community safety and moderation</h2>
+  <p>The community has rules (see the <a href="./terms-of-service.html">Terms of Service</a>). You can <strong>report</strong> any post, comment, or user, and <strong>block</strong> users (blocking hides content in both directions). Posts reported by multiple users are automatically hidden pending review. Moderation questions and reports: <strong>Qualixo22@gmail.com</strong>.</p>
 
   <h2>Permissions</h2>
-  <p>OptimalFit does not request access to your contacts, location, camera, microphone, or health-platform APIs. Health-data import works only through files you explicitly choose with the system file picker.</p>
+  <p>OptimalFit does not request access to your contacts, location, or microphone. Health-data import and post images work only through files/photos you explicitly choose with the system picker.</p>
 
   <h2>Changes to this policy</h2>
-  <p>If we ever change how the app handles data (for example, adding an optional cloud feature), we will update this policy, change the effective date above, and describe the change plainly in the app's update notes. The current architecture — local-only, zero collection — is a deliberate design choice, not an accident.</p>
+  <p>If we change how the app handles data, we will update this policy, change the effective date above, and describe the change plainly in the app's update notes — exactly as we have done with this update.</p>
 
   <h2>Contact</h2>
   <div class="contact">
@@ -119,7 +154,7 @@
   </div>
 
   <footer>
-    Summary you can quote: OptimalFit stores all data locally on your device, collects nothing, shares nothing, has no accounts, no analytics, no ads, and no servers. The optional AI coach talks only to your own computer on your own network.
+    Summary you can quote: OptimalFit is local by default — all tracking and coaching stays on your device with no account, no analytics, and no ads. The optional community stores only your account (email), profile, and the posts, likes, comments, and check-ins you explicitly publish, hosted with Supabase in the US, deletable in-app with a full cascade. Your raw logs and unposted photos never leave your device, and community benchmarks are k-anonymous aggregates.
   </footer>
 </div>
 </body>

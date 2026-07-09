@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "optimalfit",
+      "runtimeExecutable": "python3",
+      "runtimeArgs": ["-m", "http.server", "8670", "-d", "app"],
+      "port": 8670
+    }
+  ]
+}

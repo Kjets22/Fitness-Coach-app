@@ -552,6 +552,12 @@ OF.dashboard = (function () {
     renderStats();
     renderTargets();
     renderCharts(sleep, food, exercise, body);
+
+    // Receipts-Day Sunday nudge (signed-in only; unobtrusive; P3-6).
+    if (OF.receipts) {
+      try { OF.receipts.dashNudge(document.getElementById("dash-receipts")); }
+      catch (e) { /* never break the dashboard */ }
+    }
   }
 
   return { init: init, refresh: refresh };

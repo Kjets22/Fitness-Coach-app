@@ -45,7 +45,7 @@ The honest, ordered path from this folder to "live". Part A is already done on t
 10. Play Console → **Create app** (name: `OptimalFit - Private Fitness`, free, app category Health & Fitness).
 11. Complete **App content** (Policy section) using `store/play-store-listing.md`:
     - Privacy policy URL (from step 7)
-    - Data safety form → **"No data collected, no data shared"** (exact answers + justification in the listing file)
+    - Data safety form → ~~"No data collected, no data shared"~~ **SUPERSEDED for the Phase-3 (community) build — use Part C step 23** (exact answers in the listing file)
     - Content rating questionnaire (answers in the listing file → expect Everyone/PEGI 3)
     - Health apps declaration, Ads = No, Target audience = 18+, App access = no login (paste the reviewer note from the listing file)
 12. **Internal → closed testing:**
@@ -65,7 +65,7 @@ The honest, ordered path from this folder to "live". Part A is already done on t
     - **Borrowed/owned Mac:** `cd native && npx cap sync ios && npx cap open ios`, then archive + upload from Xcode.
 16. App Store Connect → **New app** (name `OptimalFit`, bundle ID from P2-4's config, category Health & Fitness).
 17. Fill the version page from `store/app-store-listing.md`: subtitle, promo text, description, keywords, support + privacy URLs (step 7), upload `store/screenshots/iphone67-1290x2796-*.png`, review notes (pre-written), age rating answers (expect 4+).
-18. **App Privacy** section → "Data Not Collected" (justification in the listing file). Attach the TestFlight build to the version → **Submit for review**.
+18. **App Privacy** section → ~~"Data Not Collected"~~ **SUPERSEDED for the Phase-3 (community) build — use Part C step 24** (answers in the listing file). Attach the TestFlight build to the version → **Submit for review**.
     - Typical review time: 1–3 days.
 
 ### Stage 4 — After approval
@@ -80,11 +80,13 @@ The honest, ordered path from this folder to "live". Part A is already done on t
 | Rejection reason | OptimalFit's answer |
 |---|---|
 | **Medical claims without evidence** (diagnosing, treating) | App makes no medical claims; listings + Terms carry an explicit "not medical advice" disclaimer; insights are described as statistics on the user's own logs. |
-| **Data safety / privacy label mismatch** (forms claim no collection but app phones home) | Truthfully zero network calls to any developer server — no SDKs, no analytics. The forms in this pack match the code. |
+| **Data safety / privacy label mismatch** (forms claim no collection but app phones home) | Phase 3: the app talks to Supabase ONLY for opted-in community users — the rewritten forms (Part C steps 23–24) declare exactly that. Still no SDKs, no analytics. The forms in this pack match the code. |
 | **Privacy policy URL missing/broken** | Step 7 — host before submitting; policy is truthful and specific. |
 | **HealthKit / Health Connect misuse** | App uses neither API (file import only) — no health-platform entitlements to justify. |
 | **Minimum functionality / "just a website"** (Apple 4.2) | Fully offline native-packaged app with local storage, charts, statistical engine, onboarding — not a web wrapper around a remote site (there is no remote site). If Apple questions it, the review notes explain the on-device architecture. |
-| **Login/demo access for reviewers** | No login exists; review notes point reviewers to Settings → Load demo data. |
+| **Login/demo access for reviewers** | Tracking needs no login (Settings → Load demo data); the opt-in community needs one — provide the reviewer test account (Part C steps 23.7 / 24). |
+| **UGC without moderation (Apple 1.2)** | Terms acknowledgment at signup, report post/comment/user, block (both directions), auto-hide at 3 reports, published moderation contact — all listed in the Apple review notes. |
+| **No in-app account deletion (Apple 5.1.1(v))** | Account deletion is in-app with a full server-side cascade (profile, posts, images, likes, comments, check-ins, follows, benchmark rows). |
 | **Broken features during review** (coach tab) | Coach tab degrades to a friendly explanation card without the companion server; review notes state this is intended. |
 | **Dangerous weight-loss content** | Calorie targets have floors/caps; the goal system warns when timelines are physiologically unrealistic; age target 18+. |
 
@@ -94,3 +96,34 @@ The honest, ordered path from this folder to "live". Part A is already done on t
 - Privacy policy URL + support URL — after step 7, paste into both consoles.
 - Apple review contact in App Store Connect (email done: Qualixo22@gmail.com — add your name + phone there).
 - (Play feature graphic is DONE: `store/feature-graphic-1024x500.png`.)
+
+---
+
+## PART C — PHASE 3 (opt-in community) — MUST DO BEFORE SHIPPING THE SOCIAL BUILD
+
+Phase 3 added an opt-in community backed by Supabase. The old "No data collected / Data Not Collected" answers are now **false for opted-in users** — both store forms and the hosted policy must be redone before this build goes live. In order:
+
+21. **ROTATE THE SUPABASE CREDENTIALS — do this first, before anything ships.** The service-role key, access token, and database password were shared in plaintext during setup, so treat all three as compromised:
+    - Supabase dashboard → Project Settings → API → **regenerate the service_role key** (and confirm the anon key is the only key shipped in the app).
+    - supabase.com account → Access Tokens → **revoke and re-issue the personal access token**.
+    - Project Settings → Database → **reset the database password**.
+    - Update wherever the new values are stored (server-side only — never in the app bundle or the repo).
+
+22. **Re-host the updated privacy policy + terms.** Upload the new `store/privacy-policy.html` and `store/terms-of-service.html` (effective July 8, 2026) to the same URLs from step 7. The old pages claim zero collection — leaving them up while the social build is live is a policy violation on both stores.
+
+23. **Redo the Google Play Data safety form** (Play Console → App content → Data safety) per the table in `play-store-listing.md`. Step-by-step:
+    1. "Does your app collect or share any of the required user data types?" → **Yes**.
+    2. "Is all of the user data collected by your app encrypted in transit?" → **Yes**.
+    3. "Do you provide a way for users to request that their data is deleted?" → **Yes**.
+    4. Mark collected: **Email address**, **User IDs** (both: App functionality + Account management), **Photos**, **Other user-generated content** (both: App functionality). For each: collection is **optional**, data is **not shared**, encrypted in transit, deletion available.
+    5. Mark everything else NOT collected — especially Location, Health & fitness, Contacts, Diagnostics.
+    6. Also re-run the **IARC content rating** questionnaire: "users can interact / exchange content" → **Yes**; "users can share personal info" → **Yes** (answers table in `play-store-listing.md`).
+    7. App access → community requires login → create a reviewer test account in-app and paste its credentials.
+
+24. **Redo the Apple App Privacy label** (App Store Connect → App Privacy) per `app-store-listing.md`: uncheck "Data Not Collected"; declare **Contact Info → Email Address**, **User Content → Photos or Videos + Other User Content**, **Identifiers → User ID** — all *Linked to the user*, purpose *App Functionality*, and **none used for Tracking** ("Data Used to Track You: none"). Update the review notes + demo account (pre-written in the listing file), and re-answer the age-rating UGC questions truthfully.
+
+25. **Review Supabase Auth email settings** before launch: confirm signup-confirmation emails are enabled and actually delivered; set a proper SMTP sender (Auth → SMTP settings — the default Supabase sender is rate-limited and lands in spam); check the confirmation/reset email templates say "OptimalFit".
+
+26. **Verify the moderation loop end-to-end** on a test account: report a post from 3 distinct accounts → confirm auto-hide; block a user → confirm both-direction hiding; delete the account → confirm the cascade removed profile, posts, **image files in Storage**, likes, comments, check-ins, follows, and benchmark rows. Keep `store/moderation-policy.md` handy — the 72h review promise starts at launch.
+
+27. **Bump `versionCode`/`versionName`** for the Phase-3 Android upload (and the iOS build number) — stores reject re-used version codes; rebuild per `dist/BUILD-INFO.txt`.

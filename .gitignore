@@ -6,6 +6,17 @@
 # "# ..." would become part of the pattern).
 # ============================================================
 
+# --- SECRETS: Supabase (Phase 3 social backend) ---
+# Service-role key, personal access token and DB password live ONLY
+# in the local env file below. The publishable anon key is the only
+# Supabase credential allowed inside client code.
+.env.supabase
+.env
+*.env.local
+supabase/.temp/
+# Backend test-user credentials (created via the Auth Admin API; never commit)
+.env.test-users
+
 # --- SECRETS: Android signing (see dist/SIGNING-INFO.txt) ---
 dist/*.keystore
 dist/keystore.properties

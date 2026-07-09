@@ -2,6 +2,8 @@
 
 Fields map to App Store Connect → your app → **App Information / iOS App version page / App Privacy**. Copy-paste as-is; items marked FILL need your input.
 
+> **Phase 3 update (2026-07-08):** the app now has an OPT-IN community (accounts, posts, comments, check-ins) backed by Supabase. The App Privacy answers, description, keywords, and review notes below were rewritten to match — the old "Data Not Collected" label is **no longer valid** and must be redone in App Store Connect before the Phase-3 build is submitted.
+
 ---
 
 ## Name (max 30 chars)
@@ -21,14 +23,14 @@ Private fitness, smarter you
 ## Promotional text (max 170 chars — editable without a new build)
 
 ```
-Every workout, meal and night of sleep — tracked and analyzed 100% on your device. No account, no cloud, no ads. Your data never leaves your phone.
+Track solo, 100% on-device — or opt in to share Receipts: proof-backed stat cards. Your logs stay on your phone; only what you post is shared. No ads, no analytics.
 ```
-(147 characters)
+(164 characters)
 
 ## Description (max 4000 chars)
 
 ```
-Your fitness data should make YOU smarter — not someone else's ad network. OptimalFit is a complete fitness tracker that keeps every byte of your data on your own phone. No account. No cloud. No analytics. Nothing to sign up for and nothing to leak.
+Your fitness data should make YOU smarter — not someone else's ad network. OptimalFit is a complete fitness tracker that keeps your data on your own phone by default. No account needed. No analytics. No ads. And now: an optional community where you share only what you choose.
 
 TRACK EVERYTHING THAT MATTERS
 • Sleep — bed time, wake time, quality; duration handled automatically, even past midnight
@@ -42,47 +44,50 @@ OptimalFit's statistics engine runs entirely on your phone and answers questions
 • What time of day do YOUR workouts go best?
 • Which weekdays are your strongest?
 • How much does last night's sleep change today's performance?
-• Do carb-rich pre-workout meals help you?
 • When do you need a rest day?
 Every recommendation shows its confidence level and tells you honestly when there isn't enough data yet.
 
 GOALS WITH A BUILT-IN REALITY CHECK
-Pick a goal — lean bulk, cut, recomposition, maintain, or performance — and get personal daily targets for calories, protein, fat, carbs, water, steps and sleep. OptimalFit learns your actual maintenance calories from your own logs and gently adjusts your targets week by week. If your timeline is physiologically unrealistic, it tells you straight and shows a realistic date instead.
+Pick a goal — lean bulk, cut, recomposition, maintain, or performance — and get personal daily targets for calories, protein, fat, carbs, water, steps and sleep. OptimalFit learns your actual maintenance calories from your own logs and adjusts your targets week by week. If your timeline is physiologically unrealistic, it tells you straight.
 
-A DASHBOARD YOU'LL ACTUALLY OPEN
-Daily readiness score, today-vs-targets rings, trend sparklines, and clean charts for body, sleep, performance and nutrition.
-
-IMPORT YOUR EXISTING HISTORY
-Bring in steps, weight, sleep and water from an Apple Health export (the export file you create in the Health app) or Samsung Health CSV files. The import runs entirely on your device — with a preview before anything is saved.
+NEW: AN OPT-IN COMMUNITY BUILT ON RECEIPTS
+Create a free account (entirely optional) and share your wins:
+• Receipts — proof-backed stat cards computed by your on-device coach: estimated-1RM trends, consistency grids, weight-trend summaries. Only the numbers on the card are shared — never your logs.
+• Post workouts, meals and photos you explicitly choose to publish
+• Follow friends, like and comment, and check in at the gym — just a gym name and date, no GPS; the app never touches your location
+• Community benchmarks — anonymous, aggregate percentiles that only appear once at least 5 people contribute; individuals are never exposed
+Sharing is per-post and deliberate. Nothing is auto-uploaded. Delete your account in-app anytime and everything you shared is deleted with it. Report and block tools keep the feed kind.
 
 PRIVATE BY ARCHITECTURE, NOT BY PROMISE
-• All data lives in local storage on your phone
-• No account, no registration, no cloud sync
-• No ads, no trackers, no analytics SDKs
-• One-tap export for backups; delete everything anytime in Settings
-• Works fully offline
+• All tracking data lives in local storage on your phone — with or without an account
+• No ads, no trackers, no analytics SDKs — still zero
+• The community is opt-in; only content you explicitly post reaches our servers
+• One-tap export for backups; delete everything anytime
+
+IMPORT YOUR EXISTING HISTORY
+Bring in steps, weight, sleep and water from an Apple Health export (the file you create in the Health app) or Samsung Health CSV files — processed entirely on your device.
 
 OPTIONAL AI COACH — ON YOUR OWN TERMS
-Tech-savvy? Run the free companion program on your own computer and pair your phone to it over your home Wi-Fi. Ask questions in plain language ("Plan my workouts for next week") and get answers grounded in your actual logs. It can even estimate a meal's calories and macros from a photo, or give a supportive, body-neutral read on your physique — body-composition and muscle-development estimates that help set your targets. Your photos go only to your own computer, are analyzed there and deleted right after, never to us. The coach talks only to YOUR computer — never to a cloud service of ours. Skip it entirely and every other feature still works.
+Run the free companion program on your own computer and pair your phone over your home Wi-Fi. Answers grounded in your actual logs, meal-photo macro estimates, supportive physique feedback — all on your own machines, never our servers. With a community account, the coach can also pull anonymous benchmark percentiles to show how your numbers compare.
 
 HONEST LIMITS
-OptimalFit is a fitness tool, not a medical device. Its insights are statistics on your own logs, not medical advice — always check with a professional before big changes. Because your data never touches a server, back it up with the built-in export.
+OptimalFit is a fitness tool, not a medical device. Its insights are statistics, not medical advice — check with a professional before big changes. Back up your local data with the built-in export.
 
-Track everything. Learn what works for you. Keep it all to yourself.
+Track everything. Learn what works. Share only the wins you choose.
 ```
-(~3,280 characters — under the 4,000 limit)
+(3,534 characters — under the 4,000 limit)
 
-## Keywords (max 100 chars, comma-separated, no spaces needed)
+## Keywords (max 100 chars, comma-separated)
 
 ```
-sleep,calorie,macro,workout,offline,private,tracker,body fat,steps,water,gym,log,diet,muscle
+sleep,calorie,macro,workout,offline,private,tracker,social,receipts,gym,log,diet,muscle,friends
 ```
-(92 characters. Don't repeat "fitness" or "OptimalFit" — the name/subtitle already index those.)
+(95 characters. Don't repeat "fitness" or "OptimalFit" — the name/subtitle already index those.)
 
 ## Category
 
 - **Primary:** Health & Fitness
-- **Secondary (optional):** Lifestyle
+- **Secondary (optional):** Social Networking (now honest — the app has a community) or Lifestyle
 
 ## Price & availability
 
@@ -90,66 +95,86 @@ sleep,calorie,macro,workout,offline,private,tracker,body fat,steps,water,gym,log
 
 ## App Privacy (App Store Connect → App Privacy section)
 
-**Answer: "Data Not Collected"** — check the box "Data is not collected from this app."
+⚠️ **This fully replaces the old "Data Not Collected" answer.** The opt-in community transmits data to a Supabase backend we control — that is "collection" under Apple's definition (transmitted off-device and accessible to the developer). Re-answer the questionnaire as follows.
 
-**Is that claimable? Yes.** Apple's definition: data is "collected" when it is transmitted **off the device** in a way that is accessible to you (the developer) and/or your partners. OptimalFit:
+**Data Used to Track You: NONE.** (No tracking, no ads, no data sale, no sharing with data brokers — nothing is used for cross-app/site tracking.)
 
-- stores all user data in on-device WebView localStorage; the app makes no network requests to any developer or third-party server;
-- has no analytics, ads, crash reporting, or third-party SDKs;
-- the optional AI Coach transmits a data summary **only to a server the user personally runs on their own computer** on their own local network. The developer never receives it and cannot access it. Apple's "collected" definition (accessible to the developer/partners) is not met. The feature is also off by default and requires deliberate user setup.
-- Apple Health **import** is via a user-chosen export file parsed on-device; the app does not use HealthKit APIs, so no HealthKit privacy strings or entitlements are involved.
+**Data Linked to You** (all collected only if the user opts into the community; Apple's form has no "optional" flag, but state the opt-in nature in the privacy policy and review notes):
 
-So for every category in the questionnaire (Health & Fitness, Contact Info, Identifiers, Usage Data, Diagnostics, Location, etc.): **Not collected.** The resulting privacy "nutrition label" shows **Data Not Collected**.
+| Category | Data | Linked to identity? | Purpose |
+|---|---|---|---|
+| Contact Info | **Email Address** | Linked | App Functionality (sign-in, account management) |
+| User Content | **Photos or Videos** (avatar + images attached to posts) | Linked | App Functionality |
+| User Content | **Other User Content** (posts, Receipt stat cards, comments, bio, gym check-ins [name+date only]) | Linked | App Functionality |
+| Identifiers | **User ID** (account ID / username) | Linked | App Functionality |
 
-⚠️ If a future version ever adds developer-accessible transmission (cloud sync, analytics), this label must be updated first.
+**Everything else: Not Collected.** In particular: Health & Fitness (raw logs never leave the device — only user-published Receipt card numbers travel, declared under User Content), Location (none — check-ins have no GPS), Contacts, Browsing/Search History, Purchases, Financial Info, Diagnostics, Usage Data, Analytics (none exist).
+
+- No HealthKit APIs are used (file import only) — no HealthKit privacy strings or entitlements involved.
+- The self-hosted AI Coach still transmits only to the user's own computer — not collection.
+
+⚠️ If a future version adds analytics, crash reporting, or new server-bound data, update this label BEFORE release.
 
 ## Age rating questionnaire (expected answers)
-
-All of the following: **None**
 
 - Cartoon/fantasy/realistic violence: None
 - Profanity or crude humor: None
 - Mature/suggestive themes: None
 - Horror/fear themes: None
-- Medical/treatment information: **None** — the app presents self-logged fitness statistics, not medical or treatment information (and the description/terms carry a not-medical-advice disclaimer). If you prefer maximum caution, "Infrequent/Mild Medical/Treatment Information" bumps the rating to 12+; the honest reading of the questionnaire supports None.
+- Medical/treatment information: **None** — self-logged fitness statistics, not medical or treatment information (description/terms carry a not-medical-advice disclaimer).
 - Alcohol, tobacco, drug use: None
 - Simulated gambling: None
 - Sexual content/nudity: None
 - Contests: None
 - Unrestricted web access: **No** (the WebView loads only the bundled app)
 - Gambling with real currency: No
+- **User-generated content / users can communicate (asked by the current questionnaire): Yes — NEW.** Declare truthfully: users can post content visible to others (posts, comments, images). The app has the required safety controls: report, block, auto-hide of multiply-reported posts, and a 13+ age gate at signup.
 
-**Expected rating: 4+**
+**Expected rating: 4+ base content; the UGC/social answers may raise the displayed rating (e.g. to 12/13+) depending on the questionnaire version — accept whatever it outputs, do not misdeclare to keep 4+.**
 
 ## Review notes (App Review Information)
 
 ```
-OptimalFit stores all data locally on the device — there is no account and no
-login. To see the app populated with data, open Settings (gear icon, top
-right) → "Load demo data".
+LOCAL BY DEFAULT: all fitness data is stored on-device — no account is needed
+for any tracking or coaching feature. To see the app populated with data, open
+Settings (gear icon, top right) → "Load demo data".
+
+OPT-IN COMMUNITY (new in this version): a social feed is available ONLY after
+the user explicitly creates a free account (email + password, in-app). Nothing
+is uploaded unless the user explicitly publishes a post. A demo account is
+provided in the sign-in fields below — sign in to review the community.
+
+UGC MODERATION (Guideline 1.2): sign-up requires acknowledging the Terms
+(which define objectionable content); every post, comment, and user can be
+reported; users can block other users (hides content both directions); posts
+reported by 3+ distinct users are auto-hidden pending review; moderation
+contact: Qualixo22@gmail.com.
+
+ACCOUNT DELETION (Guideline 5.1.1(v)): the account can be deleted inside the
+app (Community → Profile → Settings → Delete account). Deletion cascades:
+profile, posts, images, likes, comments, check-ins, follows, and benchmark
+contributions are all removed.
 
 The "Coach" tab is an optional feature that pairs with a companion program the
 user runs on their own personal computer over their own Wi-Fi. Without it, the
-tab shows a friendly explanation card — this is expected behavior, not a bug.
-No cloud service is involved and the feature is not required for any other
-part of the app.
+tab shows a friendly explanation card — expected behavior, not a bug.
 ```
 
-- **Sign-in required?** No. Leave demo-account fields empty.
+- **Sign-in required?** For the community only. Provide a demo account: create one in the app before submitting (e.g. `applereview.optimalfit@gmail.com` + password) and fill it into the demo-account fields.
 - **Contact:** Qualixo22@gmail.com (add your name + phone in App Store Connect — Apple requires all three for the review contact).
 
 ## URLs
 
-- **Privacy Policy URL (required):** hosted copy of `privacy-policy.html` — FILL after hosting (see SHIP-CHECKLIST.md)
+- **Privacy Policy URL (required):** hosted copy of the **updated** `privacy-policy.html` — re-host before submitting; the old hosted copy claims zero collection and no longer matches the app.
 - **Support URL (required):** can be the same site's index or a GitHub repo page — FILL
 
 ## Screenshots
 
-- **iPhone 6.7"/6.9" (required set):** use `store/screenshots/iphone67-1290x2796-*.png` (1290×2796). App Store Connect accepts 1290×2796 for the 6.7" slot; it auto-scales for smaller devices if you provide only this set.
-- **iPad:** NOT needed. OptimalFit v1 is iPhone-only — the Xcode project sets `TARGETED_DEVICE_FAMILY = "1"` (both Debug and Release), so App Store Connect will not ask for iPad screenshots. If a future version adds iPad support ("1,2"), a 13" iPad screenshot set (2064×2752) becomes mandatory.
+- **iPhone 6.7"/6.9" (required set):** use `store/screenshots/iphone67-1290x2796-*.png` (1290×2796). Consider regenerating to include a community/Receipts screen (`store/tools/shoot.js`).
+- **iPad:** NOT needed. OptimalFit is iPhone-only (`TARGETED_DEVICE_FAMILY = "1"`). If a future version adds iPad support ("1,2"), a 13" iPad screenshot set (2064×2752) becomes mandatory.
 
-## What's New (first release)
+## What's New (Phase 3 update)
 
 ```
-First release: track sleep, food, workouts, body, water and steps; on-device insights and goal coaching; Apple Health / Samsung Health import; 100% private — all data stays on your phone.
+New: the OptimalFit community (100% opt-in). Share Receipts — proof-backed stat cards from your on-device coach — plus workout, meal and photo posts. Follow friends, like, comment, and check in at the gym. Your raw logs still never leave your phone; only what you explicitly post is shared, and you can delete your account (and everything with it) in-app anytime.
 ```

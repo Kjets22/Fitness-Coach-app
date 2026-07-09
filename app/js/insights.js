@@ -15,6 +15,10 @@ OF.insights = (function () {
 
   function init() {
     container = document.getElementById("insights-cards");
+    container.addEventListener("click", function (e) {
+      var b = e.target.closest("[data-receipt-pr]");
+      if (b && OF.receipts) OF.receipts.startPrShare(b.getAttribute("data-receipt-pr"));
+    });
     refresh();
   }
 
@@ -362,15 +366,33 @@ OF.insights = (function () {
   function conf3(n, med, high) { return n >= high ? "high" : n >= med ? "medium" : "low"; }
 
   function liftRowsCard(st) {
+    var canReceipt = OF.receipts && OF.socialApi && OF.socialApi.available();
     var rows = st.exercises.slice(0, 5).map(function (ex) {
       var colors = { improving: "var(--accent-2)", stalling: "var(--danger)", flat: "var(--text-dim)", inactive: "var(--text-dim)" };
       var sub = ex.sessions + " sessions";
       if (ex.bestSet) sub += " · best " + U.fmtWeight(ex.bestSet.weightKg, 1) + " × " + ex.bestSet.reps;
       if (ex.latestE1RMKg != null) sub += " · e1RM " + U.fmtWeight(ex.latestE1RMKg, 1);
+      // Community benchmark one-liner: filled in ASYNC by OF.receipts
+      // (signed-in + cohort has 5+ contributors); hidden until then.
+      var bench = canReceipt
+        ? '<div class="lift-bench muted small" hidden data-bench-lift="' + e(ex.name) +
+          '" data-bench-trend="' + (ex.trendPctWk != null ? e(String(ex.trendPctWk)) : "") + '"></div>'
+        : "";
+      // "Turn this PR into a Receipt" nudge — only when a verifiable
+      // PR receipt is actually generatable from the backing data.
+      var nudge = "";
+      if (canReceipt && ex.recentPR) {
+        try {
+          if (OF.receipts.byId("pr:" + ex.name.trim().toLowerCase())) {
+            nudge = '<button type="button" class="soc-link lift-pr-share" data-receipt-pr="' +
+              e(ex.name) + '">Turn this PR into a Receipt &rarr;</button>';
+          }
+        } catch (err) { /* never break the card */ }
+      }
       return '<div class="lift-row">' +
         '<div class="lift-main"><div class="lift-name">' + e(ex.name) +
         (ex.recentPR ? ' <span class="pr-badge">PR</span>' : '') + '</div>' +
-        '<div class="lift-sub">' + e(sub) + '</div></div>' +
+        '<div class="lift-sub">' + e(sub) + '</div>' + bench + nudge + '</div>' +
         sparkline(ex.series, colors[ex.verdict] || "var(--accent)") +
         verdictChip(ex) +
         '</div>';
@@ -599,6 +621,12 @@ OF.insights = (function () {
       trendsCard(r, gi) +
       strengthCards(data, gi) +
       physiqueCard();
+
+    // Community benchmark lines fill in asynchronously (cached per session)
+    // — insights rendering NEVER waits on the network.
+    if (OF.receipts) {
+      try { OF.receipts.fillBenchmarkLines(container); } catch (e) { /* non-fatal */ }
+    }
   }
 
   return { init: init, refresh: refresh };

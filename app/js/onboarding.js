@@ -61,8 +61,9 @@ OF.onboarding = (function () {
       'Best gym times, best training days, when to rest — computed from your own data, on this device.</span></li>' +
       '<li>' + OF.icons.badge("target") + '<span><strong>Adaptive goals</strong><br>' +
       'Daily calorie, protein, water and step targets that learn how your body responds.</span></li>' +
-      '<li>' + OF.icons.badge("heart") + '<span><strong>Private by design</strong><br>' +
-      'Everything stays on this device. No accounts, no cloud, no tracking.</span></li>' +
+      '<li>' + OF.icons.badge("heart") + '<span><strong>Private by default</strong><br>' +
+      'Your logs stay on this device &mdash; no ads, no analytics. An optional community lets you ' +
+      'share only what you choose.</span></li>' +
       '</ul>' + dots() +
       '<div class="ob-actions">' +
       '<button type="button" class="btn primary big" id="ob-next">Get started</button>' +

@@ -7,14 +7,15 @@ Stdlib only (Python 3.12). Serves the app/ folder on 127.0.0.1 and exposes:
     POST /api/estimate  -> {ok: true, estimate} | {ok: false, error}
                            (food photo -> macro estimate via the claude CLI
                            with ONLY the Read tool; image saved to a unique
-                           %TEMP% file that is deleted after every request)
+                           temp file that is deleted after every request)
     POST /api/physique  -> {ok: true, analysis} | {ok: false, error}
                            (physique photo -> body-neutral body-composition +
                            muscle-development estimate; same temp-file + Read-
                            only CLI + deletion pattern as /api/estimate)
 
 The coach runs the user's EXISTING Claude Code subscription headlessly via
-the claude CLI (`claude.exe -p`), so answering costs zero API tokens.
+the claude CLI (`claude -p`; claude.exe on Windows), so answering costs
+zero API tokens. CLI discovery is cross-platform — see find_claude().
 
 Usage:  python serve.py [--port 8642] [--open] [--phone]
 
@@ -111,23 +112,67 @@ def lan_ipv4s() -> list[str]:
 # claude CLI discovery (same approach as the proven yt-retention-coach engine)
 # ---------------------------------------------------------------------------
 
+def _version_list(ver: str) -> list[int]:
+    """'2.1.202' -> [2, 1, 202]; non-numeric chunks sort as 0."""
+    parts = []
+    for chunk in ver.split("."):
+        m = re.match(r"(\d+)", chunk)
+        parts.append(int(m.group(1)) if m else 0)
+    return parts
+
+
 def find_claude() -> str | None:
-    """Locate claude.exe. Prefers the versioned install under %APPDATA%,
-    picking the highest version dir; falls back to PATH lookup."""
-    appdata = os.environ.get("APPDATA", "")
-    if appdata:
-        pattern = os.path.join(appdata, "Claude", "claude-code", "*", "claude.exe")
-        candidates = glob.glob(pattern)
-        if candidates:
-            def version_key(path: str):
-                ver = os.path.basename(os.path.dirname(path))  # e.g. '2.1.202'
-                parts = []
-                for chunk in ver.split("."):
-                    m = re.match(r"(\d+)", chunk)
-                    parts.append(int(m.group(1)) if m else 0)
-                return parts
-            return max(candidates, key=version_key)
-    return shutil.which("claude")
+    """Locate the claude CLI binary, cross-platform.
+
+    Windows: newest version dir under %APPDATA%\\Claude\\claude-code\\
+             (claude.exe), exactly as before.
+    macOS:   newest version dir under ~/Library/Application Support/Claude/
+             claude-code/ — the desktop app ships the CLI as a signed bundle
+             at <version>/claude.app/Contents/MacOS/claude (native Mach-O).
+             NOTE: the sibling claude-code-vm/<version>/claude is the LINUX
+             guest binary for the app's sandbox VM — it dies with 'exec
+             format error' on macOS, so it is deliberately never used.
+    Fallbacks (all platforms): `claude` on PATH, then ~/.local/bin,
+    /opt/homebrew/bin and /usr/local/bin.
+    Called on every /api/health poll, so an install mid-session is found.
+    """
+    if sys.platform == "win32":
+        appdata = os.environ.get("APPDATA", "")
+        if appdata:
+            pattern = os.path.join(appdata, "Claude", "claude-code", "*", "claude.exe")
+            candidates = glob.glob(pattern)
+            if candidates:
+                def version_key(path: str):
+                    ver = os.path.basename(os.path.dirname(path))  # e.g. '2.1.202'
+                    return _version_list(ver)
+                return max(candidates, key=version_key)
+    else:
+        support = os.path.expanduser(
+            "~/Library/Application Support/Claude/claude-code")
+        # Prefer the .app-bundle layout the macOS desktop app uses today;
+        # also accept a bare <version>/claude in case the layout changes.
+        for rel in (os.path.join("claude.app", "Contents", "MacOS", "claude"),
+                    "claude"):
+            candidates = [
+                p for p in glob.glob(os.path.join(support, "*", rel))
+                if os.path.isfile(p) and os.access(p, os.X_OK)
+            ]
+            if candidates:
+                def version_key(path: str):
+                    rest = os.path.relpath(path, support)
+                    ver = rest.split(os.sep)[0]  # e.g. '2.1.202'
+                    return _version_list(ver)
+                return max(candidates, key=version_key)
+
+    found = shutil.which("claude")
+    if found:
+        return found
+    for fallback in ("~/.local/bin/claude", "/opt/homebrew/bin/claude",
+                     "/usr/local/bin/claude"):
+        path = os.path.expanduser(fallback)
+        if os.path.isfile(path) and os.access(path, os.X_OK):
+            return path
+    return None
 
 
 # ---------------------------------------------------------------------------
@@ -445,7 +490,7 @@ def run_estimate(image_bytes: bytes, mime: str, description: str):
 # appearance-rating), to frame everything as a visual ESTIMATE for training
 # guidance (not a medical measurement), to refuse gracefully on non-body
 # images (analyzed:false), and to avoid anything that could encourage
-# disordered eating. The image is written to a unique %TEMP% file, read by
+# disordered eating. The image is written to a unique temp file, read by
 # the CLI with ONLY the Read tool, and deleted in a finally block — exactly
 # like /api/estimate. The reply is strict JSON, robustly parsed + clamped.
 
@@ -994,7 +1039,11 @@ def main() -> int:
         print("    %s" % PAIR_CODE)
         print("iPhone: Safari -> Share -> Add to Home Screen.")
         print("Android/Samsung: Chrome -> menu -> Add to Home screen / Install.")
-        print("If Windows Firewall asks, allow Python on PRIVATE networks.")
+        if sys.platform == "win32":
+            print("If Windows Firewall asks, allow Python on PRIVATE networks.")
+        else:
+            print("If macOS asks whether Python may accept incoming "
+                  "network connections, click Allow.")
         print("==================")
         print()
     print("AI coach (Claude Code CLI):",

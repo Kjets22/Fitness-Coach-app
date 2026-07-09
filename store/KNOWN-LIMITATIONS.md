@@ -18,9 +18,9 @@ All user data lives in WebView `localStorage`. Operating systems treat WebView s
 
 The Coach tab only works when the user runs `serve.py` (via `Start OptimalFit.bat` / phone mode with pairing code) on their own computer with their own Claude Code subscription, on the same Wi-Fi. In the store builds, most users will simply see the friendly "needs the local server" card. This is by design (zero API-token cost, zero data collection) and is disclosed in both store listings, but expect some users to perceive the feature as "not working." The listings position it honestly as an optional power-user feature.
 
-## 4. No account sync between devices
+## 4. No data sync between devices
 
-No accounts means no sync: phone and tablet each have their own separate local data. Moving data between devices is manual (Export on device A → Import on device B). The Settings screen states this honestly for the phone-over-WiFi flow, and the store listings never claim sync.
+Even with a Phase-3 community account, tracking data does not sync: the account carries only community content (profile, posts, social activity), never your logs, so phone and tablet each have their own separate local data. Moving data between devices is manual (Export on device A → Import on device B). The Settings screen states this honestly for the phone-over-WiFi flow, and the store listings never claim sync.
 
 ## 5. Smaller notes
 
@@ -31,3 +31,12 @@ No accounts means no sync: phone and tablet each have their own separate local d
 - **Coach chat is not persisted** — history clears on app restart (memory-only by design, ~20 messages).
 - **Photo macro estimation is an AI estimate, not a measurement** — it needs the same companion server as the coach (button is disabled without it), values are editable before saving and should be treated as rough; the photo is sent only to the user's own PC and analyzed there via their Claude subscription (it never leaves the user's machines).
 - **Physique photo analysis is a visual estimate, not a medical measurement** — it needs the same companion server as the coach (button disabled without it); the photo is analyzed on the user's own PC via their Claude subscription and deleted right after (it never leaves the user's machines and is not stored — only the written body-neutral analysis can be saved); estimates depend on lighting/pose/clothing and are for training guidance only.
+
+## 6. Phase 3 — opt-in community (honest limits)
+
+- **Email-only auth.** Sign-in is email + password via Supabase Auth. No Google/Apple sign-in, no magic links, no 2FA. Users who lose access to their email address will struggle to recover the account.
+- **No push notifications.** Likes, comments, and new followers do not notify anyone — users see activity only when they open the app. Expect "did my post get seen?" confusion.
+- **Moderation is manual, via an email queue.** No automated image scanning or ML filtering — safety rests on the in-app report/block/auto-hide (3 reports) mechanics plus one human reviewing Qualixo22@gmail.com within the promised 72 hours (see `moderation-policy.md`). This does not scale past a small community without tooling or a second moderator.
+- **Free-tier Supabase limits.** The backend runs on Supabase's free tier: limited database and file-storage size, limited monthly active auth users and bandwidth, and **projects pause after ~1 week of inactivity** (a paused project = community outage until manually resumed). Image-heavy posting will hit the storage cap first. Budget for a paid tier if the community sticks.
+- **Benchmarks start empty.** Community benchmarks are k-anonymous: a cohort's percentile is only served once **at least 5 distinct users** have contributed verified Receipts to it. Early on, most (possibly all) benchmark queries will honestly return "not enough data yet" — this is by design, not a bug.
+- **Community requires connectivity.** Unlike everything else in the app, the community tab needs the internet and a healthy Supabase project; it degrades to an offline notice, and no other feature depends on it.

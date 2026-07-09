@@ -15,7 +15,7 @@ window.OF = window.OF || {};
 OF.app = (function () {
   "use strict";
 
-  var TABS = ["dashboard", "daily", "sleep", "food", "exercise", "body", "insights", "coach", "settings"];
+  var TABS = ["dashboard", "daily", "sleep", "food", "exercise", "body", "insights", "coach", "community", "settings"];
   var LOG_TABS = ["sleep", "food", "exercise", "body"]; // reached via the Log sheet on mobile
 
   function showTab(name) {
@@ -35,6 +35,7 @@ OF.app = (function () {
     if (name === "daily" && OF.daily) OF.daily.refresh();
     if (name === "insights" && OF.insights) OF.insights.refresh();
     if (name === "coach" && OF.coach) OF.coach.onEnter();
+    if (name === "community" && OF.social) OF.social.onEnter();
     if (name === "food" && OF.foodPhoto) OF.foodPhoto.onEnter(); // photo-estimate server check
     if (name === "body" && OF.physique) OF.physique.onEnter();   // physique-photo server check
   }
@@ -107,6 +108,7 @@ OF.app = (function () {
     OF.insights.init();
     OF.coach.init();
     OF.settings.init();
+    if (OF.social) OF.social.init(); // after settings (renders its Community card)
 
     showTab(currentTabFromHash());
 

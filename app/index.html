@@ -83,6 +83,10 @@
       <span class="nav-ico"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7a3.2 3.2 0 0 1 3.2-3.2h9.6A3.2 3.2 0 0 1 20 7v6a3.2 3.2 0 0 1-3.2 3.2H9.4l-4 3.3c-.6.4-1.4 0-1.4-.7V7Z"/></svg></span>
       <span class="nav-lbl">Coach</span>
     </button>
+    <button class="nav-btn" data-tab="community" aria-label="Community">
+      <span class="nav-ico"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="7.8" r="3.4"/><path d="M3.4 19.6c.5-3 2.8-4.9 5.6-4.9s5.1 1.9 5.6 4.9"/><path d="M15.5 4.8a3.4 3.4 0 0 1 0 6.2"/><path d="M17.3 14.9c1.8.6 3 2.1 3.3 4.7"/></svg></span>
+      <span class="nav-lbl">Community</span>
+    </button>
   </nav>
 
   <main class="content">
@@ -97,6 +101,9 @@
       </div>
       <div id="dash-targets">
         <!-- "today vs targets" strip rendered by dashboard.js (via goals/targets) -->
+      </div>
+      <div id="dash-receipts">
+        <!-- Receipts-Day Sunday nudge rendered by receipts.js (signed-in only) -->
       </div>
       <div class="charts-grid" id="dash-charts">
         <!-- trend charts rendered by dashboard.js (via charts.js) -->
@@ -383,8 +390,16 @@
         </form>
       </div>
       <p class="muted small">The coach runs locally through your own Claude Code subscription.
-      Only a compact summary of your data is sent to it &mdash; nothing leaves this machine
-      except that request.</p>
+      Only a compact summary of your data is sent to it &mdash; nothing else leaves this machine
+      for coaching. (The optional Community tab shares only what you explicitly post.)</p>
+    </section>
+
+    <!-- ===================== COMMUNITY ===================== -->
+    <section class="tab hidden" id="tab-community">
+      <h1>Community</h1>
+      <div id="community-root">
+        <!-- signed-out pitch / feed / profile setup rendered by social.js -->
+      </div>
     </section>
 
     <!-- ===================== SETTINGS ===================== -->
@@ -412,7 +427,7 @@
 
       <div class="card">
         <h2>Backup</h2>
-        <p class="muted">Your data lives only in this browser (localStorage). Export regularly.</p>
+        <p class="muted">Your tracking data lives only in this browser (localStorage). Export regularly.</p>
         <div class="form-actions">
           <button type="button" class="btn primary" id="btn-export">Export data (JSON)</button>
           <button type="button" class="btn" id="btn-import">Import data&hellip;</button>
@@ -465,6 +480,10 @@
         </p>
       </div>
 
+      <div id="community-settings">
+        <!-- Community account card rendered by social.js -->
+      </div>
+
       <div class="card">
         <h2>Demo data</h2>
         <p class="muted">Generates ~60 days of realistic, correlated fake data (sleep, meals,
@@ -489,7 +508,8 @@
         </div>
       </div>
 
-      <p class="muted small">OptimalFit &mdash; zero-dependency local app. No data ever leaves this device.</p>
+      <p class="muted small">OptimalFit &mdash; zero-dependency local app. Your tracking data stays on this
+  device; the optional community only ever receives what you explicitly choose to post.</p>
     </section>
 
   </main>
@@ -523,6 +543,10 @@
 <div class="sheet hidden" id="photo-modal" role="dialog" aria-modal="true" aria-label="Estimate food from photo"></div>
 <div class="sheet hidden" id="physique-modal" role="dialog" aria-modal="true" aria-label="Analyze physique from photo"></div>
 
+<!-- ===== Community sheets (social.js renders into these; sheet2 stacks on top) ===== -->
+<div class="sheet hidden" id="social-sheet" role="dialog" aria-modal="true" aria-label="Community"></div>
+<div class="sheet hidden" id="social-sheet2" role="dialog" aria-modal="true" aria-label="Community options"></div>
+
 <!-- ===== First-run onboarding overlay (onboarding.js) ===== -->
 <div id="onboarding" class="hidden"></div>
 
@@ -550,6 +574,12 @@
 <script src="js/demo.js"></script>
 <script src="js/health-import.js"></script>
 <script src="js/settings.js"></script>
+<script src="js/vendor/supabase.js"></script>
+<script src="js/social-api.js"></script>
+<script src="js/social.js"></script>
+<script src="js/social-profile.js"></script>
+<script src="js/social-compose.js"></script>
+<script src="js/receipts.js"></script>
 <script src="js/onboarding.js"></script>
 <script src="js/app.js"></script>
 </body>

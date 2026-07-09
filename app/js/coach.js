@@ -312,6 +312,19 @@ OF.coach = (function () {
 
   /* ---------------- rendering ---------------- */
 
+  // The coach's companion server runs on the user's own computer. Copy must fit
+  // where the app is actually running: the native mobile app can't start it at
+  // all, a Mac desktop uses the .command launcher, Windows uses the .bat.
+  function isNativeApp() {
+    var C = window.Capacitor;
+    if (!C) return false;
+    return C.isNativePlatform ? C.isNativePlatform() : (C.platform && C.platform !== "web");
+  }
+  function launcherName() {
+    return /Mac|iPhone|iPad|iPod/.test(navigator.userAgent || "") ?
+      "Start OptimalFit.command" : "Start OptimalFit.bat";
+  }
+
   function statusCard(title, bodyHtml) {
     return '<div class="card placeholder-card coach-status-card"><h2>' + U.esc(title) +
       '</h2>' + bodyHtml +
@@ -327,10 +340,16 @@ OF.coach = (function () {
     }
     els.chat.classList.add("hidden");
     if (health === "no-server") {
-      els.status.innerHTML = statusCard("The AI coach needs the local server",
-        '<p class="muted">Double-click <strong>&ldquo;Start OptimalFit.bat&rdquo;</strong> in the ' +
-        'optimal-fit folder, then reload this page. Everything else in the app keeps working ' +
-        'without the server &mdash; only this tab needs it.</p>');
+      els.status.innerHTML = isNativeApp()
+        ? statusCard("The AI coach runs on your computer",
+            '<p class="muted">The AI coach uses the Claude subscription on your own Mac or PC, so ' +
+            'it stays private and costs nothing. Open OptimalFit on your computer to chat with the ' +
+            'coach, or connect this phone to it over your home Wi-Fi from the server window. ' +
+            'Everything else in the app works right here on your phone.</p>')
+        : statusCard("The AI coach needs the local server",
+            '<p class="muted">Double-click <strong>&ldquo;' + launcherName() + '&rdquo;</strong> in the ' +
+            'OptimalFit folder, then reload this page. Everything else in the app keeps working ' +
+            'without the server &mdash; only this tab needs it.</p>');
     } else if (health === "need-key") {
       els.status.innerHTML =
         '<div class="card placeholder-card coach-status-card"><h2>Pair with the PC server</h2>' +
@@ -467,7 +486,9 @@ OF.coach = (function () {
       .catch(function (e) {
         pushMsg("error", e && e.name === "AbortError"
           ? "The coach took too long and the request was cancelled."
-          : "Could not reach the local server. Is \"Start OptimalFit.bat\" still running?");
+          : (isNativeApp()
+              ? "Could not reach the coach on your computer. Make sure OptimalFit is running there and this phone is on the same Wi-Fi."
+              : "Could not reach the local server. Is “" + launcherName() + "” still running?"));
       })
       .then(function () { // finally
         if (timer) clearTimeout(timer);

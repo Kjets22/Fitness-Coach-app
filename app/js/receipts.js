@@ -508,7 +508,10 @@ OF.receipts = (function () {
     var A = OF.socialApi;
     if (!A || !A.available()) return Promise.resolve(null);
     benchPending[key] = A.init().then(function (user) {
-      if (!user) return null;
+      // Signed out: DON'T memoize a null result — drop the pending entry so a
+      // later signed-in call re-attempts (init() resolving null never hits the
+      // .catch below, which would otherwise leave this key poisoned till reload).
+      if (!user) { delete benchPending[key]; return null; }
       return A.getBenchmarks(type, lift, age).then(function (rows) {
         benchCache[key] = { rows: rows || [] };
         return benchCache[key].rows;
@@ -879,7 +882,9 @@ OF.receipts = (function () {
     a.click();
     document.body.removeChild(a);
     setTimeout(function () { URL.revokeObjectURL(url); }, 4000);
-    U.toast("Receipt image saved.", "warn");
+    // Honest wording: a WKWebView that ignores the download attribute just opens
+    // the image (see above), so don't claim it was "saved" — prompt the save.
+    U.toast("Receipt image ready — long-press or right-click to save it.", "warn");
   }
 
   /** Small chooser sheet (story / square) on the shared social sheets. */

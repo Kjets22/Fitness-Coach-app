@@ -62,6 +62,19 @@ OF.social = (function () {
     return new Date(t).toLocaleDateString(undefined, { month: "short", day: "numeric" });
   }
 
+  /** Local calendar date (YYYY-MM-DD) of an ISO timestamp — matches the
+      format of OF.receipts.weekStartISO() (local Sunday). Empty string when
+      unparseable. Used so the drop grouping never compares a UTC date slice
+      against a local Sunday. */
+  function localDateOf(iso) {
+    var t = Date.parse(iso || "");
+    if (isNaN(t)) return "";
+    var d = new Date(t);
+    return d.getFullYear() + "-" +
+      String(d.getMonth() + 1).padStart(2, "0") + "-" +
+      String(d.getDate()).padStart(2, "0");
+  }
+
   function avatarHtml(url, name, cls) {
     var c = "soc-ava" + (cls ? " " + cls : "");
     if (url) {
@@ -365,6 +378,19 @@ OF.social = (function () {
     });
   }
 
+  /** Update ONLY the like button + count in place (all copies of the card).
+      Tapping like must never re-render the whole card, which would wipe an
+      in-progress inline comment draft the user is typing. */
+  function updateLikeUi(id) {
+    var row = getPost(id);
+    if (!row) return;
+    document.querySelectorAll('[data-post="' + id + '"] [data-act="like"]').forEach(function (btn) {
+      btn.classList.toggle("liked", !!row.liked_by_me);
+      var n = btn.querySelector(".soc-act-n");
+      if (n) n.textContent = Number(row.like_count || 0);
+    });
+  }
+
   /** One query for the newest comments across a page of posts. */
   function preloadComments(rows) {
     var withCmts = (rows || []).filter(function (r) {
@@ -514,7 +540,7 @@ OF.social = (function () {
     if (!wkStart) return st.feed.map(postCardHtml).join("");
     var drop = [], rest = [];
     st.feed.forEach(function (r) {
-      if (r.kind === "receipt" && String(r.created_at || "").slice(0, 10) >= wkStart) drop.push(r);
+      if (r.kind === "receipt" && localDateOf(r.created_at) >= wkStart) drop.push(r);
       else rest.push(r);
     });
     if (!drop.length) return st.feed.map(postCardHtml).join("");
@@ -884,11 +910,10 @@ OF.social = (function () {
     runGymSearch("");
   }
 
-  function renderGymSheet(results, query) {
-    var mine = st.gyms.map(function (g) {
-      return '<div class="soc-gym-row"><span class="soc-gym-name">' + U.esc(g.name) + '</span>' +
-        '<button type="button" class="btn mini" data-act="gym-leave" data-arg="' + U.esc(g.id) + '">Leave</button></div>';
-    }).join("");
+  /** Inner HTML of #soc-gym-results (search matches, excluding gyms you're
+      already in). Kept separate so a search can update the list without
+      touching the <input>. */
+  function gymResultsHtml(results, query) {
     var out = (results || []).filter(function (g) {
       return !st.gyms.some(function (m) { return m.id === g.id; });
     }).map(function (g) {
@@ -896,20 +921,34 @@ OF.social = (function () {
         '<button type="button" class="btn mini" data-act="gym-join" data-arg="' + U.esc(g.id) +
         '" data-name="' + U.esc(g.name) + '">Join</button></div>';
     }).join("");
+    return out || '<p class="muted small soc-gym-none">' +
+      (query ? "No gyms match that name yet." : "No gyms yet — create the first one!") + '</p>';
+  }
+
+  /** Inner HTML of the #soc-gym-create slot (the "Create …" action, if the
+      query names a gym that doesn't exist yet). */
+  function gymCreateHtml(results, query) {
     var canCreate = query && query.trim().length >= 2 &&
       !(results || []).some(function (g) { return g.name.trim().toLowerCase() === query.trim().toLowerCase(); });
+    return canCreate
+      ? '<div class="form-actions"><button type="button" class="btn primary" data-act="gym-create" data-arg="' +
+        U.esc(query.trim()) + '">Create &ldquo;' + U.esc(query.trim()) + '&rdquo;</button></div>'
+      : "";
+  }
+
+  function renderGymSheet(results, query) {
+    var mine = st.gyms.map(function (g) {
+      return '<div class="soc-gym-row"><span class="soc-gym-name">' + U.esc(g.name) + '</span>' +
+        '<button type="button" class="btn mini" data-act="gym-leave" data-arg="' + U.esc(g.id) + '">Leave</button></div>';
+    }).join("");
     var html = '<h2>Your gym</h2>' +
       (mine ? '<div class="soc-gym-mine">' + mine + '</div>'
             : '<p class="muted small">Join a gym to check in there and unlock its leaderboard.</p>') +
       '<div class="form-row"><label class="grow">Find a gym' +
       '<input type="search" id="soc-gym-q" placeholder="Search by name&hellip;" autocomplete="off" value="' +
       U.esc(query || "") + '"></label></div>' +
-      '<div class="soc-gym-list" id="soc-gym-results">' +
-      (out || '<p class="muted small soc-gym-none">' +
-        (query ? "No gyms match that name yet." : "No gyms yet — create the first one!") + '</p>') +
-      '</div>' +
-      (canCreate ? '<div class="form-actions"><button type="button" class="btn primary" data-act="gym-create" data-arg="' +
-        U.esc(query.trim()) + '">Create &ldquo;' + U.esc(query.trim()) + '&rdquo;</button></div>' : "") +
+      '<div class="soc-gym-list" id="soc-gym-results">' + gymResultsHtml(results, query) + '</div>' +
+      '<div id="soc-gym-create">' + gymCreateHtml(results, query) + '</div>' +
       '<div class="form-actions"><button type="button" class="btn ghost" data-close-social="1">Done</button></div>';
     var panel = sheetOpen(1, html, "soc-gym-panel");
     var q = document.getElementById("soc-gym-q");
@@ -919,17 +958,29 @@ OF.social = (function () {
         if (gymSearchTimer) clearTimeout(gymSearchTimer);
         gymSearchTimer = setTimeout(function () { runGymSearch(v); }, 300);
       });
-      // keep focus at the end after re-renders
+      // focus once on open; subsequent searches never re-create this input
       q.focus();
       q.setSelectionRange(q.value.length, q.value.length);
     }
     return panel;
   }
 
+  /** iOS: update ONLY the results list + create slot after a search. Never
+      re-create/replace the <input> — replacing it drops characters typed
+      during the debounce/network window and dismisses the WKWebView keyboard.
+      Bails if the gym sheet is no longer the one on screen. */
+  function updateGymResults(results, query) {
+    var list = document.getElementById("soc-gym-results");
+    if (!list) return;
+    list.innerHTML = gymResultsHtml(results, query);
+    var create = document.getElementById("soc-gym-create");
+    if (create) create.innerHTML = gymCreateHtml(results, query);
+  }
+
   function runGymSearch(query) {
     A.searchGyms(query.trim()).then(function (rows) {
       if (!sheetIsOpen(1)) return;
-      renderGymSheet(rows || [], query);
+      updateGymResults(rows || [], query);
     }).catch(function (e) {
       if (e && e.authExpired) handleErr(e);
     });
@@ -1017,12 +1068,12 @@ OF.social = (function () {
     var was = !!row.liked_by_me;
     row.liked_by_me = !was;
     row.like_count = Math.max(0, Number(row.like_count || 0) + (was ? -1 : 1));
-    refreshCard(id);
+    updateLikeUi(id);
     (was ? A.unlike(id) : A.like(id)).catch(function (e) {
       if (e && e.conflict) return; // idempotent — state already right
       row.liked_by_me = was;
       row.like_count = Math.max(0, Number(row.like_count || 0) + (was ? 1 : -1));
-      refreshCard(id);
+      updateLikeUi(id);
       handleErr(e, "Couldn't update that like.");
     });
   }

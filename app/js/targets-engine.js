@@ -68,11 +68,15 @@ OF.targets = (function () {
 
   function parseISO(iso) {
     var m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso || "");
-    return m ? new Date(+m[1], +m[2] - 1, +m[3]) : null;
+    // Anchor at 12:00 UTC (not local midnight) so the instant never straddles a
+    // UTC date boundary in far-east/far-west zones (UTC+13/+14, UTC-12).
+    return m ? new Date(Date.UTC(+m[1], +m[2] - 1, +m[3], 12)) : null;
   }
   function dayNum(iso) {
     var d = parseISO(iso);
-    return d ? Math.round(d.getTime() / 86400000) : null;
+    // floor(noon-UTC / dayMs) is the exact epoch-day and the true inverse of
+    // isoFromDayNum's (dn + 0.5) reconstruction — timezone-safe both ways.
+    return d ? Math.floor(d.getTime() / 86400000) : null;
   }
   /** Inverse of dayNum — UTC-noon trick, timezone-safe. */
   function isoFromDayNum(dn) {
@@ -423,7 +427,9 @@ OF.targets = (function () {
       typicalKgWk = MUSCLE_TYPICAL_KG_WK; // ~0.35 lb/wk
     } else {
       kind = "loss";
-      var bw = curKg != null ? curKg : 80;
+      // Floor bw so a 0 / missing latest weight can't zero maxKgWk/typicalKgWk
+      // and send an Infinity into isoFromDayNum ("NaN-NaN-NaN" in the goal card).
+      var bw = Math.max(30, curKg != null ? curKg : 80);
       maxKgWk = 0.01 * bw;   // 1% BW/wk — aggressive ceiling
       typicalKgWk = 0.006 * bw; // ~0.6% BW/wk — sustainable
     }

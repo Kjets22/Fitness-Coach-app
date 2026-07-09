@@ -52,6 +52,7 @@ OF.exercise = (function () {
     els.cancel.addEventListener("click", exitEditMode);
     els.list.addEventListener("click", onListClick);
     initBuilder();
+    initTimer();
     renderList();
   }
 
@@ -106,6 +107,44 @@ OF.exercise = (function () {
     return v == null ? "" : String(v);
   }
 
+  /**
+   * Seed a builder set from a STORED set ({weightKg, reps}). kg is kept
+   * exact (the source of truth) and the display strings are derived from
+   * it, so an untouched save round-trips byte-identical in either unit.
+   * Shared by edit mode AND last-session prefill (Feature B) so both use
+   * one convention. Bodyweight (null) stays empty weight, never 0.
+   */
+  function seedSet(s) {
+    // Number(null) is 0 — bodyweight (null) must stay null, not 0 kg.
+    var kg = (s && s.weightKg != null && isFinite(Number(s.weightKg))) ? Number(s.weightKg) : null;
+    var reps = (s && s.reps != null && isFinite(Number(s.reps))) ? Math.round(Number(s.reps)) : null;
+    return { kg: kg, reps: reps, wRaw: kgToRaw(kg), rRaw: reps == null ? "" : String(reps) };
+  }
+
+  /**
+   * Most recent past session's sets for an exercise name (case-insensitive,
+   * trimmed). Scans exercise history newest-first and returns the matching
+   * exercise's stored sets [{weightKg, reps}] — already sane from save /
+   * import — or null if the name was never logged before. Feature B prefill.
+   */
+  function lastSetsFor(name) {
+    var target = (name || "").trim().toLowerCase();
+    if (!target) return null;
+    var arr = S.getAll("exercise").slice().sort(U.byNewest);
+    for (var i = 0; i < arr.length; i++) {
+      var exs = arr[i].exercises;
+      if (!Array.isArray(exs)) continue;
+      for (var j = 0; j < exs.length; j++) {
+        var ex = exs[j];
+        if (ex && typeof ex.name === "string" && ex.name.trim().toLowerCase() === target &&
+            Array.isArray(ex.sets) && ex.sets.length) {
+          return ex.sets;
+        }
+      }
+    }
+    return null;
+  }
+
   function newSetFrom(prev) {
     if (prev) return { kg: prev.kg, reps: prev.reps, wRaw: prev.wRaw, rRaw: prev.rRaw };
     return { kg: null, reps: null, wRaw: "", rRaw: "" };
@@ -118,12 +157,22 @@ OF.exercise = (function () {
       showError("Maximum " + MAX_EXERCISES + " exercises per workout."); return;
     }
     showError("");
-    exList.push({ name: name, sets: [{ kg: null, reps: null, wRaw: "", rRaw: "" }] });
+    // Feature B: prefill with the most recent past session's sets for this
+    // name (via seedSet, so an untouched save round-trips byte-identical).
+    var past = lastSetsFor(name);
+    var sets, prefilled = false;
+    if (past && past.length) {
+      sets = past.slice(0, MAX_SETS).map(seedSet);
+      prefilled = true;
+    } else {
+      sets = [{ kg: null, reps: null, wRaw: "", rRaw: "" }];
+    }
+    exList.push({ name: name, sets: sets, prefilled: prefilled });
     els.addName.value = "";
     renderBuilder();
-    // focus the new set's weight input for fast keyboard entry
+    // focus the new exercise's first weight input for fast keyboard entry / adjusting
     var inputs = els.exWrap.querySelectorAll('[data-ex="' + (exList.length - 1) + '"][data-field="w"]');
-    if (inputs.length) inputs[inputs.length - 1].focus();
+    if (inputs.length) inputs[0].focus();
   }
 
   function renderBuilder() {
@@ -150,6 +199,7 @@ OF.exercise = (function () {
           '<button type="button" class="btn set-del" data-act="del-ex" data-ex="' + i +
             '" aria-label="Remove ' + U.esc(ex.name) + '">Remove</button>' +
         '</div>' +
+        (ex.prefilled ? '<div class="ex-prefill-hint">Prefilled from your last session &mdash; tap to adjust.</div>' : '') +
         rows +
         '<button type="button" class="btn set-add" data-act="add-set" data-ex="' + i + '">+ Set</button>' +
         '</div>';
@@ -308,16 +358,11 @@ OF.exercise = (function () {
     els.performance.value = String(rec.performance || 3);
     els.notes.value = rec.notes || "";
     if (OF.ui) OF.ui.syncSegs();
-    // Sets round-trip: kg kept exact, display strings derived from it.
+    // Sets round-trip: kg kept exact, display strings derived from it (seedSet).
     exList = (Array.isArray(rec.exercises) ? rec.exercises : []).map(function (ex) {
       return {
         name: typeof ex.name === "string" ? ex.name : "",
-        sets: (Array.isArray(ex.sets) ? ex.sets : []).map(function (s) {
-          // Number(null) is 0 — bodyweight (null) must stay null, not 0 kg.
-          var kg = (s && s.weightKg != null && isFinite(Number(s.weightKg))) ? Number(s.weightKg) : null;
-          var reps = (s && s.reps != null && isFinite(Number(s.reps))) ? Math.round(Number(s.reps)) : null;
-          return { kg: kg, reps: reps, wRaw: kgToRaw(kg), rRaw: reps == null ? "" : String(reps) };
-        })
+        sets: (Array.isArray(ex.sets) ? ex.sets : []).map(seedSet)
       };
     }).filter(function (ex) { return ex.name; });
     renderBuilder();
@@ -459,6 +504,297 @@ OF.exercise = (function () {
         '</div>' +
       '</div>';
     }).join("");
+  }
+
+  /* ============================================================
+     Feature A — Rest timer (countdown + stopwatch)
+
+     iOS / WKWebView notes:
+       - navigator.vibrate is NOT supported on iOS Safari/WKWebView,
+         so it is BEST-EFFORT only (wrapped, never relied on).
+       - The finish cue uses WebAudio. AudioContext starts SUSPENDED
+         in WKWebView until a user gesture, so we create/resume it
+         inside the first Start tap (a real gesture). Once unlocked
+         it can play the eventual finish beep without another tap.
+       - There is also an unmissable VISUAL cue (color change +
+         "Rest done!" text) since audio may be muted.
+
+     Lifecycle: the running timer is EPHEMERAL — a full page reload
+     clears it (by design). It keeps ticking while you navigate
+     between in-app tabs, because this is a single page and the
+     interval is never torn down. Only the last-used countdown preset
+     persists (in optimalfit.prefs via OF.units).
+     ============================================================ */
+
+  var PRESETS = [60, 90, 120, 180];        // 1:00 / 1:30 / 2:00 / 3:00
+  var MAX_TIMER_MS = 59 * 60 * 1000 + 59 * 1000; // clamp countdown to 59:59
+
+  var T = {
+    mode: "countdown",
+    presetSec: 90,        // last-used countdown preset (persisted)
+    running: false,
+    finished: false,
+    remainingMs: 90000,   // countdown value (frozen when paused)
+    elapsedMs: 0,         // stopwatch value (frozen when paused)
+    deadline: 0,          // countdown: Date.now() target while running
+    startAt: 0,           // stopwatch: Date.now() base while running
+    intId: null
+  };
+  var audioCtx = null;
+  var tEls = {};
+
+  /** secs -> "M:SS" (or "H:MM:SS" past an hour). */
+  function fmtClock(secs) {
+    secs = Math.max(0, Math.round(secs));
+    var h = Math.floor(secs / 3600), m = Math.floor((secs % 3600) / 60), s = secs % 60;
+    var ss = (s < 10 ? "0" : "") + s;
+    if (h > 0) return h + ":" + (m < 10 ? "0" : "") + m + ":" + ss;
+    return m + ":" + ss;
+  }
+
+  function loadPreset() {
+    var sec = 90;
+    try {
+      var p = (OF.units && OF.units.prefs) ? OF.units.prefs() : {};
+      var v = p && p.restPreset;
+      if (v != null && isFinite(Number(v))) {
+        v = Math.round(Number(v));
+        if (v >= 15 && v <= MAX_TIMER_MS / 1000) sec = v;
+      }
+    } catch (e) { /* fall back to default */ }
+    T.presetSec = sec;
+  }
+
+  function savePreset(sec) {
+    try { if (OF.units && OF.units.setPrefs) OF.units.setPrefs({ restPreset: sec }); }
+    catch (e) { /* pref persistence is best-effort */ }
+  }
+
+  /* ---- WebAudio (unlocked on the Start gesture) ---- */
+  function ensureAudio() {
+    try {
+      if (!audioCtx) {
+        var AC = window.AudioContext || window.webkitAudioContext;
+        if (AC) audioCtx = new AC();
+      }
+      if (audioCtx && audioCtx.state === "suspended" && audioCtx.resume) audioCtx.resume();
+    } catch (e) { audioCtx = null; }
+  }
+
+  function beep() {
+    if (!audioCtx) return;
+    try {
+      var now = audioCtx.currentTime;
+      [0, 0.22, 0.44].forEach(function (t, i) {
+        var osc = audioCtx.createOscillator();
+        var g = audioCtx.createGain();
+        osc.type = "sine";
+        osc.frequency.value = 784 + i * 130; // gentle rising tri-tone
+        g.gain.setValueAtTime(0.0001, now + t);
+        g.gain.exponentialRampToValueAtTime(0.22, now + t + 0.02);
+        g.gain.exponentialRampToValueAtTime(0.0001, now + t + 0.16);
+        osc.connect(g); g.connect(audioCtx.destination);
+        osc.start(now + t);
+        osc.stop(now + t + 0.18);
+      });
+    } catch (e) { /* audio is best-effort */ }
+  }
+
+  function finishCue() {
+    T.finished = true;
+    beep();
+    try { if (navigator.vibrate) navigator.vibrate([120, 80, 120]); } catch (e) { /* iOS ignores */ }
+    updateDisplay();
+  }
+
+  /* ---- interval / ticking (wall-clock anchored so it stays accurate) ---- */
+  function stopInterval() { if (T.intId) { clearInterval(T.intId); T.intId = null; } }
+  function startInterval() { stopInterval(); T.intId = setInterval(tick, 200); }
+
+  function tick() {
+    if (!T.running) return;
+    if (T.mode === "countdown") {
+      T.remainingMs = T.deadline - Date.now();
+      if (T.remainingMs <= 0) {
+        T.remainingMs = 0;
+        T.running = false;
+        stopInterval();
+        finishCue(); // auto-stop at 0 + fire the cue
+        return;
+      }
+    } else {
+      T.elapsedMs = Date.now() - T.startAt;
+    }
+    updateDisplay();
+  }
+
+  function startPause() {
+    if (T.running) { pauseTimer(); return; }
+    ensureAudio();          // create/resume inside this user gesture
+    T.finished = false;
+    T.running = true;
+    if (T.mode === "countdown") {
+      if (T.remainingMs <= 0) T.remainingMs = T.presetSec * 1000; // finished -> restart from preset
+      T.deadline = Date.now() + T.remainingMs;
+    } else {
+      T.startAt = Date.now() - T.elapsedMs;
+    }
+    startInterval();
+    updateDisplay();
+  }
+
+  function pauseTimer() {
+    if (T.mode === "countdown") T.remainingMs = Math.max(0, T.deadline - Date.now());
+    else T.elapsedMs = Date.now() - T.startAt;
+    T.running = false;
+    stopInterval();
+    updateDisplay();
+  }
+
+  function resetTimer() {
+    stopInterval();
+    T.running = false;
+    T.finished = false;
+    if (T.mode === "countdown") T.remainingMs = T.presetSec * 1000;
+    else T.elapsedMs = 0;
+    updateDisplay();
+  }
+
+  function setMode(mode) {
+    if ((mode !== "countdown" && mode !== "stopwatch") || mode === T.mode) return;
+    stopInterval();
+    T.running = false;
+    T.finished = false;
+    T.mode = mode;
+    if (mode === "countdown") T.remainingMs = T.presetSec * 1000;
+    else T.elapsedMs = 0;
+    updateDisplay();
+  }
+
+  function applyPreset(sec) {
+    if (!isFinite(sec) || sec <= 0) return;
+    T.presetSec = sec;
+    savePreset(sec);
+    stopInterval();
+    T.running = false;
+    T.finished = false;
+    T.remainingMs = sec * 1000;
+    updateDisplay();
+  }
+
+  function adjust(deltaSec) {
+    if (T.mode !== "countdown") return;
+    var d = deltaSec * 1000;
+    if (T.running) {
+      T.deadline = Math.min(Date.now() + MAX_TIMER_MS, Math.max(Date.now(), T.deadline + d));
+      T.remainingMs = Math.max(0, T.deadline - Date.now());
+    } else {
+      T.remainingMs = Math.max(0, Math.min(MAX_TIMER_MS, T.remainingMs + d));
+    }
+    T.finished = false;
+    updateDisplay();
+  }
+
+  function updateDisplay() {
+    if (!tEls.time) return;
+    var isC = T.mode === "countdown";
+    var ms = isC ? T.remainingMs : T.elapsedMs;
+    // ceil on countdown so it shows the full starting value and lands on 0:00.
+    var secs = isC ? Math.ceil(ms / 1000) : Math.floor(ms / 1000);
+    tEls.time.textContent = fmtClock(secs);
+
+    tEls.start.textContent = T.running ? "Pause" : (T.finished ? "Restart" : "Start");
+    tEls.start.setAttribute("aria-label",
+      (T.running ? "Pause " : "Start ") + (isC ? "rest countdown" : "stopwatch"));
+
+    if (T.finished) {
+      tEls.wrap.classList.add("rt-finished");
+      tEls.status.textContent = "Rest done!";
+    } else {
+      tEls.wrap.classList.remove("rt-finished");
+      tEls.status.textContent = T.running ? (isC ? "Resting…" : "Timing…") : "";
+    }
+
+    Array.prototype.forEach.call(tEls.modeBtns, function (b) {
+      var on = b.getAttribute("data-mode") === T.mode;
+      b.classList.toggle("active", on);
+      b.setAttribute("aria-selected", on ? "true" : "false");
+    });
+    Array.prototype.forEach.call(tEls.presetBtns, function (b) {
+      b.classList.toggle("active", parseInt(b.getAttribute("data-sec"), 10) === T.presetSec);
+    });
+    // presets + adjust only make sense for countdown
+    Array.prototype.forEach.call(tEls.cdOnly, function (el) { el.classList.toggle("hidden", !isC); });
+  }
+
+  function onTimerClick(e) {
+    var btn = e.target.closest("button[data-rt]");
+    if (!btn) return;
+    var kind = btn.getAttribute("data-rt");
+    if (kind === "start") startPause();
+    else if (kind === "reset") resetTimer();
+    else if (kind === "mode") setMode(btn.getAttribute("data-mode"));
+    else if (kind === "preset") applyPreset(parseInt(btn.getAttribute("data-sec"), 10));
+    else if (kind === "adj") adjust(parseInt(btn.getAttribute("data-delta"), 10));
+  }
+
+  function renderTimer(host) {
+    host.innerHTML =
+      '<div class="rt">' +
+        '<div class="rt-top">' +
+          '<h2 class="rt-title">Rest timer</h2>' +
+          '<div class="rt-seg" role="tablist" aria-label="Timer mode">' +
+            '<button type="button" class="rt-seg-btn" data-rt="mode" data-mode="countdown" ' +
+              'role="tab" aria-selected="true">Countdown</button>' +
+            '<button type="button" class="rt-seg-btn" data-rt="mode" data-mode="stopwatch" ' +
+              'role="tab" aria-selected="false">Stopwatch</button>' +
+          '</div>' +
+        '</div>' +
+        '<div class="rt-display">' +
+          '<div class="rt-time" role="timer" aria-atomic="true">0:00</div>' +
+          '<div class="rt-status" role="status" aria-live="polite"></div>' +
+        '</div>' +
+        '<div class="rt-presets" data-cd>' +
+          PRESETS.map(function (sec) {
+            var lbl = fmtClock(sec);
+            return '<button type="button" class="btn rt-preset" data-rt="preset" data-sec="' + sec +
+              '" aria-label="Set rest to ' + lbl + '">' + lbl + '</button>';
+          }).join("") +
+        '</div>' +
+        '<div class="rt-controls">' +
+          '<button type="button" class="btn primary rt-start" data-rt="start" ' +
+            'aria-label="Start rest countdown">Start</button>' +
+          '<button type="button" class="btn rt-reset" data-rt="reset" aria-label="Reset timer">Reset</button>' +
+          '<div class="rt-adjust" data-cd>' +
+            '<button type="button" class="btn rt-adj" data-rt="adj" data-delta="-15" ' +
+              'aria-label="Subtract 15 seconds">&minus;15s</button>' +
+            '<button type="button" class="btn rt-adj" data-rt="adj" data-delta="15" ' +
+              'aria-label="Add 15 seconds">+15s</button>' +
+          '</div>' +
+        '</div>' +
+      '</div>';
+
+    tEls.wrap = host.querySelector(".rt");
+    tEls.time = host.querySelector(".rt-time");
+    tEls.status = host.querySelector(".rt-status");
+    tEls.start = host.querySelector(".rt-start");
+    tEls.modeBtns = host.querySelectorAll('[data-rt="mode"]');
+    tEls.presetBtns = host.querySelectorAll('[data-rt="preset"]');
+    tEls.cdOnly = host.querySelectorAll('[data-cd]');
+    host.addEventListener("click", onTimerClick);
+  }
+
+  function initTimer() {
+    var host = document.getElementById("exercise-timer");
+    if (!host) return;
+    loadPreset();
+    T.mode = "countdown";
+    T.running = false;
+    T.finished = false;
+    T.remainingMs = T.presetSec * 1000;
+    T.elapsedMs = 0;
+    renderTimer(host);
+    updateDisplay();
   }
 
   return { init: init, renderList: renderList };

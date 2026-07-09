@@ -79,8 +79,29 @@ OF.socialApi = (function () {
       if (!available()) ready = Promise.resolve(null);
       else {
         ready = sb().auth.getSession().then(function (res) {
+          var e = res && res.error;
+          if (e) {
+            // An EXPIRED token that couldn't be refreshed offline comes back
+            // as a network error here (session null + AuthRetryableFetchError).
+            // That's OFFLINE, not signed-out: supabase-js keeps the persisted
+            // session for a later retry, so surface offline and let the caller
+            // show a degraded/offline state instead of the signed-out pitch.
+            var ne = normErr(e);
+            if (ne.offline) {
+              if (res.data && res.data.session) user = res.data.session.user;
+              throw ne;
+            }
+            // any other error (e.g. a revoked refresh token) = truly signed out
+          }
           user = (res.data && res.data.session) ? res.data.session.user : null;
-        }).catch(function () { user = null; });
+        }).catch(function (e) {
+          var ne = (e && e.offline === true) ? e : normErr(e);
+          if (ne.offline) {
+            ready = null;   // drop the memo so a later init() retries when online
+            throw ne;       // reject → caller keeps the session, shows offline
+          }
+          user = null;      // signed-out / unexpected: resolve as logged-out
+        });
       }
     }
     return ready.then(function () { return user; });
@@ -280,7 +301,15 @@ OF.socialApi = (function () {
 
   function publicUrl(bucket, key) {
     if (!key) return "";
-    if (/^https?:\/\//.test(key)) return key; // already a full URL
+    // Only ever hand back URLs that point INTO our own Supabase storage.
+    // A stored key/image_path that is an absolute URL is either one of our
+    // own public CDN URLs (accept) or an attacker-supplied external URL —
+    // the same tracking-beacon vector already fixed for avatar_url. Ignore
+    // the latter so a tampered post image can never load a third-party URL.
+    if (/^https?:\/\//i.test(key)) {
+      var own = SUPABASE_URL + "/storage/v1/object/public/";
+      return key.indexOf(own) === 0 ? key : "";
+    }
     return SUPABASE_URL + "/storage/v1/object/public/" + bucket + "/" + key;
   }
 

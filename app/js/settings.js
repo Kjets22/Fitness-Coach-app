@@ -85,19 +85,56 @@ OF.settings = (function () {
     OF.dashboard.refresh(); // after insights so targets include fresh adjustments
   }
 
-  /* ---------- Export ---------- */
+  /* ---------- Export ----------
+     Desktop/browser: a real <a download>. Native iOS (Capacitor WKWebView)
+     silently ignores <a download>, so share the file via the OS sheet and
+     only report success once the user has actually saved/shared it. Everything
+     up to navigator.share() stays synchronous so it runs inside the tap's
+     transient activation (iOS drops activation across async work). */
   function doExport() {
     var json = S.exportAll();
     var blob = new Blob([json], { type: "application/json" });
+    var name = "optimalfit-backup-" + OF.util.todayISO() + ".json";
+    var n = S.countAll();
+    var native = !!(window.Capacitor && Capacitor.isNativePlatform && Capacitor.isNativePlatform());
+
+    if (native) {
+      var file = null;
+      try { file = new File([blob], name, { type: "application/json" }); } catch (e) { /* older webviews */ }
+      if (file && navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
+        navigator.share({ files: [file], title: "OptimalFit backup" }).then(function () {
+          msg("Exported " + n + " records.");
+        }).catch(function (err) {
+          // AbortError = user dismissed the sheet; nothing was saved, so don't claim success.
+          if (err && (err.name === "AbortError" || /abort|cancel/i.test(String(err.message || "")))) return;
+          // Anything else: open the JSON so it can still be saved, and say so honestly.
+          openBlob(blob, name);
+          msg("Opened your backup (" + n + " records) — use Share or Save to keep it.");
+        });
+        return;
+      }
+      // Web Share (with files) unavailable on this webview: open the JSON to save.
+      openBlob(blob, name);
+      msg("Opened your backup (" + n + " records) — use Share or Save to keep it.");
+      return;
+    }
+
+    openBlob(blob, name);
+    msg("Exported " + n + " records.");
+  }
+
+  // Download (desktop) or open (WKWebView that ignores `download`) a Blob.
+  function openBlob(blob, name) {
     var url = URL.createObjectURL(blob);
     var a = document.createElement("a");
     a.href = url;
-    a.download = "optimalfit-backup-" + OF.util.todayISO() + ".json";
-    document.body.appendChild(a);
+    a.download = name;
+    a.rel = "noopener";
+    a.target = "_blank";        // desktop honors download; a WKWebView that
+    document.body.appendChild(a); // ignores it opens the JSON so it can be saved
     a.click();
     document.body.removeChild(a);
     setTimeout(function () { URL.revokeObjectURL(url); }, 2000);
-    msg("Exported " + S.countAll() + " records.");
   }
 
   /* ---------- Import ---------- */

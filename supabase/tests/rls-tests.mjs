@@ -95,16 +95,48 @@ async function cleanup(ids) {
   await svc('DELETE', `/rest/v1/profiles?id=${inList}`);
 }
 
+// ---------- non-destructive seed protection ----------------
+// The test users A/B/C are ALSO seeded contributors to the live
+// (pr,squat,unknown) benchmark cohort (3 of its 5 distinct users).
+// cleanup() wipes their benchmark_contributions so the receipt tests
+// (d3) start from a clean slate — but that also tears the seeded
+// cohort below k=5. So snapshot those rows up front and restore them
+// verbatim when the run ends (pass, fail, OR throw), leaving the live
+// cohort exactly as we found it.
+async function snapshotBenchmarks(ids) {
+  const inList = `in.(${ids.join(',')})`;
+  const r = await svc('GET',
+    `/rest/v1/benchmark_contributions?user_id=${inList}` +
+    `&select=user_id,receipt_type,lift,training_age_bucket,weekly_progress_pct,consistency_ratio`);
+  return Array.isArray(r.json) ? r.json : [];
+}
+async function restoreBenchmarks(ids, snapshot) {
+  const inList = `in.(${ids.join(',')})`;
+  // drop whatever the run left behind, then re-insert the seed rows
+  // (lift_key is generated, so it's omitted and recomputed on insert)
+  await svc('DELETE', `/rest/v1/benchmark_contributions?user_id=${inList}`);
+  if (snapshot.length) {
+    await svc('POST', '/rest/v1/benchmark_contributions', snapshot,
+      { Prefer: 'resolution=merge-duplicates' });
+  }
+}
+
 const day = (offset) => {
   const d = new Date(Date.now() - offset * 86400000);
   return d.toISOString().slice(0, 10);
 };
+
+// held at module scope so the .then/.catch tail can restore the seed
+// benchmark cohort no matter how the run ends.
+let benchIds = null, benchSnapshot = null;
 
 (async () => {
   console.log('== OptimalFit RLS test suite ==');
   const A = await signIn(env.TEST_USER_A_EMAIL);
   const B = await signIn(env.TEST_USER_B_EMAIL);
   const C = await signIn(env.TEST_USER_C_EMAIL);
+  benchIds = [A.id, B.id, C.id];
+  benchSnapshot = await snapshotBenchmarks(benchIds);
   await cleanup([A.id, B.id, C.id]);
 
   // ---------- (a) anon can write nothing, read nothing ------
@@ -355,8 +387,13 @@ const day = (offset) => {
 
   // ---------- summary ------------------------------------------
   console.log(`\n== ${passed} passed, ${failed} failed ==`);
-  process.exit(failed === 0 ? 0 : 1);
-})().catch((e) => {
-  console.error('FATAL', e);
-  process.exit(1);
-});
+})()
+  .then(async () => {
+    await restoreBenchmarks(benchIds, benchSnapshot);
+    process.exit(failed === 0 ? 0 : 1);
+  })
+  .catch(async (e) => {
+    console.error('FATAL', e);
+    try { if (benchIds) await restoreBenchmarks(benchIds, benchSnapshot); } catch (_) { /* best effort */ }
+    process.exit(1);
+  });

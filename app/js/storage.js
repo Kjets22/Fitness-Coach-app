@@ -48,11 +48,20 @@ OF.storage = (function () {
       console.error("OF.storage.getAll: corrupt data for", type, e);
       if (!corruptWarned[type]) {
         corruptWarned[type] = true;
-        try { localStorage.setItem(key(type) + ".corrupt", raw); } catch (e2) {
+        var backedUp = false;
+        try {
+          localStorage.setItem(key(type) + ".corrupt", raw);
+          backedUp = true;
+        } catch (e2) {
           console.error("OF.storage: could not back up corrupt data for", type, e2);
         }
-        OF.util.toast('Saved ' + type + ' data could not be read. A copy was kept under "' +
-          key(type) + '.corrupt" — export it before adding new entries.', "warn");
+        if (backedUp) {
+          OF.util.toast('Saved ' + type + ' data could not be read. A copy was kept under "' +
+            key(type) + '.corrupt" — export it before adding new entries.', "warn");
+        } else {
+          OF.util.toast('Saved ' + type + ' data could not be read, and a backup copy could ' +
+            'not be saved. Do NOT add new ' + type + ' entries yet — export your data first.', "warn");
+        }
       }
       return [];
     }
@@ -125,9 +134,12 @@ OF.storage = (function () {
     return saveAll(type, next);
   }
 
-  /** Wipe every optimalfit.* key. */
+  /** Wipe every optimalfit.* key, including any ".corrupt" backups. */
   function clearAll() {
-    TYPES.forEach(function (t) { localStorage.removeItem(key(t)); });
+    TYPES.forEach(function (t) {
+      localStorage.removeItem(key(t));
+      localStorage.removeItem(key(t) + ".corrupt");
+    });
   }
 
   /** Total record count across all types. */
@@ -362,19 +374,25 @@ OF.storage = (function () {
       throw new Error("Not an OptimalFit backup (missing \"data\" object).");
     }
 
-    if (mode === "replace") clearAll();
+    var replace = mode === "replace";
+    var imported = 0, skipped = 0;
 
-    var imported = 0, skipped = 0, writeFailed = false;
+    // Build the full next-state for every type IN MEMORY first, without
+    // touching storage. Replace starts each type from empty; merge starts
+    // from current data and only adds imported ids it doesn't already have.
+    var nextState = {}; // type -> array to write (absent = leave storage untouched)
     TYPES.forEach(function (t) {
       var incoming = Array.isArray(data[t]) ? data[t] : [];
-      if (!incoming.length) return;
-      var current = getAll(t);
+      // Merge with nothing incoming needs no write. Replace must (re)write
+      // every type so any pre-existing records for it are cleared.
+      if (!replace && !incoming.length) return;
+      var current = replace ? [] : getAll(t);
       var seen = {};
       current.forEach(function (r) { if (r && r.id) seen[r.id] = true; });
       incoming.forEach(function (raw) {
         var r = normalizeRecord(t, raw);
         if (!r) { skipped++; return; } // not an object / missing essential date
-        if (r.id && seen[r.id]) { skipped++; return; } // already have it (merge)
+        if (r.id && seen[r.id]) { skipped++; return; } // already have it (merge/dupe)
         if (!r.id) r.id = OF.util.uid();
         if (!r.createdAt) r.createdAt = new Date().toISOString();
         r.updatedAt = r.updatedAt || r.createdAt;
@@ -382,15 +400,52 @@ OF.storage = (function () {
         seen[r.id] = true;
         imported++;
       });
-      if (!saveAll(t, current)) writeFailed = true;
+      nextState[t] = current;
     });
+
+    // Write phase. Replace is made ATOMIC: snapshot the raw pre-import bytes
+    // for every type, then overwrite. If any write fails partway, roll every
+    // already-overwritten type back to its snapshot — so a mid-write failure
+    // can never destroy existing data. (The old code cleared everything up
+    // front, so a failed write left the user with nothing.)
+    if (replace) {
+      var snapshot = {};
+      TYPES.forEach(function (t) {
+        try { snapshot[t] = localStorage.getItem(key(t)); }
+        catch (e) { snapshot[t] = null; }
+      });
+      var written = [], failed = false;
+      for (var i = 0; i < TYPES.length; i++) {
+        if (saveAll(TYPES[i], nextState[TYPES[i]])) {
+          written.push(TYPES[i]);
+        } else {
+          failed = true;
+          break;
+        }
+      }
+      if (failed) {
+        written.forEach(function (t) {
+          try {
+            if (snapshot[t] == null) localStorage.removeItem(key(t));
+            else localStorage.setItem(key(t), snapshot[t]);
+          } catch (e) { /* best-effort rollback */ }
+        });
+        throw new Error("Browser storage is full or blocked — the imported data was NOT saved. Your existing data was left unchanged.");
+      }
+    } else {
+      var writeFailed = false;
+      TYPES.forEach(function (t) {
+        if (nextState[t] && !saveAll(t, nextState[t])) writeFailed = true;
+      });
+      if (writeFailed) {
+        throw new Error("Browser storage is full or blocked — the imported data was NOT fully saved.");
+      }
+    }
+
     // Restore unit preferences when the backup carries them (merge = keep current).
-    if (mode === "replace" && parsed.prefs && typeof parsed.prefs === "object" &&
+    if (replace && parsed.prefs && typeof parsed.prefs === "object" &&
         !Array.isArray(parsed.prefs) && OF.units) {
       OF.units.setPrefs(parsed.prefs);
-    }
-    if (writeFailed) {
-      throw new Error("Browser storage is full or blocked — the imported data was NOT fully saved.");
     }
     return { imported: imported, skipped: skipped };
   }

@@ -343,9 +343,9 @@ OF.coach = (function () {
       els.status.innerHTML = isNativeApp()
         ? statusCard("The AI coach runs on your computer",
             '<p class="muted">The AI coach uses the Claude subscription on your own Mac or PC, so ' +
-            'it stays private and costs nothing. Open OptimalFit on your computer to chat with the ' +
-            'coach, or connect this phone to it over your home Wi-Fi from the server window. ' +
-            'Everything else in the app works right here on your phone.</p>')
+            'it stays private and costs nothing. It is a companion feature you use on your computer ' +
+            '&mdash; open OptimalFit there to chat with the coach. Everything else in the app works ' +
+            'right here on your phone.</p>')
         : statusCard("The AI coach needs the local server",
             '<p class="muted">Double-click <strong>&ldquo;' + launcherName() + '&rdquo;</strong> in the ' +
             'OptimalFit folder, then reload this page. Everything else in the app keeps working ' +

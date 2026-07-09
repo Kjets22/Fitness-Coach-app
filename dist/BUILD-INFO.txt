@@ -177,3 +177,10 @@ Rebuild recipe — macOS (THIS machine) — VERIFIED WORKING 2026-07-09 by Infra
     *.xcarchive with -destination 'generic/platform=iOS'
     CODE_SIGNING_ALLOWED=NO.
 =========================================================================
+
+=== v16 rebuild (2026-07-09) — pre-ship QA fix round + iOS visual polish ===
+sw.js VERSION v16. Includes: iOS form appearance:none normalization (fixes date/number overlap + alignment), inputmode on all number inputs, Settings gear icon, even 6-tab nav, rest timer + exercise-recall, 14 logic/JS bug fixes (export data-loss, engine correctness, camera-optional pickers, social/dashboard/receipts), backend migration.
+OptimalFit-debug.apk  e40b897cb1b5b47213c519cc485ce3b9517cb11b39fa9cf3b73b4b8797fa7641
+OptimalFit-release.apk  4b3f81d19b7445069b74eb1a16f7d66d83f98994db35030b7bef6e045dd56f5c
+OptimalFit-release.aab  e09eb2cdc4f59d87961a6a6a1c059319dc10039d592c143acf3bd4f9aef30e16
+iOS archive: OptimalFit-final.xcarchive (unsigned, 3 camera/photo usage strings verified). versionCode 1 (bump on first upload).

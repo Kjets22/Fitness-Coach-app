@@ -33,13 +33,28 @@
         an `exercises` array (Squat/Bench/Row and Deadlift/OHP/Bench
         A/B rotation, 3-5 sets, kg loads) with progressive overload,
         a deload week mid-window, ONE recent PR (a heavy Squat top
-        set in the final session) and ONE stalled lift: Bench Press
-        stops improving over the last ~3 weeks — exactly the stretch
-        whose strength sessions happen to follow the seed's shortest
-        nights (prior-night sleep ~6.5h vs ~7.9h earlier), so the
-        strength engine's stall diagnosis finds the sleep link.
+        set) and ONE stalled lift: Bench Press stops improving over
+        the last ~3 weeks. Two flagship showcases are made to
+        reproduce on EVERY "today" (they used to depend on where the
+        seeded schedule/sleep happened to land, so some calendar
+        dates lost them):
+          - recent Squat PR: the final 7 days are guaranteed to hold
+            a Squat top-set PR — if the schedule leaves that week
+            without a natural strength session, the LATEST final-week
+            training day is promoted in place after the loop (no
+            record added, so counts stay identical). The top set is
+            +8 kg so the PR receipt's e1RM series clears its
+            +10 %/week growth gate even at tight session spacing.
+          - sleep-diagnosed Bench stall: the stalled stretch
+            (dayIdx >= STALL_FROM) deliberately runs on ~1 h shorter
+            nights (prior-night sleep ~6.4h vs ~7.4h while
+            progressing), so the strength engine's stall diagnosis
+            reliably attributes it to sleep rather than falling back
+            to recovery/programming.
         Uses a SECOND seeded stream (rnd2) so the original rnd()
-        sequence — and every record above — stays byte-identical.
+        sequence — and every record above — stays byte-identical;
+        the one post-loop promotion is the sole extra rnd2 draw and
+        nothing consumes rnd2 after it.
 
    Also seeds a demo GOAL (lean bulk, +15 lb muscle, ambitious
    target date so the honesty check shows) when none exists.
@@ -153,6 +168,13 @@ OF.demo = (function () {
     }
 
     var consecTraining = 0;     // fatigue tracker
+    // Flagship "recent Squat PR": guarantee at least one Squat top-set PR in the
+    // final 7 days so the PR receipt reproduces regardless of what weekday
+    // "today" is. If the seed leaves that week without a natural strength (hence
+    // finalWeek Squat) session, we convert the LATEST final-week training day
+    // into one after the loop — see the guarantee block below the day loop.
+    var finalWeekStrengthLogged = false; // a NATURAL strength session in the last 7 days?
+    var lastFinalWeekTrain = null;       // {id, dayIdx} of the latest final-week training session
 
     /* ---------- strength set-logging (P2-11) ----------
        Its OWN seeded stream: rnd2 never touches rnd's call sequence. */
@@ -195,7 +217,12 @@ OF.demo = (function () {
       if (A) {
         var squatW = (100 + 0.45 * dayIdx) * scale;
         var squat = { name: "Squat", sets: mkSets(squatW, 6, 3, nSets) }; // 6-8 reps
-        if (finalWeek) squat.sets.push({ weightKg: r25(squatW + 10), reps: 6 }); // recent PR
+        // Recent PR top set. Kept at +8 kg (not more): the PR receipt validates
+        // its e1RM series against a +10 %/week growth gate, and when the final
+        // week's Squat sits only ~3 days after the prior Squat a bigger jump
+        // trips that gate and the receipt won't generate. +8 kg clears it on
+        // every "today" while still reading as a clear, heavy top set.
+        if (finalWeek) squat.sets.push({ weightKg: r25(squatW + 8), reps: 6 }); // recent PR
         exs.push(squat, bench);
         exs.push({
           name: "Barbell Row",
@@ -221,6 +248,14 @@ OF.demo = (function () {
       var isWeekendNight = (weekday === 6 || weekday === 0);
       var bedH = 22.5 + rnd() * 1.5 + (isWeekendNight ? 0.8 : 0); // 22:30 - 00:48
       var durH = 6.0 + rnd() * 2.8 - (isWeekendNight ? 0.3 : 0);  // 5.7 - 8.8 h
+      // Bench-stall sleep link (pattern 9): the stalled stretch (dayIdx >=
+      // STALL_FROM) deliberately runs on shorter nights so the strength
+      // engine's stall diagnosis reliably finds the sleep gap (avg sleep on
+      // the stalled sessions ~6.4h vs ~7.4h while progressing — comfortably
+      // past its 0.4h threshold) instead of falling back to recovery /
+      // programming. Reuses the SAME single rnd() draw above (no new call),
+      // so the seeded streams and every record count stay byte-identical.
+      if (dayIdx >= STALL_FROM) durH = Math.max(4.6, durH - 1.1);
       var bedMin = Math.round((bedH % 24) * 60);
       var wakeMin = Math.round((bedMin + durH * 60) % (24 * 60));
       var quality = clamp(Math.round(1 + (durH - 5.5) * 1.3 + (rnd() - 0.5) * 1.6), 1, 5);
@@ -256,6 +291,12 @@ OF.demo = (function () {
       var trainChance = weekday === 0 ? 0.25 : 0.72;
       if (consecTraining >= 3) trainChance = 0.2;
       var trains = rnd() < trainChance;
+      // Flagship-demo safety net: if the whole final week somehow logged no
+      // training at all, force "today" (the last day) to train so the Squat-PR
+      // guarantee below always has a session to attach to. Inert for the shipped
+      // 60-day window — its final week always has a training day — so counts and
+      // the rnd() sequence stay byte-identical there.
+      if (dayIdx === days - 1 && !lastFinalWeekTrain) trains = true;
       var workoutStartMin = null;
 
       if (trains) {
@@ -294,7 +335,7 @@ OF.demo = (function () {
         perf += (rnd() - 0.5) * 1.4;              // noise
         perf = clamp(Math.round(perf), 1, 5);
 
-        if (S.add("exercise", {
+        var exRec = S.add("exercise", {
           date: date,
           startTime: hm(Math.floor(workoutStartMin / 60), workoutStartMin % 60),
           type: type,
@@ -305,7 +346,18 @@ OF.demo = (function () {
           // pattern 9: sets for most strength sessions (undefined is
           // dropped by JSON.stringify, so other records keep their shape)
           exercises: type === "strength" ? strengthExercises(dayIdx) : undefined
-        })) counts.exercise++;
+        });
+        if (exRec) {
+          counts.exercise++;
+          // Remember the LATEST final-week training session so the Squat-PR
+          // guarantee (after the loop) can attach to it. Placing the PR at the
+          // end of the week keeps it clear of any earlier Squat so the receipt's
+          // e1RM chain (+10%/week growth gate) still validates.
+          if (dayIdx >= days - 7) {
+            lastFinalWeekTrain = { id: exRec.id, dayIdx: dayIdx };
+            if (type === "strength") finalWeekStrengthLogged = true;
+          }
+        }
 
         // Post-workout shake ~50% of sessions.
         if (rnd() < 0.5) {
@@ -361,6 +413,24 @@ OF.demo = (function () {
           notes: ""
         })) counts.body++;
       }
+    }
+
+    /* ---------- flagship "recent Squat PR" guarantee (P2-11) ----------
+       Make sure the final 7 days hold a Squat top-set PR so the PR receipt
+       reproduces on any "today". When the seeded schedule already logged a
+       strength (hence finalWeek Squat) session in that window we leave it
+       untouched; otherwise we PROMOTE the LATEST final-week training day to a
+       strength session in place. This adds NO record (count-neutral) and — by
+       running only after the day loop — leaves rnd()/rnd2()/rnd3() for every
+       logged record byte-identical (the promoted session is the sole extra
+       rnd2 draw, and nothing consumes rnd2 after it). Choosing the latest day
+       of the week keeps the PR well clear of any earlier Squat, so the
+       receipt's e1RM chain (+10%/week growth gate) still validates. */
+    if (!finalWeekStrengthLogged && lastFinalWeekTrain) {
+      S.update("exercise", lastFinalWeekTrain.id, {
+        type: "strength",
+        exercises: strengthExercises(lastFinalWeekTrain.dayIdx)
+      });
     }
 
     /* ---------- PHYSIQUE analyses (two, telling the lean-bulk progress

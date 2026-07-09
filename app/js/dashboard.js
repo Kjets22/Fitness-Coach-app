@@ -33,8 +33,12 @@ OF.dashboard = (function () {
     return m ? new Date(+m[1], +m[2] - 1, +m[3]) : null;
   }
   function dayNum(iso) {
-    var d = parseISO(iso);
-    return d ? Math.round(d.getTime() / 86400000) : null;
+    var m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso || "");
+    // Anchor at 12:00 UTC (not local midnight) so the epoch-day is the exact
+    // inverse of dateFromDayNum's (dn + 0.5) reconstruction. Local midnight
+    // straddles the UTC date boundary in UTC+13/+14, shifting chart/sleep-bar
+    // date labels off by one day there.
+    return m ? Math.floor(Date.UTC(+m[1], +m[2] - 1, +m[3], 12) / 86400000) : null;
   }
   function shortDate(iso) {
     var d = parseISO(iso);
@@ -266,15 +270,18 @@ OF.dashboard = (function () {
     var goalHtml = '<span class="unit">&mdash;</span>', goalSub = "set one on Insights";
     var gi = OF.goals ? OF.goals.info() : { goal: null };
     if (gi.goal) {
+      // Unknown/legacy goal types have no GOAL_TYPES entry — guard so the
+      // dashboard degrades gracefully instead of throwing on .dir/.label.
+      var gt = OF.targets.GOAL_TYPES[gi.goal.type];
       var gp = gi.progress;
-      if (gp && gp.status === "ok" && gp.targetKg != null) {
+      if (gt && gp && gp.status === "ok" && gp.targetKg != null) {
         goalHtml = Math.round((gp.pct || 0) * 100) + '<span class="unit">%</span>';
-        goalSub = U.fmtWeightDelta((OF.targets.GOAL_TYPES[gi.goal.type].dir || 1) * Math.max(0, gp.achievedKg)) +
-          " of " + U.fmtWeightDelta((OF.targets.GOAL_TYPES[gi.goal.type].dir || 1) * gp.targetKg) +
+        goalSub = U.fmtWeightDelta((gt.dir || 1) * Math.max(0, gp.achievedKg)) +
+          " of " + U.fmtWeightDelta((gt.dir || 1) * gp.targetKg) +
           (gp.metric === "muscle" ? " muscle" : "");
       } else {
         goalHtml = '<span class="unit">set</span>';
-        goalSub = OF.targets.GOAL_TYPES[gi.goal.type].label;
+        goalSub = gt ? gt.label : "Goal set";
       }
     }
 
@@ -485,10 +492,10 @@ OF.dashboard = (function () {
       var sum = keys.reduce(function (n, k) { return n + map[k]; }, 0);
       return sum / keys.length;
     }
-    var hasAny = false;
+    var hasKcal = false, hasProt = false;
     var kcalBars = weeks.map(function (wk) {
       var v = avgOf(wk.kcal);
-      if (v != null) hasAny = true;
+      if (v != null) hasKcal = true;
       return {
         label: "wk of " + shortDate(isoFromDayNum(wk.start)),
         value: v != null ? Math.round(v) : null,
@@ -498,6 +505,7 @@ OF.dashboard = (function () {
     });
     var protBars = weeks.map(function (wk) {
       var v = avgOf(wk.prot);
+      if (v != null) hasProt = true;
       return {
         label: "wk of " + shortDate(isoFromDayNum(wk.start)),
         value: v != null ? Math.round(v) : null,
@@ -505,11 +513,18 @@ OF.dashboard = (function () {
         valueLabel: v != null ? Math.round(v) + "g" : ""
       };
     });
-    var inner = hasAny
-      ? '<div class="chart-mini-label">Avg daily calories (kcal)</div>' +
-        OF.charts.barChart({ bars: kcalBars, height: 160 }) +
-        '<div class="chart-mini-label">Avg daily protein (g)</div>' +
-        OF.charts.barChart({ bars: protBars, height: 160 })
+    // Render each sub-chart only when it has data, so a protein-only history
+    // (meals with protein but zero calories) still shows the protein chart
+    // instead of collapsing to the empty state.
+    var inner = (hasKcal || hasProt)
+      ? (hasKcal
+          ? '<div class="chart-mini-label">Avg daily calories (kcal)</div>' +
+            OF.charts.barChart({ bars: kcalBars, height: 160 })
+          : "") +
+        (hasProt
+          ? '<div class="chart-mini-label">Avg daily protein (g)</div>' +
+            OF.charts.barChart({ bars: protBars, height: 160 })
+          : "")
       : OF.charts.empty("No meals logged in the last 4 weeks.");
     return chartCard("Nutrition — weekly averages (4 weeks)", inner);
   }

@@ -48,6 +48,19 @@ OF.foodPhoto = (function () {
     return h;
   }
 
+  /* Platform-aware launcher wording, kept in sync with coach.js (separate IIFE,
+     no shared scope): the native mobile app can't start the companion server, a
+     Mac desktop uses the .command launcher, Windows uses the .bat. */
+  function isNativeApp() {
+    var C = window.Capacitor;
+    if (!C) return false;
+    return C.isNativePlatform ? C.isNativePlatform() : (C.platform && C.platform !== "web");
+  }
+  function launcherName() {
+    return /Mac|iPhone|iPad|iPod/.test(navigator.userAgent || "") ?
+      "Start OptimalFit.command" : "Start OptimalFit.bat";
+  }
+
   /* ---------------- server availability ---------------- */
 
   function checkServer() {
@@ -60,7 +73,9 @@ OF.foodPhoto = (function () {
     fetch("/api/health", { cache: "no-store", headers: apiHeaders() })
       .then(function (res) { return res.json(); })
       .then(function (j) {
-        server = (j && j.ok && j.claude) ? "ok" : "no-server";
+        // Respect keyOk like coach.js: an unpaired phone (keyOk:false) must not
+        // get an enabled button — the hint points them to the Coach tab to pair.
+        server = (j && j.ok && j.claude && j.keyOk !== false) ? "ok" : "no-server";
         renderButton();
       })
       .catch(function () {
@@ -142,7 +157,7 @@ OF.foodPhoto = (function () {
       '<div class="photo-pick-row">' +
         '<label class="btn photo-file-btn">' + OF.icons.get("camera") +
           '<span>' + (previewUrl ? 'Change photo' : 'Take / choose photo') + '</span>' +
-          '<input type="file" id="photo-file" accept="image/*" capture="environment" hidden>' +
+          '<input type="file" id="photo-file" accept="image/*" hidden>' +
         '</label>' +
       '</div>' +
       '<div class="photo-preview" id="photo-preview">' +
@@ -315,7 +330,9 @@ OF.foodPhoto = (function () {
         state = "error";
         errorMsg = (e && e.name === "AbortError")
           ? "The estimate took too long and was cancelled. Try again."
-          : "Could not reach the local server. Is “Start OptimalFit.bat” still running?";
+          : (isNativeApp()
+              ? "Could not reach OptimalFit on your computer. Make sure it's running there and this phone is on the same Wi-Fi."
+              : "Could not reach the local server. Is “" + launcherName() + "” still running?");
         renderModal();
       })
       .then(function () { // finally

@@ -180,12 +180,23 @@ OF.healthImport = (function () {
     }
 
     function processText(text) {
-      var from = 0, nl;
-      while ((nl = text.indexOf("\n", from)) !== -1) {
-        processLine(text.slice(from, nl));
-        from = nl + 1;
+      // Every value we extract lives in a record's OPENING tag, so split on
+      // the "<Record" boundary rather than on "\n". This handles the usual
+      // one-record-per-line export AND a minified/newline-free export.xml
+      // (whole file on a single line) — a plain \n-split silently parsed only
+      // the first record of the latter and buffered the entire file in memory.
+      var from = 0, start, gt;
+      while ((start = text.indexOf("<Record", from)) !== -1) {
+        gt = text.indexOf(">", start);
+        if (gt === -1) break;               // opening tag straddles the chunk -> carry
+        processLine(text.slice(start, gt)); // isolate one record's opening tag
+        from = gt + 1;
       }
-      return text.slice(from); // incomplete tail line -> carry
+      // No record consumed yet: let processLine sniff a leading <?xml/<HealthData
+      // header (sets sawHealthTag). Guard the partial-"<Record" tail so it isn't
+      // parsed here and then again once its ">" arrives (which would double-count).
+      if (from === 0 && text.indexOf("<Record") === -1) processLine(text);
+      return text.slice(from); // header / incomplete tail -> carry
     }
 
     return new Promise(function (resolve, reject) {
@@ -352,8 +363,11 @@ OF.healthImport = (function () {
         byDate[date] = { v: v, isTotal: isTotal };
       }
     });
-    var recs = Object.keys(byDate).sort().map(function (d) {
-      return { date: d, count: Math.round(byDate[d].v) };
+    // Drop days beyond the manual form's sanity cap, same as the Apple path.
+    var recs = [];
+    Object.keys(byDate).sort().forEach(function (d) {
+      var count = Math.round(byDate[d].v);
+      if (count <= MAX_DAY_STEPS) recs.push({ date: d, count: count });
     });
     if (!recs.length) throw new Error("No usable step rows found in that CSV.");
     return { source: "Samsung Health (steps CSV)", types: { steps: { label: "Daily steps", recs: recs } } };

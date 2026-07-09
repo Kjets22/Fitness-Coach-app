@@ -50,6 +50,7 @@ OF.strength = (function () {
   var MIN_SESSIONS = 3;        // sessions before an exercise is reported
   var TREND_WINDOW_DAYS = 84;  // 12 weeks
   var IMPROVE_EPS = 1.005;     // e1RM must beat the prior best by >0.5%
+  var EPLEY_MAX_REPS = 12;     // Epley e1RM only valid to ~12 reps; higher-rep sets are ignored for e1RM/PR/trend (still counted for volume + rep-range)
   var STALL_MIN_DAYS = 14;     // no improvement for 2+ weeks ...
   var STALL_MIN_SESSIONS = 2;  // ... across 2+ sessions = stalled
   var STALL_ACTIVE_DAYS = 21;  // must still be training it to call it a stall
@@ -176,9 +177,11 @@ OF.strength = (function () {
         var vol = 0, best = null, bestE = null;
         s.sets.forEach(function (set) {
           if (set.weightKg != null) {
-            vol += set.weightKg * set.reps;
-            var e = epley(set.weightKg, set.reps);
-            if (bestE == null || e > bestE) { bestE = e; best = set; }
+            vol += set.weightKg * set.reps;                 // volume: every weighted set
+            if (set.reps <= EPLEY_MAX_REPS) {               // e1RM/best: only reps where Epley is valid
+              var e = epley(set.weightKg, set.reps);
+              if (bestE == null || e > bestE) { bestE = e; best = set; }
+            }
           }
         });
         s.volumeKg = round1(vol);
@@ -243,7 +246,10 @@ OF.strength = (function () {
     else if (trendPctWk != null && trendPctWk >= 0.3) verdict = "improving";
     else verdict = "flat";
 
-    var recentPR = bestE1RMDay != null && (todayNum - bestE1RMDay) <= PR_RECENT_DAYS;
+    // A "recent PR" must clear the same IMPROVE_EPS bar as lastImproveDay, so an
+    // exercise can't be BOTH stalling and recentPR (a sub-0.5% new absolute max is
+    // not a real PR). PR_RECENT_DAYS (7) < STALL_MIN_DAYS (14) keeps them exclusive.
+    var recentPR = lastImproveDay != null && (todayNum - lastImproveDay) <= PR_RECENT_DAYS;
 
     // Weekday frequency (for "keep doing X" callouts): days with 2+ sessions.
     var wdCount = [0, 0, 0, 0, 0, 0, 0];
@@ -271,6 +277,7 @@ OF.strength = (function () {
       stall: stalled ? {
         sinceDate: lastImproveDate,
         weeks: Math.max(1, Math.round((todayNum - lastImproveDay) / 7)),
+        bestE1RMKg: round1(rollingMax),   // plateau value AT lastImproveDay (epsilon-gated), not the epsilon-free absolute max
         stalledDates: stalledSessions.map(function (s) { return s.date; }),
         progressDates: weighted.filter(function (s) { return s.day <= lastImproveDay; })
           .map(function (s) { return s.date; }),
@@ -313,12 +320,19 @@ OF.strength = (function () {
         message: "Log sets (weight × reps) in at least 2 different weeks to see your volume trend."
       };
     }
+    // Fit the trend only up to the last week with volume — trailing zero-volume weeks
+    // (user just hasn't logged lately) otherwise drag the slope hugely negative.
+    var lastLogged = 0;
+    for (var li = weeks.length - 1; li >= 0; li--) {
+      if (weeks[li].volumeKg > 0) { lastLogged = li; break; }
+    }
+    var trendWeeks = weeks.slice(0, lastLogged + 1);
     return {
       status: "ok",
       weeks: weeks,
       latestKg: latest.volumeKg,
       avgKg: round1(mean(nonzero.map(function (x) { return x.volumeKg; }))),
-      trendKgPerWeek: round1(slope(weeks.map(function (x, i) { return { x: i, y: x.volumeKg }; })))
+      trendKgPerWeek: round1(slope(trendWeeks.map(function (x, i) { return { x: i, y: x.volumeKg }; })))
     };
   }
 
@@ -437,7 +451,7 @@ OF.strength = (function () {
   function diagnoseStall(ex, maps, proteinTargetG, todayNum) {
     var st = ex.stall;
     var head = ex.name + " has stalled for ~" + plural(st.weeks, "week") +
-      " (best e1RM " + fmtW(ex.bestE1RM.kg) + " on " + U.fmtDate(st.sinceDate) +
+      " (best e1RM " + fmtW(st.bestE1RMKg) + " on " + U.fmtDate(st.sinceDate) +
       "; since then topping out at " + fmtW(st.stalledBestE1RMKg) + ").";
 
     function sleepAvg(dates) {

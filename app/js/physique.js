@@ -65,6 +65,19 @@ OF.physique = (function () {
     return h;
   }
 
+  /* Platform-aware launcher wording (same contract as coach.js): the native
+     mobile app can't start the server at all, a Mac desktop uses the .command
+     launcher, Windows uses the .bat. */
+  function isNativeApp() {
+    var C = window.Capacitor;
+    if (!C) return false;
+    return C.isNativePlatform ? C.isNativePlatform() : (C.platform && C.platform !== "web");
+  }
+  function launcherName() {
+    return /Mac|iPhone|iPad|iPod/.test(navigator.userAgent || "") ?
+      "Start OptimalFit.command" : "Start OptimalFit.bat";
+  }
+
   /* ---------------- server availability ---------------- */
 
   function checkServer() {
@@ -159,7 +172,7 @@ OF.physique = (function () {
       '<div class="photo-pick-row">' +
         '<label class="btn photo-file-btn">' + OF.icons.get("bodyscan") +
           '<span>' + (previewUrl ? 'Change photo' : 'Take / choose photo') + '</span>' +
-          '<input type="file" id="phys-file" accept="image/*" capture="environment" hidden>' +
+          '<input type="file" id="phys-file" accept="image/*" hidden>' +
         '</label>' +
       '</div>' +
       '<div class="photo-preview" id="phys-preview">' +
@@ -366,7 +379,9 @@ OF.physique = (function () {
         state = "error";
         errorMsg = (e && e.name === "AbortError")
           ? "The analysis took too long and was cancelled. Try again."
-          : "Could not reach the local server. Is “Start OptimalFit.bat” still running?";
+          : (isNativeApp()
+              ? "Could not reach OptimalFit on your computer. Make sure it’s running there and this phone is on the same Wi-Fi."
+              : "Could not reach the local server. Is “" + launcherName() + "” still running?");
         renderModal();
       })
       .then(function () { // finally

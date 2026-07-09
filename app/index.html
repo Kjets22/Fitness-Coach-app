@@ -34,8 +34,8 @@
   </a>
   <button class="header-btn" id="header-settings" data-tab="settings" aria-label="Settings">
     <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
-      stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3.4"/>
-      <path d="M12 2.8v2.6M12 18.6v2.6M2.8 12h2.6M18.6 12h2.6M5.5 5.5l1.9 1.9M16.6 16.6l1.9 1.9M18.5 5.5l-1.9 1.9M7.4 16.6l-1.9 1.9"/></svg>
+      stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3.1"/>
+      <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
   </button>
 </header>
 
@@ -119,7 +119,7 @@
         <div id="water-progress"></div>
         <div class="quick-row" id="water-quick"></div>
         <form class="water-custom-row" id="water-form" novalidate>
-          <input type="number" id="water-custom-amt" min="1" max="10000" step="1"
+          <input type="number" inputmode="decimal" id="water-custom-amt" min="1" max="10000" step="1"
                  placeholder="custom amount" aria-label="Custom water amount">
           <span class="muted" id="water-custom-unit">oz</span>
           <button type="submit" class="btn">Add</button>
@@ -139,7 +139,7 @@
               <input type="date" id="steps-date" required>
             </label>
             <label>Step count
-              <input type="number" id="steps-count" min="0" max="200000" step="1"
+              <input type="number" inputmode="numeric" id="steps-count" min="0" max="200000" step="1"
                      placeholder="8000" required>
             </label>
           </div>
@@ -228,18 +228,18 @@
             <input type="text" id="food-name" required maxlength="120" placeholder="e.g. Chicken &amp; rice">
           </label>
           <label>Calories
-            <input type="number" id="food-calories" min="0" max="10000" step="1" placeholder="kcal">
+            <input type="number" inputmode="numeric" id="food-calories" min="0" max="10000" step="1" placeholder="kcal">
           </label>
         </div>
         <div class="form-row">
           <label>Protein (g)
-            <input type="number" id="food-protein" min="0" max="1000" step="0.1">
+            <input type="number" inputmode="decimal" id="food-protein" min="0" max="1000" step="0.1">
           </label>
           <label>Carbs (g)
-            <input type="number" id="food-carbs" min="0" max="1000" step="0.1">
+            <input type="number" inputmode="decimal" id="food-carbs" min="0" max="1000" step="0.1">
           </label>
           <label>Fat (g)
-            <input type="number" id="food-fat" min="0" max="1000" step="0.1">
+            <input type="number" inputmode="decimal" id="food-fat" min="0" max="1000" step="0.1">
           </label>
           <label class="grow">Notes
             <input type="text" id="food-notes" maxlength="300" placeholder="optional">
@@ -279,7 +279,7 @@
             </select>
           </label>
           <label>Duration (min)
-            <input type="number" id="exercise-duration" min="1" max="600" step="1" required placeholder="60">
+            <input type="number" inputmode="numeric" id="exercise-duration" min="1" max="600" step="1" required placeholder="60">
           </label>
         </div>
         <div class="form-row">
@@ -323,6 +323,8 @@
           <button type="button" class="btn ghost hidden" id="exercise-cancel-edit">Cancel edit</button>
         </div>
       </form>
+      <!-- Optional rest timer / stopwatch (exercise.js renders into this) -->
+      <section class="card" id="exercise-timer" aria-label="Rest timer"></section>
       <h2 class="list-heading">History</h2>
       <div class="history-list" id="exercise-list"></div>
     </section>
@@ -339,14 +341,14 @@
           <label>Date
             <input type="date" id="body-date" required>
           </label>
-          <label>Weight (<span id="body-weight-unit">kg</span>)
-            <input type="number" id="body-weight" min="20" max="900" step="0.1" required placeholder="75.0">
+          <label><span class="field-cap">Weight (<span id="body-weight-unit">kg</span>)</span>
+            <input type="number" inputmode="decimal" id="body-weight" min="20" max="900" step="0.1" required placeholder="75.0">
           </label>
           <label>Body fat (%)
-            <input type="number" id="body-fat" min="0" max="100" step="0.1" placeholder="optional">
+            <input type="number" inputmode="decimal" id="body-fat" min="0" max="100" step="0.1" placeholder="optional">
           </label>
           <label>Muscle mass (%)
-            <input type="number" id="body-muscle" min="0" max="100" step="0.1" placeholder="optional">
+            <input type="number" inputmode="decimal" id="body-muscle" min="0" max="100" step="0.1" placeholder="optional">
           </label>
         </div>
         <div class="form-row">

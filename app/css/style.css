@@ -277,6 +277,7 @@ h2 { font-size: var(--fs-3); font-weight: 700; letter-spacing: -0.01em; margin: 
 .form-row label {
   display: flex;
   flex-direction: column;
+  justify-content: flex-end;
   gap: 6px;
   font-size: 0.78rem;
   font-weight: 600;
@@ -285,30 +286,64 @@ h2 { font-size: var(--fs-3); font-weight: 700; letter-spacing: -0.01em; margin: 
   flex: 1 1 130px;
   min-width: 120px;
 }
+/* keep the caption (e.g. "Weight (lb)") on one line so it can't break into
+   "Weight (" / "lb" / ")" and shove the input out of alignment on iOS */
+.form-row label { white-space: nowrap; }
+.form-row label > input, .form-row label > select, .form-row label > textarea { white-space: normal; }
 .form-row label.grow { flex: 3 1 220px; }
 
-input, select {
+input, select, textarea {
   background: var(--bg-2);
   border: 1px solid var(--card-edge);
   color: var(--text);
   border-radius: var(--r-sm);
   padding: 10px 12px;
-  font-size: 0.95rem;
+  /* 16px stops iOS Safari/WKWebView from auto-zooming the page on focus */
+  font-size: 16px;
   font-weight: 500;
   font-family: inherit;
   width: 100%;
   min-height: 44px;
+  line-height: 1.25;
   transition: border-color var(--dur) var(--ease), box-shadow var(--dur) var(--ease), background var(--dur) var(--ease);
 }
-input::placeholder { color: var(--text-dim); opacity: 0.7; font-weight: 400; }
-input:hover, select:hover { border-color: color-mix(in srgb, var(--accent) 40%, var(--card-edge)); }
-input:focus, select:focus {
+/* iOS/WebKit renders date/number/time/select with native chrome that keeps a
+   wide intrinsic width and won't shrink into its flex cell — so the fields
+   OVERLAP and space unevenly on iPhone (fine on Blink/Chrome/Android).
+   Stripping the native appearance makes every input honor the box model.
+   Checkboxes/radios keep native rendering on purpose. */
+input:not([type="checkbox"]):not([type="radio"]), select, textarea {
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+}
+/* appearance:none removes the native select arrow — add a custom caret */
+select {
+  padding-right: 38px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%238f9dff' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+}
+/* strip number spinners for a consistent field */
+input[type="number"] { -moz-appearance: textfield; }
+input[type="number"]::-webkit-outer-spin-button,
+input[type="number"]::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+/* date/time: left-align the value so it fills the field like a text input
+   instead of iOS's wide, centred native control */
+input[type="date"]::-webkit-date-and-time-value,
+input[type="time"]::-webkit-date-and-time-value { text-align: left; margin: 0; }
+input[type="date"], input[type="time"] { text-align: left; }
+input[type="date"]::-webkit-calendar-picker-indicator,
+input[type="time"]::-webkit-calendar-picker-indicator { opacity: 0.55; margin-left: 4px; }
+input::placeholder, textarea::placeholder { color: var(--text-dim); opacity: 0.7; font-weight: 400; }
+input:hover, select:hover, textarea:hover { border-color: color-mix(in srgb, var(--accent) 40%, var(--card-edge)); }
+input:focus, select:focus, textarea:focus {
   outline: none;
   border-color: var(--accent);
   box-shadow: 0 0 0 3px var(--accent-soft);
   background: var(--card);
 }
-input[type="checkbox"] { transition: none; }
+input[type="checkbox"], input[type="radio"] { -webkit-appearance: auto; appearance: auto; width: auto; min-height: 0; transition: none; }
 
 .form-actions { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin-top: var(--sp-2); }
 .form-hint { color: var(--text-dim); font-size: 0.85rem; margin: 4px 0; min-height: 1em; }
@@ -876,7 +911,7 @@ input[type="checkbox"] { transition: none; }
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 30px; height: 30px;
+  width: 44px; height: 44px;
   border: none;
   background: transparent;
   color: var(--text-dim);
@@ -1037,7 +1072,7 @@ input[type="checkbox"] { transition: none; }
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 40px; height: 40px;
+  width: 44px; height: 44px;
   border: none;
   border-radius: var(--r-full);
   background: transparent;
@@ -1070,7 +1105,9 @@ input[type="checkbox"] { transition: none; }
   text-align: left;
   transition: border-color var(--dur) var(--ease), background var(--dur) var(--ease);
 }
-.ob-goal:hover { border-color: var(--accent); }
+/* hover:hover gate stops iOS keeping the :hover accent border "stuck" on a
+   tapped-but-unselected goal (it looked half-selected next to the real pick) */
+@media (hover: hover) { .ob-goal:hover { border-color: var(--accent); } }
 .ob-goal.active { border-color: var(--accent); background: var(--accent-soft); }
 .ob-goal-check { display: inline-flex; width: 20px; color: var(--accent); opacity: 0; transition: opacity var(--dur) var(--ease); }
 .ob-goal-check .ico { width: 18px; height: 18px; }
@@ -1270,18 +1307,20 @@ input[type="checkbox"] { transition: none; }
   .nav-lbl { font-size: 0.62rem; font-weight: 650; letter-spacing: 0.01em; }
   .nav-ico { width: auto; }
 
-  /* the center Log button gets the gradient treatment */
+  /* Log gets the gradient treatment but sits INLINE with the other tabs
+     (6 destinations can't center a raised FAB — a floating pill at position
+     3-of-6 read as off-center; an even row of 6 with Log color-distinct is
+     clean and lines up). */
   .nav-log .nav-ico {
-    width: 42px; height: 42px;
-    margin-top: -14px;
+    width: 34px; height: 34px;
     border-radius: var(--r-full);
     background: var(--grad);
     color: #fff;
     align-items: center;
-    box-shadow: var(--e2);
+    box-shadow: var(--e1);
   }
-  .nav-log .nav-ico .ico { width: 22px; height: 22px; }
-  .nav-log.active .nav-ico { box-shadow: var(--e2), 0 0 0 3px var(--accent-soft); }
+  .nav-log .nav-ico .ico { width: 20px; height: 20px; }
+  .nav-log.active .nav-ico { box-shadow: var(--e1), 0 0 0 3px var(--accent-soft); }
 
   /* clear the bottom nav + the iOS home indicator (safe area) */
   .content { padding-bottom: calc(96px + env(safe-area-inset-bottom, 0px)); }
@@ -1364,10 +1403,97 @@ input[type="checkbox"] { transition: none; }
 .ex-add-row input { flex: 1 1 180px; }
 .ex-add-row .btn { min-height: 44px; }
 
+/* Feature B: "prefilled from your last session" hint */
+.ex-prefill-hint {
+  font-size: 0.76rem;
+  font-weight: 600;
+  color: var(--accent-2);
+  margin: -2px 0 8px;
+}
+
 /* history: per-exercise set-summary lines */
 .entry-sets { margin-top: 4px; }
 .set-line { font-size: 0.8rem; color: var(--text); }
 .set-line-detail { color: var(--text-dim); }
+
+/* ---------- 23. Rest timer (Exercise tab, Feature A) ---------- */
+#exercise-timer { margin-bottom: var(--sp-4); }
+.rt-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-3);
+  flex-wrap: wrap;
+  margin-bottom: var(--sp-3);
+}
+.rt-title { margin: 0; font-size: var(--fs-3); }
+.rt-seg {
+  display: inline-flex;
+  gap: 4px;
+  padding: 3px;
+  background: var(--bg-2);
+  border: 1px solid var(--card-edge);
+  border-radius: var(--r-md);
+}
+.rt-seg-btn {
+  min-height: 44px;
+  padding: 0 14px;
+  border: none;
+  background: transparent;
+  color: var(--text-dim);
+  font-family: inherit;
+  font-size: 0.85rem;
+  font-weight: 650;
+  border-radius: var(--r-sm);
+  cursor: pointer;
+}
+.rt-seg-btn:hover { color: var(--text); }
+.rt-seg-btn.active { background: var(--card); color: var(--text); box-shadow: var(--e1); }
+.rt-display {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: var(--sp-4) var(--sp-3);
+  margin-bottom: var(--sp-3);
+  border: 1px solid var(--card-edge);
+  border-radius: var(--r-md);
+  background: var(--bg-2);
+}
+.rt-time {
+  font-size: clamp(2.6rem, 14vw, 3.6rem);
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: 0.01em;
+  font-variant-numeric: tabular-nums;
+  color: var(--text);
+}
+.rt-status {
+  min-height: 1.2em;
+  margin-top: 6px;
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--text-dim);
+}
+.rt-presets { display: flex; gap: var(--sp-2); flex-wrap: wrap; margin-bottom: var(--sp-3); }
+.rt-preset { flex: 1 1 auto; min-width: 64px; min-height: 44px; }
+.rt-preset.active { border-color: var(--accent); color: var(--accent); background: var(--accent-soft); }
+.rt-controls { display: flex; gap: var(--sp-2); align-items: center; flex-wrap: wrap; }
+.rt-start { flex: 1 1 130px; min-height: 48px; font-size: 1rem; }
+.rt-reset { min-height: 48px; }
+.rt-adjust { display: flex; gap: var(--sp-2); margin-left: auto; }
+.rt-adj { min-height: 44px; min-width: 56px; }
+/* Finish cue: a STEADY color change is the baseline (reduced-motion safe);
+   a gentle pulse layers on top only when motion is allowed. */
+.rt-finished .rt-display { border-color: var(--accent-2); background: var(--accent-2-soft); }
+.rt-finished .rt-time, .rt-finished .rt-status { color: var(--accent-2); }
+@media (prefers-reduced-motion: no-preference) {
+  .rt-finished .rt-display { animation: rt-pulse 0.9s ease-in-out 3; }
+}
+@keyframes rt-pulse {
+  0%, 100% { background: var(--accent-2-soft); }
+  50% { background: color-mix(in srgb, var(--accent-2) 28%, transparent); }
+}
 
 /* ---------- 24. Community (social.js / social-profile.js / social-compose.js) ---------- */
 .soc-center { text-align: center; padding: var(--sp-4); }
@@ -1603,7 +1729,7 @@ input[type="checkbox"] { transition: none; }
 .soc-cmt-time { font-size: 0.72rem; margin-left: 6px; white-space: nowrap; }
 .soc-cmt-btns { display: inline-flex; flex-shrink: 0; }
 .soc-cmt-act {
-  width: 34px; height: 34px; background: none; border: none; border-radius: var(--r-full);
+  width: 44px; height: 44px; background: none; border: none; border-radius: var(--r-full);
   color: var(--text-dim); font-size: 1rem; font-weight: 700; line-height: 1; cursor: pointer;
 }
 .soc-cmt-act:hover { background: var(--danger-soft); color: var(--danger); }
@@ -1728,4 +1854,11 @@ input[type="checkbox"] { transition: none; }
   .lift-row .spark { order: 3; }
   /* long verdict chips wrap below the name instead of squeezing it */
   .lift-main { min-width: 70%; }
+}
+
+/* Bottom-nav labels are ~10px; text-dim (#5d6b83) is sub-AA on the light bg.
+   Darken nav labels in light mode for WCAG AA (icons already carry meaning). */
+@media (prefers-color-scheme: light) {
+  .nav-btn { color: #46526a; }
+  .nav-btn.active { color: #4a30c0; }
 }

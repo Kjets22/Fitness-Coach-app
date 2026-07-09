@@ -64,3 +64,6 @@ __pycache__/
 *.pyc
 .DS_Store
 Thumbs.db
+
+# Persona demo accounts (Part A populate; created via Auth Admin API)
+.env.personas

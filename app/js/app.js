@@ -100,6 +100,25 @@ OF.app = (function () {
     else location.hash = tab;
   }
 
+  /* iOS: the on-screen keyboard covers inputs anchored near the bottom
+     (especially inside the fixed photo/physique sheets). When a form control
+     is focused, scroll it into the visible area above the keyboard. Uses
+     visualViewport when available (accurate keyboard height) and a delayed
+     scrollIntoView so it runs after the keyboard animates in. */
+  function initKeyboardScroll() {
+    var t = null;
+    document.addEventListener("focusin", function (e) {
+      var el = e.target;
+      if (!el || !/^(INPUT|TEXTAREA|SELECT)$/.test(el.tagName)) return;
+      if (el.type === "checkbox" || el.type === "radio") return;
+      if (t) clearTimeout(t);
+      t = setTimeout(function () {
+        try { el.scrollIntoView({ block: "center", behavior: "smooth" }); }
+        catch (err) { try { el.scrollIntoView(); } catch (e2) {} }
+      }, 320);
+    });
+  }
+
   function init() {
     // Segmented rating pills replace the <select data-seg> controls
     // BEFORE tracker init so their defaults render onto the pills.
@@ -113,6 +132,7 @@ OF.app = (function () {
       showTab(currentTabFromHash());
     });
     initSheet();
+    initKeyboardScroll();
 
     // Init modules. goals.init runs the adaptive catch-up loop, so it goes
     // before dashboard/insights read the calorie targets.

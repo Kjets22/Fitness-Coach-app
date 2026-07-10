@@ -56,11 +56,11 @@ OF.storage = (function () {
           console.error("OF.storage: could not back up corrupt data for", type, e2);
         }
         if (backedUp) {
-          OF.util.toast('Saved ' + type + ' data could not be read. A copy was kept under "' +
-            key(type) + '.corrupt" — export it before adding new entries.', "warn");
+          OF.util.toast('Saved ' + type + ' data could not be read. A backup copy was kept ' +
+            'in this browser’s storage; new entries will start fresh.', "warn");
         } else {
-          OF.util.toast('Saved ' + type + ' data could not be read, and a backup copy could ' +
-            'not be saved. Do NOT add new ' + type + ' entries yet — export your data first.', "warn");
+          OF.util.toast('Saved ' + type + ' data could not be read and could not be backed up. ' +
+            'New ' + type + ' entries will start fresh.', "warn");
         }
       }
       return [];

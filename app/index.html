@@ -384,7 +384,8 @@
         <!-- server / claude availability cards rendered by coach.js -->
       </div>
       <div class="card coach-card hidden" id="coach-chat">
-        <div class="coach-log" id="coach-log" aria-live="polite"></div>
+        <div class="coach-log" id="coach-log"></div>
+        <div id="coach-live" aria-live="polite" style="position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0"></div>
         <form class="coach-input-row" id="coach-form" novalidate>
           <input type="text" id="coach-input" maxlength="1000" autocomplete="off"
                  placeholder="Ask your coach&hellip; (answers take 10&ndash;60 s)">

@@ -186,6 +186,15 @@ OF.settings = (function () {
     if (!confirm("Delete ALL OptimalFit data from this device? This cannot be undone.")) return;
     if (!confirm("Really sure? Consider exporting a backup first.")) return;
     S.clearAll();
+    // A true device wipe must also drop the community session + cached profile
+    // (which carries is_premium/trial) and any prefs/pairing — otherwise the
+    // next person on this device inherits the previous account's premium state.
+    if (OF.socialApi && OF.socialApi.signOut) { try { OF.socialApi.signOut(); } catch (e) {} }
+    try {
+      Object.keys(localStorage)
+        .filter(function (k) { return k.indexOf("optimalfit.") === 0; })
+        .forEach(function (k) { localStorage.removeItem(k); });
+    } catch (e) { /* private mode / quota — best effort */ }
     refreshAllViews();
     msg("All data cleared.");
   }

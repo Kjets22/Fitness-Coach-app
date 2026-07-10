@@ -357,7 +357,9 @@ OF.physique = (function () {
       if (g) {
         if (num(g.heightCm) != null) s.heightCm = Math.round(num(g.heightCm));
         if (num(g.age) != null) s.age = Math.round(num(g.age));
-        if (g.sex === "male" || g.sex === "female") s.sex = g.sex;
+        // the goal stores sex as "m"/"f"; the physique endpoint expects "male"/"female"
+        if (g.sex === "m") s.sex = "male";
+        else if (g.sex === "f") s.sex = "female";
       }
       var body = (S.getAll("body") || []).slice().sort(U.byNewest);
       for (var i = 0; i < body.length; i++) {

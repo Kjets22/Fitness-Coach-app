@@ -86,11 +86,41 @@ class _LLMGuard:
             self._lock.release()
             self._lock = None
 
-# Wrong pairing-code guesses serialize behind this lock + a 1 s delay, so
-# /api/health's keyOk field can't be used as a fast brute-force oracle over
-# the 6-digit code space (QA-3). Correct keys and keyless requests are never
-# delayed, so normal pairing UX is unaffected.
+# Wrong pairing-code guesses get a per-connection 1 s delay (see _key_ok) so
+# /api/health's keyOk field can't be used as a fast brute-force oracle. Correct
+# keys and keyless requests are never delayed.
 KEY_THROTTLE = threading.Lock()
+
+
+class GlobalRateLimiter:
+    """Caps TOTAL AI requests across all clients — the public tunnel hides the
+    real client IP (everything arrives from 127.0.0.1), so a per-IP limit is
+    useless; a global ceiling is what actually protects the owner's Claude
+    subscription / API bill from being drained. Sliding 60 s window + a daily
+    cap. Overridable via env for the owner's own volume needs."""
+    def __init__(self):
+        self._lock = threading.Lock()
+        self._recent = []            # monotonic timestamps in the last 60 s
+        self._day = []               # monotonic timestamps in the last 24 h
+        self.per_min = int(os.environ.get("OPTIMALFIT_RATE_PER_MIN", "20"))
+        self.per_day = int(os.environ.get("OPTIMALFIT_RATE_PER_DAY", "600"))
+
+    def allow(self) -> tuple[bool, int]:
+        """(allowed, retry_after_seconds)."""
+        now = time.monotonic()
+        with self._lock:
+            self._recent = [t for t in self._recent if now - t < 60]
+            self._day = [t for t in self._day if now - t < 86400]
+            if len(self._recent) >= self.per_min:
+                return False, 60
+            if len(self._day) >= self.per_day:
+                return False, 3600
+            self._recent.append(now)
+            self._day.append(now)
+            return True, 0
+
+
+RATE_LIMITER = GlobalRateLimiter()
 
 # --- phone mode state (set once in main(), read-only afterwards) ----------
 PHONE_MODE = False
@@ -594,12 +624,16 @@ def run_estimate(image_bytes: bytes, mime: str, description: str):
                       "Install the Claude Code desktop app and sign in, then "
                       "try again.")
 
-    tmp_path = None
+    # SECURITY: run the Read-enabled CLI from an ISOLATED empty temp directory
+    # containing ONLY the image — never from BASE_DIR (which holds .env secrets
+    # and the whole repo). This removes the repo from relative-path reach so a
+    # prompt-injected model has nothing to enumerate or read via `./...`.
+    tmp_dir = None
     try:
         try:
-            fd, tmp_path = tempfile.mkstemp(prefix="of-food-",
-                                            suffix=ESTIMATE_MIMES[mime])
-            with os.fdopen(fd, "wb") as f:
+            tmp_dir = tempfile.mkdtemp(prefix="of-food-")
+            tmp_path = os.path.join(tmp_dir, "image" + ESTIMATE_MIMES[mime])
+            with open(tmp_path, "wb") as f:
                 f.write(image_bytes)
         except OSError as e:
             return None, "Could not write the temporary image file: %s" % e
@@ -614,7 +648,7 @@ def run_estimate(image_bytes: bytes, mime: str, description: str):
             res = subprocess.run(
                 cmd,
                 input=build_estimate_prompt(tmp_path, description),
-                cwd=BASE_DIR,
+                cwd=tmp_dir,
                 capture_output=True,
                 encoding="utf-8",
                 errors="replace",
@@ -627,11 +661,8 @@ def run_estimate(image_bytes: bytes, mime: str, description: str):
         except OSError as e:
             return None, "Could not launch the Claude CLI: %s" % e
     finally:
-        if tmp_path:
-            try:
-                os.unlink(tmp_path)
-            except OSError:
-                pass
+        if tmp_dir:
+            shutil.rmtree(tmp_dir, ignore_errors=True)
 
     stdout = (res.stdout or "").strip()
     stderr = (res.stderr or "").strip()
@@ -866,12 +897,13 @@ def run_physique(image_bytes: bytes, mime: str, description: str,
                       "Install the Claude Code desktop app and sign in, then "
                       "try again.")
 
-    tmp_path = None
+    # SECURITY: isolated empty cwd containing only the image (see run_estimate).
+    tmp_dir = None
     try:
         try:
-            fd, tmp_path = tempfile.mkstemp(prefix="of-body-",
-                                            suffix=ESTIMATE_MIMES[mime])
-            with os.fdopen(fd, "wb") as f:
+            tmp_dir = tempfile.mkdtemp(prefix="of-body-")
+            tmp_path = os.path.join(tmp_dir, "image" + ESTIMATE_MIMES[mime])
+            with open(tmp_path, "wb") as f:
                 f.write(image_bytes)
         except OSError as e:
             return None, "Could not write the temporary image file: %s" % e
@@ -882,7 +914,7 @@ def run_physique(image_bytes: bytes, mime: str, description: str,
             res = subprocess.run(
                 cmd,
                 input=build_physique_prompt(tmp_path, description, stats),
-                cwd=BASE_DIR,
+                cwd=tmp_dir,
                 capture_output=True,
                 encoding="utf-8",
                 errors="replace",
@@ -895,11 +927,8 @@ def run_physique(image_bytes: bytes, mime: str, description: str,
         except OSError as e:
             return None, "Could not launch the Claude CLI: %s" % e
     finally:
-        if tmp_path:
-            try:
-                os.unlink(tmp_path)
-            except OSError:
-                pass
+        if tmp_dir:
+            shutil.rmtree(tmp_dir, ignore_errors=True)
 
     stdout = (res.stdout or "").strip()
     stderr = (res.stderr or "").strip()
@@ -924,6 +953,9 @@ def run_physique(image_bytes: bytes, mime: str, description: str,
 # ---------------------------------------------------------------------------
 
 class Handler(SimpleHTTPRequestHandler):
+    # Drop slow/stuck connections (slowloris) — a per-connection socket read
+    # deadline so a trickle client can't tie up a worker thread indefinitely.
+    timeout = 30
     """Static files from app/ (SimpleHTTPRequestHandler with directory= is
     path-traversal-safe) + the two /api endpoints."""
 
@@ -998,22 +1030,28 @@ class Handler(SimpleHTTPRequestHandler):
         return host == PUBLIC_HOST
 
     def _key_ok(self) -> bool:
-        """Access-key check. Public (tunnel) requests always require the
-        stable ACCESS_KEY — the localhost exemption must not apply because
-        the tunnel daemon connects from 127.0.0.1. LAN clients in phone mode
-        keep the 6-digit pairing code. Plain local use needs no key."""
+        """Access-key check.
+
+        SECURITY: when the server is exposed to the internet (PUBLIC_HOST set),
+        EVERY request must present the ACCESS_KEY — no exemption. Tunnel traffic
+        arrives from 127.0.0.1 with an attacker-controllable Host header, so we
+        must NOT derive 'is this trusted/local' from either the client address
+        or the Host (an attacker could send `Host: localhost` to drop the auth
+        requirement). The owner's own local use presents the key too (it's baked
+        into the app / passed on the CLI). Only when NOT public do we keep the
+        old phone-pairing behaviour (LAN clients need the code; localhost is
+        exempt) and the fully-local no-key case."""
         key = self.headers.get("X-OF-Key") or ""
-        if self._is_public_req():
+        if PUBLIC_HOST is not None:
             ok = ACCESS_KEY is not None and secrets.compare_digest(key, ACCESS_KEY)
         elif PHONE_MODE and not self._client_is_local():
             ok = PAIR_CODE is not None and secrets.compare_digest(key, PAIR_CODE)
         else:
             return True
         if not ok and key:
-            # A wrong (non-empty) guess costs 1 s and guesses are serialized,
-            # keeping brute-force out of practical range.
-            with KEY_THROTTLE:
-                time.sleep(1.0)
+            # Per-connection delay on a wrong guess (NOT holding a global lock
+            # across the sleep — that would let a flood pile up blocked threads).
+            time.sleep(1.0)
         return ok
 
     # -- routes ----------------------------------------------------------
@@ -1031,7 +1069,7 @@ class Handler(SimpleHTTPRequestHandler):
                 info["lanUrls"] = LAN_URLS
                 # lets the app verify a pairing code without a coach call
                 info["keyOk"] = self._key_ok()
-            elif self._is_public_req():
+            elif PUBLIC_HOST is not None:
                 # public (tunnel) clients: same contract — the app checks
                 # keyOk before enabling the coach UI
                 info["keyOk"] = self._key_ok()
@@ -1117,6 +1155,19 @@ class Handler(SimpleHTTPRequestHandler):
             context = {}
 
         # ---- one coach request at a time
+        allowed, retry = RATE_LIMITER.allow()
+        if not allowed:
+            self.send_response(429)
+            self.send_header("Retry-After", str(retry))
+            self._cors_headers()
+            body = json.dumps({"ok": False, "error":
+                "The AI coach is at its shared usage limit right now. "
+                "Please try again in a little while."}).encode("utf-8")
+            self.send_header("Content-Type", "application/json; charset=utf-8")
+            self.send_header("Content-Length", str(len(body)))
+            self.end_headers()
+            self.wfile.write(body)
+            return
         guard = _LLMGuard()
         if not guard.acquire():
             self._fail(429, "The coach is already answering another question — "
@@ -1175,6 +1226,19 @@ class Handler(SimpleHTTPRequestHandler):
             return
 
         # ---- one CLI call at a time (shared with the coach)
+        allowed, retry = RATE_LIMITER.allow()
+        if not allowed:
+            self.send_response(429)
+            self.send_header("Retry-After", str(retry))
+            self._cors_headers()
+            body = json.dumps({"ok": False, "error":
+                "The AI coach is at its shared usage limit right now. "
+                "Please try again in a little while."}).encode("utf-8")
+            self.send_header("Content-Type", "application/json; charset=utf-8")
+            self.send_header("Content-Length", str(len(body)))
+            self.end_headers()
+            self.wfile.write(body)
+            return
         guard = _LLMGuard()
         if not guard.acquire():
             self._fail(429, "The AI is busy with another request — wait for "
@@ -1235,6 +1299,19 @@ class Handler(SimpleHTTPRequestHandler):
             return
 
         # ---- one CLI call at a time (shared with the coach + estimate)
+        allowed, retry = RATE_LIMITER.allow()
+        if not allowed:
+            self.send_response(429)
+            self.send_header("Retry-After", str(retry))
+            self._cors_headers()
+            body = json.dumps({"ok": False, "error":
+                "The AI coach is at its shared usage limit right now. "
+                "Please try again in a little while."}).encode("utf-8")
+            self.send_header("Content-Type", "application/json; charset=utf-8")
+            self.send_header("Content-Length", str(len(body)))
+            self.end_headers()
+            self.wfile.write(body)
+            return
         guard = _LLMGuard()
         if not guard.acquire():
             self._fail(429, "The AI is busy with another request — wait for "

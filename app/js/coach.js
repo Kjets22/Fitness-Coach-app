@@ -440,24 +440,40 @@ OF.coach = (function () {
   function pushMsg(role, text) {
     messages.push({ role: role, text: text });
     if (messages.length > MAX_MSGS) messages = messages.slice(-MAX_MSGS);
+    // [24] announce ONLY the new coach/error reply to screen readers — the
+    // transcript itself is no longer aria-live, so the whole conversation is
+    // not re-read on every message.
+    if (role === "coach" || role === "error") {
+      var live = document.getElementById("coach-live");
+      if (live) live.textContent = text;
+    }
   }
 
   /* ---------------- health + send ---------------- */
 
   function checkHealth() {
+    var remote = OF.coachApi && OF.coachApi.remote();
     health = null;
     renderStatus();
-    fetch(apiUrl("/api/health"), { cache: "no-store", headers: apiHeaders() })
+    // [20] don't hang forever on 'checking' if the server/tunnel is unreachable
+    var ctrl = ("AbortController" in window) ? new AbortController() : null;
+    var timer = ctrl ? setTimeout(function () { ctrl.abort(); }, 15000) : null;
+    fetch(apiUrl("/api/health"), { cache: "no-store", headers: apiHeaders(),
+                                   signal: ctrl ? ctrl.signal : undefined })
       .then(function (res) { return res.json(); })
       .then(function (j) {
         if (!(j && j.ok)) {
           health = "no-server";
-        } else if (j.keyOk === false) { // phone mode, wrong/missing code
-          pairError = pairKey()
-            ? "That code didn't match — check the server window on the PC."
-            : "";
-          setPairKey("");
-          health = "need-key";
+        } else if (j.keyOk === false) {
+          // [16] remote (baked-key) mode: the user can't re-enter a key — a
+          // rejected key means the app needs updating, not phone-pairing
+          if (remote) { health = "no-server"; }
+          else {
+            pairError = pairKey()
+              ? "That code didn't match — check the server window on the PC." : "";
+            setPairKey("");
+            health = "need-key";
+          }
         } else if (!j.claude) {
           health = "no-claude";
         } else {
@@ -469,7 +485,8 @@ OF.coach = (function () {
       .catch(function () {
         health = "no-server";
         renderStatus();
-      });
+      })
+      .then(function () { if (timer) clearTimeout(timer); });
   }
 
   function send(question) {
@@ -493,20 +510,28 @@ OF.coach = (function () {
     })
       .then(function (res) { httpStatus = res.status; return res.json(); })
       .then(function (j) {
-        if (httpStatus === 401) { // pairing code revoked (e.g. server restarted)
-          setPairKey("");
-          pairError = "The server asked to pair again — enter the current code.";
-          health = "need-key";
-          pushMsg("error", (j && j.error) || "Pairing required.");
+        if (httpStatus === 401) {
+          if (OF.coachApi && OF.coachApi.remote()) {
+            // [16] baked-key mode: no code to re-enter — surface an update hint
+            health = "no-server";
+            pushMsg("error", "The AI coach is temporarily unavailable. Please update OptimalFit or try again later.");
+          } else { // phone pairing: the code was revoked
+            setPairKey("");
+            pairError = "The server asked to pair again — enter the current code.";
+            health = "need-key";
+            pushMsg("error", (j && j.error) || "Pairing required.");
+          }
         } else if (j && j.ok && typeof j.answer === "string") pushMsg("coach", j.answer.trim());
         else pushMsg("error", (j && j.error) || "The coach returned an unexpected response.");
       })
       .catch(function (e) {
         pushMsg("error", e && e.name === "AbortError"
           ? "The coach took too long and the request was cancelled."
-          : (isNativeApp()
-              ? "Could not reach the coach on your computer. Make sure OptimalFit is running there and this phone is on the same Wi-Fi."
-              : "Could not reach the local server. Is “" + launcherName() + "” still running?"));
+          : ((OF.coachApi && OF.coachApi.remote())
+              ? "Could not reach the AI coach. Check your internet connection and try again."
+              : (isNativeApp()
+                  ? "Could not reach the coach on your computer. Make sure OptimalFit is running there and this phone is on the same Wi-Fi."
+                  : "Could not reach the local server. Is “" + launcherName() + "” still running?")));
       })
       .then(function () { // finally
         if (timer) clearTimeout(timer);

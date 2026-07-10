@@ -559,6 +559,15 @@ OF.social = (function () {
 
   function renderFeedInto(box) {
     if (!box) return;
+    // [13] preserve a comment the user is mid-typing across a feed rebuild
+    // (auto-pagination / check-in refresh) — snapshot the focused draft first.
+    var draft = null;
+    var af = document.activeElement;
+    if (af && af.matches && af.matches(".soc-cmt-form input") && box.contains(af)) {
+      var form = af.closest(".soc-cmt-form");
+      draft = { id: form && form.getAttribute("data-cmt-form"),
+                value: af.value, start: af.selectionStart, end: af.selectionEnd };
+    }
     var html = groupedFeedHtml();
     if (!st.feed.length && !st.feedLoading) html = st.feedError
       ? '<div class="card placeholder-card"><p class="muted">' + U.esc(st.feedError) + '</p>' +
@@ -568,6 +577,13 @@ OF.social = (function () {
       html = '<div class="soc-center muted">Loading posts&hellip;</div>';
     }
     box.innerHTML = html;
+    if (draft && draft.id) {
+      var re = box.querySelector('.soc-cmt-form[data-cmt-form="' + (window.CSS && CSS.escape ? CSS.escape(draft.id) : draft.id) + '"] input');
+      if (re) {
+        re.value = draft.value;
+        try { re.focus(); re.setSelectionRange(draft.start, draft.end); } catch (e) {}
+      }
+    }
     var more = document.getElementById("soc-more");
     if (more) more.classList.toggle("hidden", st.feedDone || !st.feed.length);
     var moreBtn = document.getElementById("soc-more-btn");

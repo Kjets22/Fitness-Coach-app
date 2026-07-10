@@ -131,7 +131,12 @@ OF.socialProfile = (function () {
       return post;
     });
     OF.social.registerPosts(rows);
-    OF.social.preloadComments(rows);
+    var forUser = cur.userId;
+    // re-render once the comment previews land (feed pattern) — guarded
+    // against the sheet having moved to a different profile meanwhile
+    OF.social.preloadComments(rows).then(function () {
+      if (cur && cur.userId === forUser && !cur.loading) renderProfileSheet();
+    });
     cur.posts = cur.posts.concat(rows);
     if (rows.length < 20) cur.done = true;
   }

@@ -7,7 +7,11 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     var window: UIWindow?
 
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
-        // Override point for customization after application launch.
+        // Disable the WKWebView rubber-band bounce: the app pins fixed bars to
+        // both screen edges and the bounce dragged them along (content peeked
+        // out under the tab bar). CSS overscroll-behavior alone does not
+        // reliably stop the native UIScrollView bounce inside a WKWebView.
+        UIScrollView.appearance().bounces = false
         return true
     }
 

@@ -60,7 +60,7 @@ OF.physique = (function () {
   }
   function apiHeaders(extra) {
     var h = extra || {};
-    var k = pairKey();
+    var k = (OF.coachApi && OF.coachApi.key()) || pairKey();
     if (k) h["X-OF-Key"] = k;
     return h;
   }
@@ -80,16 +80,21 @@ OF.physique = (function () {
 
   /* ---------------- server availability ---------------- */
 
+  function apiUrl(path) {
+    return OF.coachApi ? OF.coachApi.url(path) : path;
+  }
+
   function checkServer() {
-    if (location.protocol !== "http:" && location.protocol !== "https:") {
+    if (location.protocol !== "http:" && location.protocol !== "https:" &&
+        !(OF.coachApi && OF.coachApi.remote())) {
       server = "no-server";
       renderButton();
       return;
     }
-    fetch("/api/health", { cache: "no-store", headers: apiHeaders() })
+    fetch(apiUrl("/api/health"), { cache: "no-store", headers: apiHeaders() })
       .then(function (res) { return res.json(); })
       .then(function (j) {
-        server = (j && j.ok && j.claude) ? "ok" : "no-server";
+        server = (j && j.ok && j.claude && j.keyOk !== false) ? "ok" : "no-server";
         renderButton();
       })
       .catch(function () {
@@ -352,7 +357,7 @@ OF.physique = (function () {
     var timer = ctrl ? setTimeout(function () { ctrl.abort(); }, REQUEST_TIMEOUT_MS) : null;
     var httpStatus = 0;
 
-    fetch("/api/physique", {
+    fetch(apiUrl("/api/physique"), {
       method: "POST",
       headers: apiHeaders({ "Content-Type": "application/json" }),
       body: JSON.stringify({
@@ -484,6 +489,7 @@ OF.physique = (function () {
   /** Called by app.js every time the Body tab is opened. */
   function onEnter() {
     if (server !== "ok") checkServer();
+    else renderButton(); // re-evaluate the premium gate (sign-in may have happened)
   }
 
   return { init: init, onEnter: onEnter };

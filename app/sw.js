@@ -15,7 +15,7 @@
    ============================================================ */
 
 /* Bump this string when any shell file changes. */
-var VERSION = "v19";
+var VERSION = "v22";
 var CACHE = "optimalfit-shell-" + VERSION;
 
 var SHELL = [
@@ -30,6 +30,7 @@ var SHELL = [
   "./js/units.js",
   "./js/sleep.js",
   "./js/food.js",
+  "./js/coach-config.js",
   "./js/food-photo.js",
   "./js/exercise.js",
   "./js/body.js",

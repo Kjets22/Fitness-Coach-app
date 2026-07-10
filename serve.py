@@ -67,8 +67,24 @@ ESTIMATE_MIMES = {           # mime allowlist -> temp-file extension
     "image/webp": ".webp",
 }
 
-# Only one coach request at a time (the CLI call is heavy).
+# LLM concurrency guard. CLI mode stays single-flight (the local subprocess
+# is heavy); API mode allows a few parallel requests — the Anthropic API
+# handles concurrency fine, so simultaneous users shouldn't 429 each other.
 COACH_LOCK = threading.Lock()
+API_SEMAPHORE = threading.BoundedSemaphore(4)
+
+
+class _LLMGuard:
+    """Context-manager guard: acquire() -> bool, then use as `with`."""
+    def __init__(self):
+        self._lock = None
+    def acquire(self) -> bool:
+        self._lock = COACH_LOCK if llm_config()["mode"] == "cli" else API_SEMAPHORE
+        return self._lock.acquire(blocking=False)
+    def release(self) -> None:
+        if self._lock is not None:
+            self._lock.release()
+            self._lock = None
 
 # Wrong pairing-code guesses serialize behind this lock + a 1 s delay, so
 # /api/health's keyOk field can't be used as a fast brute-force oracle over
@@ -80,6 +96,15 @@ KEY_THROTTLE = threading.Lock()
 PHONE_MODE = False
 PAIR_CODE = None          # 6-digit string, generated per server run
 LAN_URLS: list[str] = []  # e.g. ["http://10.0.0.199:8642"]
+
+# --- public (tunnel) mode: serve the coach to the shipped app over the
+# internet through a tunnel (cloudflared / tailscale funnel) that forwards
+# to localhost. Tunneled requests arrive FROM 127.0.0.1, so the localhost
+# key-exemption must NOT apply to them — they are recognized by their Host
+# header instead. Requests addressed to PUBLIC_HOST always require the
+# stable ACCESS_KEY (sent as X-OF-Key, baked into the app build).
+PUBLIC_HOST = None        # e.g. "myhost.tailnet.ts.net"
+ACCESS_KEY = None         # stable shared key for public-mode API calls
 
 # Host-header allowlist (DNS-rebinding guard). Phone mode adds this
 # machine's own LAN IPv4 addresses; arbitrary DNS names stay rejected.
@@ -217,8 +242,11 @@ def llm_config() -> dict:
        {"mode": "api", "api_key": ..., "model": ...} when a key is configured,
        else {"mode": "cli"} (the default Claude-subscription path)."""
     fileenv = _read_env_file(LLM_ENV_FILE)
+    # NOTE: a bare ANTHROPIC_API_KEY in the ENVIRONMENT is deliberately NOT
+    # honored — dev machines export it for other tools, and it would silently
+    # flip the app onto paid API billing. Only the app-specific env var or the
+    # deliberate .env.llm file (either key name) switch modes.
     key = (os.environ.get("OPTIMALFIT_LLM_API_KEY")
-           or os.environ.get("ANTHROPIC_API_KEY")
            or fileenv.get("OPTIMALFIT_LLM_API_KEY")
            or fileenv.get("ANTHROPIC_API_KEY")
            or "").strip()
@@ -285,8 +313,7 @@ def call_anthropic_api(prompt: str, cfg: dict, image_b64: str | None = None,
     # Fable/Opus safety classifier can decline — surface it, don't crash on
     # an empty content array.
     if data.get("stop_reason") == "refusal":
-        return None, ("The AI declined this request. Try rephrasing it, or use "
-                      "a clearer photo.")
+        return None, "The AI declined this request. Try rephrasing it."
     parts = [b.get("text", "") for b in data.get("content", [])
              if isinstance(b, dict) and b.get("type") == "text"]
     text = "".join(parts).strip()
@@ -861,12 +888,33 @@ class Handler(SimpleHTTPRequestHandler):
 
     # -- helpers ---------------------------------------------------------
 
+    def _cors_headers(self) -> None:
+        """CORS for the API: the shipped native app calls from origin
+        capacitor://localhost (cross-origin to the tunnel). The X-OF-Key
+        access key is the auth — no cookies/credentials are involved, so a
+        wildcard origin is safe."""
+        self.send_header("Access-Control-Allow-Origin", "*")
+        self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+        self.send_header("Access-Control-Allow-Headers", "Content-Type, X-OF-Key")
+        self.send_header("Access-Control-Max-Age", "86400")
+
+    def do_OPTIONS(self):
+        """Preflight for cross-origin API calls from the native app."""
+        if not self._host_ok():
+            self._fail(403, "Forbidden host.")
+            return
+        self.send_response(204)
+        self._cors_headers()
+        self.send_header("Content-Length", "0")
+        self.end_headers()
+
     def _send_json(self, status: int, obj: dict) -> None:
         body = json.dumps(obj).encode("utf-8")
         self.send_response(status)
         self.send_header("Content-Type", "application/json; charset=utf-8")
         self.send_header("Content-Length", str(len(body)))
         self.send_header("Cache-Control", "no-store")
+        self._cors_headers()
         self.end_headers()
         self.wfile.write(body)
 
@@ -896,16 +944,30 @@ class Handler(SimpleHTTPRequestHandler):
         """True when the request comes from this PC itself."""
         return self.client_address[0] in ("127.0.0.1", "::1")
 
+    def _is_public_req(self) -> bool:
+        """True when the request came through the public tunnel (recognized by
+        its Host header — tunneled requests arrive from 127.0.0.1, so the
+        client address cannot be used)."""
+        if not PUBLIC_HOST:
+            return False
+        host = (self.headers.get("Host") or "").split(":", 1)[0].strip("[]").lower()
+        return host == PUBLIC_HOST
+
     def _key_ok(self) -> bool:
-        """Pairing-code check for LAN clients in phone mode. Localhost is
-        always exempt; without --phone there is no code to check."""
-        if not PHONE_MODE or self._client_is_local():
-            return True
+        """Access-key check. Public (tunnel) requests always require the
+        stable ACCESS_KEY — the localhost exemption must not apply because
+        the tunnel daemon connects from 127.0.0.1. LAN clients in phone mode
+        keep the 6-digit pairing code. Plain local use needs no key."""
         key = self.headers.get("X-OF-Key") or ""
-        ok = PAIR_CODE is not None and secrets.compare_digest(key, PAIR_CODE)
+        if self._is_public_req():
+            ok = ACCESS_KEY is not None and secrets.compare_digest(key, ACCESS_KEY)
+        elif PHONE_MODE and not self._client_is_local():
+            ok = PAIR_CODE is not None and secrets.compare_digest(key, PAIR_CODE)
+        else:
+            return True
         if not ok and key:
             # A wrong (non-empty) guess costs 1 s and guesses are serialized,
-            # keeping the 10^6 space out of practical brute-force range.
+            # keeping brute-force out of practical range.
             with KEY_THROTTLE:
                 time.sleep(1.0)
         return ok
@@ -924,6 +986,10 @@ class Handler(SimpleHTTPRequestHandler):
             if PHONE_MODE:
                 info["lanUrls"] = LAN_URLS
                 # lets the app verify a pairing code without a coach call
+                info["keyOk"] = self._key_ok()
+            elif self._is_public_req():
+                # public (tunnel) clients: same contract — the app checks
+                # keyOk before enabling the coach UI
                 info["keyOk"] = self._key_ok()
             self._send_json(200, info)
             return
@@ -1007,14 +1073,15 @@ class Handler(SimpleHTTPRequestHandler):
             context = {}
 
         # ---- one coach request at a time
-        if not COACH_LOCK.acquire(blocking=False):
+        guard = _LLMGuard()
+        if not guard.acquire():
             self._fail(429, "The coach is already answering another question — "
                             "wait for it to finish and try again.")
             return
         try:
             answer, err = run_coach(question, context)
         finally:
-            COACH_LOCK.release()
+            guard.release()
 
         if err:
             self._send_json(200, {"ok": False, "error": err})
@@ -1064,14 +1131,15 @@ class Handler(SimpleHTTPRequestHandler):
             return
 
         # ---- one CLI call at a time (shared with the coach)
-        if not COACH_LOCK.acquire(blocking=False):
+        guard = _LLMGuard()
+        if not guard.acquire():
             self._fail(429, "The AI is busy with another request — wait for "
                             "it to finish and try again.")
             return
         try:
             estimate, err = run_estimate(image_bytes, mime, description)
         finally:
-            COACH_LOCK.release()
+            guard.release()
 
         if err:
             self._send_json(200, {"ok": False, "error": err})
@@ -1122,14 +1190,15 @@ class Handler(SimpleHTTPRequestHandler):
             return
 
         # ---- one CLI call at a time (shared with the coach + estimate)
-        if not COACH_LOCK.acquire(blocking=False):
+        guard = _LLMGuard()
+        if not guard.acquire():
             self._fail(429, "The AI is busy with another request — wait for "
                             "it to finish and try again.")
             return
         try:
             analysis, err = run_physique(image_bytes, mime, description)
         finally:
-            COACH_LOCK.release()
+            guard.release()
 
         if err:
             self._send_json(200, {"ok": False, "error": err})
@@ -1161,6 +1230,17 @@ def main() -> int:
                         help="also listen on the home network (0.0.0.0) so a "
                              "phone on the same WiFi can use the app; the AI "
                              "coach then requires a printed pairing code")
+    parser.add_argument("--public", metavar="HOST",
+                        default=os.environ.get("OPTIMALFIT_PUBLIC_HOST"),
+                        help="accept tunnel traffic addressed to this hostname "
+                             "(e.g. myhost.tailnet.ts.net) so the shipped app "
+                             "can reach the coach over the internet; requires "
+                             "--key. Env: OPTIMALFIT_PUBLIC_HOST")
+    parser.add_argument("--key", metavar="KEY",
+                        default=os.environ.get("OPTIMALFIT_ACCESS_KEY"),
+                        help="stable access key public clients must send as "
+                             "X-OF-Key (baked into the app build). "
+                             "Env: OPTIMALFIT_ACCESS_KEY")
     args = parser.parse_args()
 
     if not os.path.isdir(APP_DIR):
@@ -1178,6 +1258,18 @@ def main() -> int:
         ips = lan_ipv4s()
         LAN_URLS = ["http://%s:%d" % (ip, args.port) for ip in ips]
         ALLOWED_HOSTS.update(ips)  # Host guard: own LAN IPs OK, DNS names still 403
+
+    if args.public:
+        global PUBLIC_HOST, ACCESS_KEY
+        if not args.key or len(args.key) < 12:
+            print("ERROR: --public requires --key (or OPTIMALFIT_ACCESS_KEY) "
+                  "of at least 12 characters — public clients authenticate "
+                  "with it. Generate one: python3 -c \"import secrets; "
+                  "print(secrets.token_urlsafe(24))\"")
+            return 1
+        PUBLIC_HOST = args.public.split("://")[-1].split("/")[0].lower()
+        ACCESS_KEY = args.key
+        ALLOWED_HOSTS.add(PUBLIC_HOST)  # tunnel traffic passes the Host guard
 
     try:
         server = ThreadingHTTPServer((bind_addr, args.port), Handler)
@@ -1207,9 +1299,22 @@ def main() -> int:
                   "network connections, click Allow.")
         print("==================")
         print()
-    print("AI coach (Claude Code CLI):",
-          ("found -> " + claude) if claude else
-          "NOT FOUND — the Coach tab will explain how to install it")
+    if PUBLIC_HOST:
+        print()
+        print("=== PUBLIC MODE ===")
+        print("Accepting tunnel traffic addressed to: https://%s" % PUBLIC_HOST)
+        print("Public clients must send the access key (X-OF-Key).")
+        print("Point your tunnel at http://127.0.0.1:%d" % args.port)
+        print("===================")
+        print()
+    mode = llm_config()["mode"]
+    if mode == "api":
+        print("AI coach: PAID API-KEY MODE (.env.llm / OPTIMALFIT_LLM_API_KEY) "
+              "— requests bill your Anthropic API account")
+    else:
+        print("AI coach (Claude Code CLI):",
+              ("found -> " + claude) if claude else
+              "NOT FOUND — the Coach tab will explain how to install it")
     print("Press Ctrl+C to stop.")
 
     if args.open:

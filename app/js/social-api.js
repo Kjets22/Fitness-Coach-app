@@ -94,6 +94,9 @@ OF.socialApi = (function () {
             // any other error (e.g. a revoked refresh token) = truly signed out
           }
           user = (res.data && res.data.session) ? res.data.session.user : null;
+          // truly signed out: the cached profile must not outlive the session,
+          // or entitlements would keep Premium/trial unlocked while logged out
+          if (!user) writeCache({ profile: null });
         }).catch(function (e) {
           var ne = (e && e.offline === true) ? e : normErr(e);
           if (ne.offline) {
@@ -101,6 +104,7 @@ OF.socialApi = (function () {
             throw ne;       // reject → caller keeps the session, shows offline
           }
           user = null;      // signed-out / unexpected: resolve as logged-out
+          writeCache({ profile: null });  // same rule as above
         });
       }
     }

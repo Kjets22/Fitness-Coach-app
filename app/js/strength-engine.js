@@ -77,8 +77,11 @@ OF.strength = (function () {
     return m ? new Date(+m[1], +m[2] - 1, +m[3]) : null;
   }
   function dayNum(iso) {
-    var d = parseISO(iso);
-    return d ? Math.round(d.getTime() / 86400000) : null;
+    // UTC-noon form — identical to targets-engine/dashboard so receipt day
+    // numbers agree in every timezone (local-midnight was a day off in UTC+13/14)
+    var m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(iso || ""));
+    if (!m) return null;
+    return Math.floor(Date.UTC(+m[1], +m[2] - 1, +m[3], 12) / 86400000);
   }
   function num(v) {
     if (v == null || v === "") return null;

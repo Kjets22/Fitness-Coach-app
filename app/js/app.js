@@ -16,7 +16,7 @@ OF.app = (function () {
   "use strict";
 
   var TABS = ["dashboard", "daily", "sleep", "food", "exercise", "body", "insights", "coach", "community", "settings"];
-  var LOG_TABS = ["sleep", "food", "exercise", "body"]; // reached via the Log sheet on mobile
+  var LOG_TABS = ["sleep", "food", "exercise", "body", "daily"]; // reached via the Log sheet on mobile
 
   function showTab(name) {
     if (TABS.indexOf(name) === -1) name = "dashboard";
@@ -49,11 +49,17 @@ OF.app = (function () {
 
   function openSheet() {
     var sheet = document.getElementById("log-sheet");
-    if (sheet) sheet.classList.remove("hidden");
+    if (!sheet) return;
+    sheet.classList.remove("hidden");
+    var first = sheet.querySelector(".sheet-item");
+    if (first) first.focus();
   }
   function closeSheet() {
     var sheet = document.getElementById("log-sheet");
-    if (sheet) sheet.classList.add("hidden");
+    if (!sheet || sheet.classList.contains("hidden")) return;
+    sheet.classList.add("hidden");
+    var fab = document.getElementById("nav-log");
+    if (fab && fab.offsetParent !== null) fab.focus();
   }
 
   function initSheet() {
@@ -65,7 +71,21 @@ OF.app = (function () {
       if (e.target.closest(".sheet-item")) closeSheet();
     });
     document.addEventListener("keydown", function (e) {
-      if (e.key === "Escape" && !sheet.classList.contains("hidden")) closeSheet();
+      if (sheet.classList.contains("hidden")) return;
+      if (e.key === "Escape") { closeSheet(); return; }
+      if (e.key === "Tab") {
+        // minimal focus trap: cycle within the sheet's focusable items
+        var items = sheet.querySelectorAll(".sheet-item, [data-close-sheet]");
+        if (!items.length) return;
+        var first = items[0], last = items[items.length - 1];
+        if (e.shiftKey && document.activeElement === first) {
+          e.preventDefault(); last.focus();
+        } else if (!e.shiftKey && document.activeElement === last) {
+          e.preventDefault(); first.focus();
+        } else if (!sheet.contains(document.activeElement)) {
+          e.preventDefault(); first.focus();
+        }
+      }
     });
   }
 

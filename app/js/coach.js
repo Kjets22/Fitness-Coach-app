@@ -43,9 +43,13 @@ OF.coach = (function () {
   }
   function apiHeaders(extra) {
     var h = extra || {};
-    var k = pairKey();
+    // remote coach server: the baked access key wins; else the LAN pairing key
+    var k = (OF.coachApi && OF.coachApi.key()) || pairKey();
     if (k) h["X-OF-Key"] = k;
     return h;
+  }
+  function apiUrl(path) {
+    return OF.coachApi ? OF.coachApi.url(path) : path;
   }
 
   var CHIPS = [
@@ -350,7 +354,11 @@ OF.coach = (function () {
     }
     els.chat.classList.add("hidden");
     if (health === "no-server") {
-      els.status.innerHTML = isNativeApp()
+      els.status.innerHTML = (OF.coachApi && OF.coachApi.remote())
+        ? statusCard("The coach is taking a break",
+            '<p class="muted">The AI coach couldn&rsquo;t be reached right now. Check your internet ' +
+            'connection and try again in a moment &mdash; everything else in the app keeps working.</p>')
+        : isNativeApp()
         ? statusCard("The AI coach runs on your computer",
             '<p class="muted">The AI coach uses the Claude subscription on your own Mac or PC, so ' +
             'it stays private and costs nothing. It is a companion feature you use on your computer ' +
@@ -439,7 +447,7 @@ OF.coach = (function () {
   function checkHealth() {
     health = null;
     renderStatus();
-    fetch("/api/health", { cache: "no-store", headers: apiHeaders() })
+    fetch(apiUrl("/api/health"), { cache: "no-store", headers: apiHeaders() })
       .then(function (res) { return res.json(); })
       .then(function (j) {
         if (!(j && j.ok)) {
@@ -477,7 +485,7 @@ OF.coach = (function () {
     var timer = ctrl ? setTimeout(function () { ctrl.abort(); }, REQUEST_TIMEOUT_MS) : null;
 
     var httpStatus = 0;
-    fetch("/api/coach", {
+    fetch(apiUrl("/api/coach"), {
       method: "POST",
       headers: apiHeaders({ "Content-Type": "application/json" }),
       body: JSON.stringify({ question: question, context: buildContext() }),

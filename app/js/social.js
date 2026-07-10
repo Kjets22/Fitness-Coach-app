@@ -154,6 +154,12 @@ OF.social = (function () {
       validated numbers + U.esc()'d strings. Weights are kg in the payload
       and go through U.fmtWeight for the user's display unit. */
   function receiptBits(receipt) {
+    /* A hostile/malformed receipt payload (possible via direct RPC insert)
+       must never take down the whole feed render — degrade that one card. */
+    try { return receiptBitsInner(receipt); }
+    catch (e) { return { title: "Stat receipt", metric: "", sub: "", bodyHtml: "" }; }
+  }
+  function receiptBitsInner(receipt) {
     var r = (receipt && typeof receipt === "object") ? receipt : {};
     var num = function (v) { return (typeof v === "number" && isFinite(v)) ? v : null; };
     var bits = { title: "Stat receipt", metric: "", sub: "", bodyHtml: "" };
@@ -195,8 +201,10 @@ OF.social = (function () {
       bits.title = "Consistency";
       if (planned > 0) bits.metric = Math.round(100 * done / planned) + "% of planned workouts";
       bits.sub = weeksArr.length + " week" + (weeksArr.length === 1 ? "" : "s") + " tracked";
-      if (weeksArr.length && num(weeksArr[0].planned) != null) {
-        bits.sub += " · plan " + weeksArr[weeksArr.length - 1].planned + "/wk" +
+      var lastWeek = weeksArr[weeksArr.length - 1];
+      if (weeksArr.length && weeksArr[0] && num(weeksArr[0].planned) != null &&
+          lastWeek && num(lastWeek.planned) != null) {
+        bits.sub += " · plan " + lastWeek.planned + "/wk" +
           (r.basis === "typical" ? " (from their own typical week)" : "");
       }
       if (num(r.streak) != null && r.streak > 1) bits.sub += " · " + r.streak + "-day streak";
@@ -1043,7 +1051,9 @@ OF.social = (function () {
     sheetOpen(1, html, "soc-lb-panel");
   }
 
+  var lbSeq = 0; // drop stale responses after a rapid metric/scope switch
   function loadLb() {
+    var seq = ++lbSeq;
     st.lb.loading = true;
     st.lb.error = "";
     renderLbSheet();
@@ -1051,10 +1061,13 @@ OF.social = (function () {
     if (st.lb.scope === "friends") call = A.getFriendsLeaderboard(st.lb.metric);
     else call = A.getGymLeaderboard(st.lb.scope.slice(4), st.lb.metric);
     call.then(function (rows) {
+      if (seq !== lbSeq) return;
       st.lb.rows = rows || [];
     }).catch(function (e) {
+      if (seq !== lbSeq) return;
       st.lb.error = (e && e.offline) ? e.message : "Couldn't load that board right now.";
     }).then(function () {
+      if (seq !== lbSeq) return;
       st.lb.loading = false;
       if (sheetIsOpen(1)) renderLbSheet();
     });

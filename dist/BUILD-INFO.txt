@@ -194,3 +194,8 @@ OptimalFit-release.aab  ce04d3cb69fb80097fe912b775c248b778d6b87739f2c35d2284f7dd
 OptimalFit-debug.apk b18461700639010a583df408cb8e4f9de7b5d249a58a3cedfacf8d159abc321a
 OptimalFit-release.apk 2fa99955e8e84fcdd2eaf3725a63ad7e130ae55da140609297b3a66c2adca06e
 OptimalFit-release.aab 4fc1f08f73ca6a5a3eb64cebcb3b3fb36870e818e9684ee0f4628d4a8125851f
+
+=== v22 (2026-07-10) — scroll fix + 23-bug sweep + remote coach + email landing ===
+OptimalFit-debug.apk 810f4c6f4e213904e425d11702df6ec53a271505b9d8558d7913d9d35fe0276b
+OptimalFit-release.apk b2bb1b96b84c002fb229e52410ff107cd974aa3a4e6515517caf07fb3805e59a
+OptimalFit-release.aab 4a3ea357fced6e1baa620649b3063afc19e68a7d502fe10e5f6d8c565b3e4462

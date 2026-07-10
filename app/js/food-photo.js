@@ -43,7 +43,7 @@ OF.foodPhoto = (function () {
   }
   function apiHeaders(extra) {
     var h = extra || {};
-    var k = pairKey();
+    var k = (OF.coachApi && OF.coachApi.key()) || pairKey();
     if (k) h["X-OF-Key"] = k;
     return h;
   }
@@ -63,14 +63,19 @@ OF.foodPhoto = (function () {
 
   /* ---------------- server availability ---------------- */
 
+  function apiUrl(path) {
+    return OF.coachApi ? OF.coachApi.url(path) : path;
+  }
+
   function checkServer() {
     // file:// -> there is no server origin to ask.
-    if (location.protocol !== "http:" && location.protocol !== "https:") {
+    if (location.protocol !== "http:" && location.protocol !== "https:" &&
+        !(OF.coachApi && OF.coachApi.remote())) {
       server = "no-server";
       renderButton();
       return;
     }
-    fetch("/api/health", { cache: "no-store", headers: apiHeaders() })
+    fetch(apiUrl("/api/health"), { cache: "no-store", headers: apiHeaders() })
       .then(function (res) { return res.json(); })
       .then(function (j) {
         // Respect keyOk like coach.js: an unpaired phone (keyOk:false) must not
@@ -302,7 +307,7 @@ OF.foodPhoto = (function () {
     var timer = ctrl ? setTimeout(function () { ctrl.abort(); }, REQUEST_TIMEOUT_MS) : null;
     var httpStatus = 0;
 
-    fetch("/api/estimate", {
+    fetch(apiUrl("/api/estimate"), {
       method: "POST",
       headers: apiHeaders({ "Content-Type": "application/json" }),
       body: JSON.stringify({
@@ -440,6 +445,7 @@ OF.foodPhoto = (function () {
   /** Called by app.js every time the Food tab is opened. */
   function onEnter() {
     if (server !== "ok") checkServer();
+    else renderButton(); // re-evaluate the premium gate (sign-in may have happened)
   }
 
   return { init: init, onEnter: onEnter };

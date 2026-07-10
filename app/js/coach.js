@@ -332,6 +332,16 @@ OF.coach = (function () {
   }
 
   function renderStatus() {
+    // AI Coach is a Premium feature — gate before the server/health states.
+    if (OF.entitlements && !OF.entitlements.isPremium()) {
+      els.chat.classList.add("hidden");
+      els.status.innerHTML = OF.entitlements.paywallHtml({
+        title: "AI Coach is Premium",
+        blurb: "The AI Coach answers questions grounded in your own logged data."
+      });
+      OF.entitlements.bindPaywall(els.status, renderStatus);
+      return;
+    }
     if (health === "ok") {
       els.status.innerHTML = "";
       els.chat.classList.remove("hidden");

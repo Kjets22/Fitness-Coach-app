@@ -189,3 +189,8 @@ iOS archive: OptimalFit-final.xcarchive (unsigned, 3 camera/photo usage strings 
 OptimalFit-debug.apk  6c0aca77ad427b1bf406a024961567755666bc4ed15e9e1984cfee25a69ab691
 OptimalFit-release.apk  a0969ae2a37862f02e4f8c18d203cdadbe2d45c28b54822b6711ab58408b6d69
 OptimalFit-release.aab  ce04d3cb69fb80097fe912b775c248b778d6b87739f2c35d2284f7dd255e8560
+
+=== v18 (2026-07-09) — premium paywall on the 3 AI features ===
+OptimalFit-debug.apk b18461700639010a583df408cb8e4f9de7b5d249a58a3cedfacf8d159abc321a
+OptimalFit-release.apk 2fa99955e8e84fcdd2eaf3725a63ad7e130ae55da140609297b3a66c2adca06e
+OptimalFit-release.aab 4fc1f08f73ca6a5a3eb64cebcb3b3fb36870e818e9684ee0f4628d4a8125851f

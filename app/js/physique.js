@@ -102,6 +102,15 @@ OF.physique = (function () {
 
   function renderButton() {
     if (!els.area) return;
+    // Physique analysis is a Premium AI feature.
+    if (OF.entitlements && !OF.entitlements.isPremium()) {
+      els.area.innerHTML = OF.entitlements.paywallHtml({
+        title: "Physique analysis is Premium",
+        blurb: "AI estimates body composition and muscle development from a photo (analyzed on your device, never stored)."
+      });
+      OF.entitlements.bindPaywall(els.area, renderButton);
+      return;
+    }
     var disabled = server !== "ok";
     els.area.innerHTML =
       '<button type="button" class="btn photo-btn" id="physique-open"' +

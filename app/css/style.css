@@ -2054,3 +2054,17 @@ input[type="checkbox"], input[type="radio"] { -webkit-appearance: auto; appearan
 .rc-spark {
   filter: drop-shadow(0 1px 4px color-mix(in srgb, var(--accent-2) 45%, transparent));
 }
+
+/* ---------- Premium paywall (AI features) ---------- */
+.ent-paywall { text-align: left; }
+.ent-badge {
+  display: inline-flex; align-items: center; gap: 5px;
+  align-self: flex-start;
+  padding: 4px 11px; margin-bottom: var(--sp-2);
+  font-size: 0.72rem; font-weight: 800; letter-spacing: 0.04em; text-transform: uppercase;
+  color: #fff; border-radius: var(--r-full);
+  background: var(--grad);
+  box-shadow: var(--e1), 0 4px 12px color-mix(in srgb, var(--g1) 40%, transparent);
+}
+.ent-paywall h2 { margin: 0 0 6px; }
+.ent-paywall .form-actions { margin-top: var(--sp-3); }

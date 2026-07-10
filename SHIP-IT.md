@@ -145,3 +145,33 @@ Coach tab correctly shows a "runs on your computer" card — this is expected, n
 | iOS ship guide (commands) | `docs/IOS-SHIP-GUIDE.md` |
 | Android rebuild recipe | `dist/BUILD-INFO.txt` |
 | Backend/API contract | `docs/BACKEND.md` |
+
+---
+
+## Managing the AI paywall (Coach, food-photo macros, physique)
+
+The 3 AI features are **Premium** and gated to accounts you grant. Everything
+else (tracking + the on-device insights engine + Community) is free. There is
+**no API key in the app**, so you have zero per-token cost exposure.
+
+### Grant / revoke premium (owner tool)
+From the repo root:
+```
+set -a; source .env.supabase; set +a
+node tools/grant-premium.mjs <username> premium        # unlock the AI features for an account
+node tools/grant-premium.mjs <username> premium off    # revoke
+node tools/grant-premium.mjs <username> admin           # make an account an owner/admin (also premium)
+node tools/grant-premium.mjs --list                     # list premium/admin accounts
+```
+Your own account: create it in the app (any username), then
+`node tools/grant-premium.mjs <your-username> premium`. Users can **never**
+grant themselves premium — it's a server-enforced flag.
+
+### To actually SELL premium (future step)
+The current gate is *owner-granted access*, not an in-app purchase. To charge
+users on iOS you must wire **Apple In-App Purchase** (App Store Guideline 3.1.1
+requires it for digital goods) — and equivalently Google Play Billing on Android
+— so a completed purchase calls `admin_set_premium` (via a server/webhook) to
+flip `is_premium`. That's a separate build; the gate + entitlement plumbing it
+needs is already in place. **Do not add a "Buy/Upgrade" button in the app until
+IAP is wired**, or Apple will reject the build.

@@ -7,12 +7,24 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     var window: UIWindow?
 
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
-        // Disable the WKWebView rubber-band bounce: the app pins fixed bars to
-        // both screen edges and the bounce dragged them along (content peeked
-        // out under the tab bar). CSS overscroll-behavior alone does not
-        // reliably stop the native UIScrollView bounce inside a WKWebView.
-        UIScrollView.appearance().bounces = false
+        // Override point for customization after application launch.
         return true
+    }
+
+    /// Disable the WKWebView rubber-band bounce: the app pins fixed bars to
+    /// both screen edges, and the bounce dragged the whole page (header + tab
+    /// bar) with it. `UIScrollView.appearance().bounces` is NOT a reliable
+    /// appearance property, so this sets `bounces` directly on the live
+    /// scroll view(s). Runs on every foreground — idempotent and cheap.
+    private func disableWebViewBounce(in view: UIView) {
+        if let scroll = view as? UIScrollView {
+            scroll.bounces = false
+            scroll.alwaysBounceVertical = false
+            scroll.alwaysBounceHorizontal = false
+        }
+        for sub in view.subviews {
+            disableWebViewBounce(in: sub)
+        }
     }
 
     func applicationWillResignActive(_ application: UIApplication) {
@@ -30,7 +42,11 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     }
 
     func applicationDidBecomeActive(_ application: UIApplication) {
-        // Restart any tasks that were paused (or not yet started) while the application was inactive. If the application was previously in the background, optionally refresh the user interface.
+        // The web view exists by the time the app becomes active — kill the
+        // scroll bounce on it (see disableWebViewBounce above).
+        if let root = window?.rootViewController?.view {
+            disableWebViewBounce(in: root)
+        }
     }
 
     func applicationWillTerminate(_ application: UIApplication) {

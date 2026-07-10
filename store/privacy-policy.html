@@ -110,7 +110,7 @@
   <p>Even with a community account:</p>
   <ul>
     <li><strong>Your raw logs</strong> — sleep, food, workout, weight, and body-fat history never leave your device. Only the summary numbers on a Receipt card you chose to post are shared.</li>
-    <li><strong>Photos you don't post</strong> — coach photo analysis (meals, physique) stays on your own machines; only images you explicitly attach to a post are uploaded.</li>
+    <li><strong>Photos you don't post</strong> — photos sent to the AI coach for meal or physique analysis are processed transiently to produce the estimate and are deleted immediately afterwards; they are never stored, published, or used for anything else. Only images you explicitly attach to a community post are uploaded and kept.</li>
     <li><strong>No analytics or telemetry</strong> — the app does not phone home, count usage, or report crashes to us. We added none in this update.</li>
     <li><strong>No advertising and no ad SDKs.</strong></li>
     <li><strong>No tracking and no sale of data</strong> — ever, for any user.</li>
@@ -121,8 +121,8 @@
   <h2>Health-file import happens on your device</h2>
   <p>You can optionally import an Apple Health export file or Samsung Health CSV files. These files are read and processed <strong>entirely inside the app on your device</strong>. The file contents are never uploaded anywhere.</p>
 
-  <h2>The optional AI Coach (self-hosted, your own computer)</h2>
-  <p>The optional "Coach" feature is unchanged: it only works if <strong>you</strong> run a small companion program on <strong>your own personal computer</strong> and pair your device to it over your own local network. Coach questions and photo analysis go only to your own machine — never to our servers. If you have a community account, the coach can additionally <strong>fetch</strong> anonymous aggregate benchmark percentiles from our server to enrich its advice (a download of cohort statistics, not an upload of your logs).</p>
+  <h2>The optional AI Coach</h2>
+  <p>The AI Coach (chat, meal-photo macro estimates, physique analysis) is an optional, Premium feature. When you use it, your question (or photo) plus a <strong>compact machine-generated summary</strong> of your tracked data is sent over HTTPS to the OptimalFit coach service so an AI model can answer. This data is <strong>processed transiently to produce the answer and is not stored</strong> — no chat history, photos, or summaries are retained on the service, and they are never used for advertising, profiling, or anything other than answering your request. Your full raw logs never leave your device. If you prefer, you can instead run the coach's companion program on <strong>your own computer</strong> and pair over your local network, in which case coach traffic goes only to your own machine. If you have a community account, the coach can additionally <strong>fetch</strong> anonymous aggregate benchmark percentiles from our server to enrich its advice (a download of cohort statistics, not an upload of your logs).</p>
 
   <h2>Your data, your control</h2>
   <ul>
@@ -133,7 +133,7 @@
   </ul>
 
   <h2>Data security</h2>
-  <p>Local data never travels over the internet. Community data travels over HTTPS to Supabase, where passwords are hashed and data is stored in access-controlled infrastructure. Per-user access rules ensure users can only modify their own content. The optional coach connection remains limited to your own local network with a pairing code.</p>
+  <p>Local data never travels over the internet. Community data travels over HTTPS to Supabase, where passwords are hashed and data is stored in access-controlled infrastructure. Per-user access rules ensure users can only modify their own content. The optional coach connection uses HTTPS with an access key (or, in self-hosted mode, your own local network with a pairing code); coach requests are processed transiently and not stored.</p>
 
   <h2>Children's privacy</h2>
   <p>The tracking features have no accounts and collect nothing. <strong>Community accounts require you to be at least 13 years old</strong> (or the higher minimum age in your region). The sign-up flow includes an age confirmation, and we do not knowingly allow accounts for children under 13. If you believe a child under 13 has created an account, contact us and we will delete it and its data.</p>

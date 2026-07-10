@@ -346,6 +346,30 @@ OF.physique = (function () {
     if (t) description = t.value.slice(0, 500);
   }
 
+  /* The user's own height/weight/age/sex (already tracked — height is set on
+     the goal, weight from body logs) materially sharpen a visual body-fat /
+     composition estimate. All optional; sent only when present. */
+  function num(v) { return (typeof v === "number" && isFinite(v)) ? v : (v != null && v !== "" && isFinite(Number(v)) ? Number(v) : null); }
+  function bodyStats() {
+    var s = {};
+    try {
+      var g = (OF.goals && OF.goals.activeGoal) ? OF.goals.activeGoal() : null;
+      if (g) {
+        if (num(g.heightCm) != null) s.heightCm = Math.round(num(g.heightCm));
+        if (num(g.age) != null) s.age = Math.round(num(g.age));
+        if (g.sex === "male" || g.sex === "female") s.sex = g.sex;
+      }
+      var body = (S.getAll("body") || []).slice().sort(U.byNewest);
+      for (var i = 0; i < body.length; i++) {
+        if (num(body[i].weightKg) != null) {
+          s.weightKg = Math.round(num(body[i].weightKg) * 10) / 10;
+          break;
+        }
+      }
+    } catch (e) { /* stats are optional — never block the analysis */ }
+    return s;
+  }
+
   function doAnalyze() {
     if (busy || !imgB64) return;
     saveDesc();
@@ -363,7 +387,8 @@ OF.physique = (function () {
       body: JSON.stringify({
         imageBase64: imgB64,
         mime: "image/jpeg",
-        description: description
+        description: description,
+        stats: bodyStats()   // height/weight/age/sex sharpen the composition estimate
       }),
       signal: ctrl ? ctrl.signal : undefined
     })

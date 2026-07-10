@@ -69,3 +69,5 @@ Thumbs.db
 
 # Persona demo accounts (Part A populate; created via Auth Admin API)
 .env.personas
+# Public coach-server host+key (baked into app builds too)
+.env.coach

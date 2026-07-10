@@ -23,11 +23,25 @@ OF.entitlements = (function () {
   function signedIn() { var a = api(); return !!(a && a.currentUser && a.currentUser()); }
   function profile() { var a = api(); return (a && a.cachedProfile) ? a.cachedProfile() : null; }
 
-  /* Premium if the signed-in profile carries is_premium (or is_admin — the
-     owner always has access). Free/anon => not premium. */
+  /* Premium if the signed-in profile carries is_premium / is_admin (owner grant)
+     OR the 7-day free trial hasn't expired. Free/anon => not premium. */
   function isPremium() {
     var p = profile();
-    return !!(p && (p.is_premium || p.is_admin));
+    if (!p) return false;
+    if (p.is_premium || p.is_admin) return true;
+    return trialActive(p);
+  }
+  function trialActive(p) {
+    p = p || profile();
+    if (!p || p.is_premium || p.is_admin || !p.trial_ends_at) return false;
+    var t = new Date(p.trial_ends_at).getTime();
+    return isFinite(t) && t > Date.now();
+  }
+  /* Whole days left in the trial (null when not on a trial / already premium). */
+  function trialDaysLeft() {
+    var p = profile();
+    if (!trialActive(p)) return null;
+    return Math.max(1, Math.ceil((new Date(p.trial_ends_at).getTime() - Date.now()) / 86400000));
   }
 
   /* Re-fetch the profile so a freshly-granted upgrade shows up without a full
@@ -47,10 +61,10 @@ OF.entitlements = (function () {
     var title = f.title || "A Premium AI feature";
     var blurb = f.blurb || "This uses AI.";
     if (!signedIn()) {
-      return card(title, blurb + " It’s an OptimalFit Premium feature — sign in with a Premium account to use it. Everything else in the app is free.",
-        '<button type="button" class="btn primary" data-ent="signin">Sign in</button>');
+      return card(title, blurb + " It’s an OptimalFit Premium feature and every new account gets a 7-day free trial — sign in or create an account to start yours. Everything else in the app is free.",
+        '<button type="button" class="btn primary" data-ent="signin">Sign in / Start free trial</button>');
     }
-    return card(title, blurb + " It’s available to OptimalFit Premium members. If you’ve just been given access, re-check below.",
+    return card(title, blurb + " Your 7-day free trial of the Premium AI features has ended. It stays available to Premium members — if you’ve just been given access, re-check below.",
       '<button type="button" class="btn primary" data-ent="recheck">Check my access</button>');
   }
 
@@ -81,6 +95,7 @@ OF.entitlements = (function () {
 
   return {
     isPremium: isPremium,
+    trialDaysLeft: trialDaysLeft,
     signedIn: signedIn,
     refresh: refresh,
     paywallHtml: paywallHtml,

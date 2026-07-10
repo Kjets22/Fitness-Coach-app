@@ -167,6 +167,11 @@ Your own account: create it in the app (any username), then
 `node tools/grant-premium.mjs <your-username> premium`. Users can **never**
 grant themselves premium — it's a server-enforced flag.
 
+### 7-day free trial
+Every new account automatically gets the AI features free for **7 days** (a
+server-set `trial_ends_at` a user can't extend). After it expires they see the
+paywall unless you've granted them premium. Nothing to configure — it's on.
+
 ### To actually SELL premium (future step)
 The current gate is *owner-granted access*, not an in-app purchase. To charge
 users on iOS you must wire **Apple In-App Purchase** (App Store Guideline 3.1.1
@@ -175,3 +180,25 @@ requires it for digital goods) — and equivalently Google Play Billing on Andro
 flip `is_premium`. That's a separate build; the gate + entitlement plumbing it
 needs is already in place. **Do not add a "Buy/Upgrade" button in the app until
 IAP is wired**, or Apple will reject the build.
+
+---
+
+## LLM routing — your Claude subscription now, an API key when you want
+
+Every AI request runs through `serve.py` (the companion server on your computer).
+It has **two routes**, switchable with zero rebuild:
+
+- **Default — your Claude subscription** (the `claude` CLI on this machine). Zero
+  per-token cost. Nothing to set up. Right for now, with ~0 users.
+- **API key** — when you'd rather not use your personal subscription (e.g. as
+  usage grows), drop an Anthropic key in and every AI call goes through the paid
+  API instead:
+  ```
+  cp .env.llm.example .env.llm        # then edit .env.llm, paste your key
+  ```
+  `serve.py` picks it up on the **next request** — no restart. Delete `.env.llm`
+  to switch back to the subscription. Optionally set `OPTIMALFIT_LLM_MODEL`
+  (default `claude-opus-4-8`; `claude-sonnet-5` / `claude-haiku-4-5` are cheaper).
+  `.env.llm` is gitignored — your key never leaves the machine and is never in
+  the app. `GET /api/health` reports `llmMode: "cli" | "api"` so you can confirm
+  which route is live.

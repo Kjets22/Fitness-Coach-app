@@ -17,6 +17,8 @@ supabase/.temp/
 # Backend test-user credentials (created via the Auth Admin API; never commit)
 .env.reviewer
 .env.test-users
+# Owner's Anthropic API key for the LLM API-key mode (serve.py) — NEVER commit
+.env.llm
 
 # --- SECRETS: Android signing (see dist/SIGNING-INFO.txt) ---
 dist/*.keystore

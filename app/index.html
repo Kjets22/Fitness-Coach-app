@@ -257,10 +257,27 @@
 
     <!-- ===================== EXERCISE ===================== -->
     <section class="tab hidden" id="tab-exercise">
-      <h1>Exercise</h1>
+      <h1>Workout</h1>
       <div class="today-strip" id="exercise-summary"></div>
-      <form class="card entry-form" id="exercise-form" novalidate>
-        <h2 id="exercise-form-title">Log a workout</h2>
+
+      <!-- STATE 1: the start hub (shown when no workout is in progress) -->
+      <div class="card wo-hub" id="workout-hub">
+        <button type="button" class="wo-start" data-wo="start">
+          <span class="wo-start-ico" aria-hidden="true">&#9654;</span>
+          <span class="wo-start-main">
+            <span class="wo-start-txt">Start workout</span>
+            <span class="wo-start-sub">Times itself live — keeps running even if you close the app. Hit Complete when you’re done.</span>
+          </span>
+        </button>
+        <button type="button" class="btn ghost wo-manual-btn" data-wo="manual">Log a past workout</button>
+      </div>
+
+      <!-- STATE 2: the live session (exercise.js renders into this) -->
+      <section class="card wo-active hidden" id="workout-active" aria-label="Workout in progress"></section>
+
+      <!-- STATE 3: manual / edit form (hidden until "Log a past workout" or Edit) -->
+      <form class="card entry-form hidden" id="exercise-form" novalidate>
+        <h2 id="exercise-form-title">Log a past workout</h2>
         <input type="hidden" id="exercise-edit-id" value="">
         <div class="form-row">
           <label>Date
@@ -282,6 +299,16 @@
             <input type="number" inputmode="numeric" id="exercise-duration" min="1" max="600" step="1" required placeholder="60">
           </label>
         </div>
+        <div class="ex-builder" id="exercise-manual-builder">
+          <div class="ex-builder-head">Exercises &amp; sets <span class="ex-builder-hint">weight &times; reps; leave weight empty for bodyweight</span></div>
+          <div class="ex-list" id="exercise-ex-list"></div>
+          <div class="ex-add">
+            <input type="text" class="ex-add-input" maxlength="80" autocomplete="off"
+                   placeholder="Add an exercise…" aria-label="Add an exercise">
+            <div class="ex-add-menu hidden" role="listbox"></div>
+          </div>
+        </div>
+        <!-- ratings moved to the END (fill after the session) -->
         <div class="form-row">
           <label class="seg-label">Intensity (1 = very light &middot; 5 = max)
             <select id="exercise-intensity" data-seg>
@@ -292,7 +319,7 @@
               <option value="5">5 &mdash; max effort</option>
             </select>
           </label>
-          <label class="seg-label">Performance (1 = awful &middot; 5 = best)
+          <label class="seg-label">How did it go? (1 = awful &middot; 5 = best)
             <select id="exercise-performance" data-seg>
               <option value="1">1 &mdash; awful</option>
               <option value="2">2 &mdash; weak</option>
@@ -302,16 +329,6 @@
             </select>
           </label>
         </div>
-        <div class="ex-builder" id="exercise-builder">
-          <div class="ex-builder-head">Exercises &amp; sets <span class="ex-builder-hint">optional &mdash; weight &times; reps; leave weight empty for bodyweight</span></div>
-          <div id="exercise-ex-list"></div>
-          <div class="ex-add-row">
-            <input type="text" id="exercise-add-name" list="exercise-name-list" maxlength="80"
-                   placeholder="e.g. Bench Press" aria-label="Exercise name" autocomplete="off">
-            <datalist id="exercise-name-list"></datalist>
-            <button type="button" class="btn" id="exercise-add-btn">+ Add exercise</button>
-          </div>
-        </div>
         <div class="form-row">
           <label class="grow">Notes
             <input type="text" id="exercise-notes" maxlength="300" placeholder="optional">
@@ -319,11 +336,12 @@
         </div>
         <p class="form-error" id="exercise-error" hidden></p>
         <div class="form-actions">
-          <button type="submit" class="btn primary" id="exercise-submit">Add workout</button>
-          <button type="button" class="btn ghost hidden" id="exercise-cancel-edit">Cancel edit</button>
+          <button type="submit" class="btn primary" id="exercise-submit">Save workout</button>
+          <button type="button" class="btn ghost" data-wo="hub-back">Cancel</button>
         </div>
       </form>
-      <!-- Optional rest timer / stopwatch (exercise.js renders into this) -->
+
+      <!-- Rest timer / stopwatch (exercise.js renders into this) -->
       <section class="card" id="exercise-timer" aria-label="Rest timer"></section>
       <h2 class="list-heading">History</h2>
       <div class="history-list" id="exercise-list"></div>
@@ -567,6 +585,7 @@
 <script src="js/food.js"></script>
 <script src="js/coach-config.js"></script>
 <script src="js/food-photo.js"></script>
+<script src="js/exercise-library.js"></script>
 <script src="js/exercise.js"></script>
 <script src="js/body.js"></script>
 <script src="js/physique.js"></script>

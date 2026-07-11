@@ -114,6 +114,13 @@ OF.goals = (function () {
 
     var p = startDn + 14;
     if (lastDn != null && lastDn + T.ADJ_STEP_DAYS > p) p = lastDn + T.ADJ_STEP_DAYS;
+    // Never replay months of history: the 30-iteration guard covers ~30 weeks,
+    // so a goal with no adjustments for longer than that would re-walk the same
+    // ancient windows every run and NEVER reach the present (adaptation starved
+    // forever). Ancient windows can't usefully fire today anyway — clamp the
+    // catch-up to the last ~8 weeks.
+    var floorDn = todayDn - 8 * T.ADJ_STEP_DAYS;
+    if (p < floorDn) p = floorDn;
 
     var guard = 0;
     while (p <= todayDn && guard++ < 30) {
@@ -156,6 +163,7 @@ OF.goals = (function () {
 
   function goalHeadline(goal) {
     var t = OF.targets.GOAL_TYPES[goal.type];
+    if (!t) return "Goal (" + String(goal.type || "unknown") + ")";   // imported backups can carry unknown types — never crash the Insights render
     var head = t.label;
     if (goal.targetAmountKg) {
       var amt = U.fmtWeight(goal.targetAmountKg);

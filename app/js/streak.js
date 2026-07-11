@@ -60,10 +60,20 @@ OF.streak = (function () {
     // logged, else yesterday (you still have today to keep it alive).
     var startN = loggedToday ? todayN : todayN - 1;
     var m = meta();
+    var freezeBudget = 1;
     if (!days[isoFromDayNum(startN)]) {
-      return { current: 0, longest: m.longest || 0, freezesLeft: 1, loggedToday: loggedToday };
+      // The anchor day itself is the gap — the morning AFTER a missed day,
+      // before anything is logged today. A freeze must bridge that single gap
+      // too, otherwise the chip shows 0 exactly when the user most needs the
+      // "log today and your streak lives" nudge.
+      if (!loggedToday && freezeBudget > 0 && days[isoFromDayNum(startN - 1)]) {
+        freezeBudget--;
+        startN -= 1;
+      } else {
+        return { current: 0, longest: m.longest || 0, freezesLeft: freezeBudget, loggedToday: loggedToday };
+      }
     }
-    var current = 0, n = startN, freezeBudget = 1, sinceFreeze = 0;
+    var current = 0, n = startN, sinceFreeze = 0;
     while (n > startN - 800) {
       if (days[isoFromDayNum(n)]) {
         current++; n--; sinceFreeze++;

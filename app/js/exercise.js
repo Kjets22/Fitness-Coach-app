@@ -487,6 +487,8 @@ OF.exercise = (function () {
   }
 
   function startSession() {
+    // Same guard as startPrescribed: never silently wipe a live session.
+    if (loadActive() && !confirm("You have a workout in progress. Start a new one and discard it?")) return;
     activeStartedAt = Date.now();
     sessType = "strength";
     exList = [];

@@ -28,3 +28,26 @@ Run: overnight autonomous session. Every decision, test, finding, and change log
 
 ### R1 FIXED: timed holds now prescribed in seconds ("Plank 3×30–60s hold"), not reps. Holds tagged in POOL; prescription()/generate() handle them; they never auto-progress by weight.
 ### R2 FIXED: no-history lifts now give a concrete beginner cue ("start ~2 reps shy of failure") instead of "work up to a hard set".
+- Core loop verified: Start→logger preload (5 exercises) + programDay persisted
+
+## AI TRAINER validated end-to-end (real /api/coach through the tunnel)
+Restarted the server (new trainer persona) and sent a realistic context (program + today's Upper session + lagging-triceps + lean-bulk targets). The coach answered as a real trainer: walked each lift with form cues + progression rules, flagged the triceps gap with a concrete fix (add 3× Overhead Extension), and tied it to the 2800 cal / 150g protein day. This is the core "trainer in your pocket" value prop — working.
+
+## Product + monetization roadmap (3-angle judge panel → synthesis) — saved to scratchpad/roadmap.json
+Top picks (impact/effort/category), in priority order — see roadmap.json for full whatToBuild:
+1. Post-session Coach's Recap — PR celebration + one-tap Receipt (delight) — completeSession returns deltas; recap sheet + confetti on PR
+2. Redraw the tier line — gate on-device trainer intelligence, not the fragile server AI (pay)
+3. On-device coach fallback so Premium never looks broken when the tunnel is down (pay)
+4. Daily streak engine with weekly freeze + comeback flow (retention)
+5. Activation: capture profile day-1 + end onboarding inside a real "Today's session" (activate)
+6. Weekly Trainer Check-in — the ritual that justifies a subscription (retention)
+7. Dynamic Daily Brief one-liner in the dashboard hero (retention)
+8. Dashboard Premium strip — trial countdown + accumulated-value receipt (pay)
+9. "Adjust today" — trainer adapts to your life (short on time / traveling / sore) (trainer)
+10. Proactive local notifications — best-time nudge + streak-protect (retention; needs native plugin)
+
+## Build plan overnight (by ROI + buildability): streak engine → post-session recap+PR celebration → daily brief → on-device coach fallback → adjust-today. Strategic (tier redraw #2, activation onboarding #5, notifications #10) documented for morning as they touch pricing/native decisions.
+
+## BUILT #4 Daily streak engine (streak.js) + #7 Daily brief — verified
+- streak.js: consecutive-log streak computed from the data (robust to edits), with a ~weekly FREEZE that bridges a single missed day so one slip doesn't wipe momentum. Flame chip (🔥 37 days) in the dashboard hero + milestone toasts at 3/7/14/30/50/100/200/365.
+- Daily brief one-liner in the hero: composed from today's session + readiness + biggest nutrition/step gap + streak nudge (e.g. "Full Body A day · readiness 70 · 71g short on protein"). Verified: freeze correctly bridged a missed day; brief renders.

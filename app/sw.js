@@ -15,7 +15,7 @@
    ============================================================ */
 
 /* Bump this string when any shell file changes. */
-var VERSION = "v33";
+var VERSION = "v34";
 var CACHE = "optimalfit-shell-" + VERSION;
 
 var SHELL = [
@@ -43,6 +43,7 @@ var SHELL = [
   "./js/targets-engine.js",
   "./js/goals.js",
   "./js/daily.js",
+  "./js/streak.js",
   "./js/dashboard.js",
   "./js/insights.js",
   "./js/coach.js",

@@ -81,6 +81,41 @@ OF.dashboard = (function () {
       h < 18 ? "Good afternoon" : "Good evening";
   }
 
+  /** Today's protein / steps / water shortfall vs target → the biggest gap, or "". */
+  function biggestGapToday() {
+    var t = OF.goals ? OF.goals.currentTargets() : null;
+    if (!t || t.status !== "ok") return "";
+    var today = U.todayISO();
+    var prot = 0, kcal = 0;
+    S.getAll("food").forEach(function (r) {
+      if (r.date === today) { prot += Number(r.protein) || 0; kcal += Number(r.calories) || 0; }
+    });
+    var steps = 0; try { var sr = OF.daily && OF.daily.stepsRecordFor(today); steps = sr ? Number(sr.count) || 0 : 0; } catch (e) {}
+    var cands = [];
+    if (t.proteinG && kcal > 0 && prot < t.proteinG * 0.7) cands.push({ frac: prot / t.proteinG, txt: Math.round(t.proteinG - prot) + "g short on protein" });
+    if (t.steps && steps > 0 && steps < t.steps * 0.7) cands.push({ frac: steps / t.steps, txt: (Math.round((t.steps - steps) / 100) * 100) + " steps to go" });
+    cands.sort(function (a, b) { return a.frac - b.frac; });
+    return cands.length ? cands[0].txt : "";
+  }
+
+  /** One coached sentence for the hero. */
+  function dailyBrief(readiness) {
+    var parts = [];
+    var ns = null; try { ns = OF.trainer && OF.trainer.nextSession ? OF.trainer.nextSession() : null; } catch (e) {}
+    if (ns) parts.push(ns.name + " day");
+    if (readiness && readiness.status === "ok") parts.push("readiness " + readiness.score);
+    var gap = biggestGapToday();
+    if (gap) parts.push(gap);
+    try {
+      var s = OF.streak ? OF.streak.compute() : null;
+      if (s && s.current >= 2) {
+        var next = [3, 7, 14, 30, 50, 100, 200, 365].filter(function (m) { return m > s.current; })[0];
+        if (next && next - s.current <= 2 && !s.loggedToday) parts.push((next - s.current) + " day" + (next - s.current === 1 ? "" : "s") + " from a " + next + "-day streak");
+      }
+    } catch (e) {}
+    return parts.slice(0, 3).join(" · ");
+  }
+
   function renderHero(readiness) {
     if (!heroEl) return;
     var dateTxt = new Date().toLocaleDateString(undefined,
@@ -95,14 +130,23 @@ OF.dashboard = (function () {
     } else {
       ringHtml = U.progressRing(0, { size: 76, color: "grad", value: "—" });
     }
+    var streakChip = "";
+    try { streakChip = OF.streak ? OF.streak.chipHtml() : ""; } catch (e) {}
+    var brief = dailyBrief(readiness);
     heroEl.innerHTML =
       '<header class="hero">' +
-      '<div><h1 class="hero-greet">' + U.esc(greeting()) + '</h1>' +
-      '<p class="hero-date">' + U.esc(dateTxt) + '</p></div>' +
+      '<div class="hero-main"><div class="hero-greet-row"><h1 class="hero-greet">' + U.esc(greeting()) + '</h1>' + streakChip + '</div>' +
+      '<p class="hero-date">' + U.esc(dateTxt) + '</p>' +
+      (brief ? '<p class="hero-brief">' + U.esc(brief) + '</p>' : '') + '</div>' +
       '<div class="hero-ring" title="' +
       U.esc(readiness && readiness.status === "ok" ? readiness.verdict : "Log a few nights of sleep to unlock your readiness score") +
       '">' + ringHtml + '<span class="hero-ring-label">Readiness</span></div>' +
       '</header>';
+    // celebrate a new streak milestone (once)
+    try {
+      var ms = OF.streak && OF.streak.newMilestone ? OF.streak.newMilestone() : 0;
+      if (ms && U.toast) U.toast("🔥 " + ms + "-day streak! Keep it going.");
+    } catch (e) {}
   }
 
   /* ---------------- stat cards ---------------- */

@@ -1,0 +1,75 @@
+{
+ "topPicks": [
+  {
+   "title": "Post-session Coach's Recap \u2014 PR celebration + one-tap Receipt",
+   "whatToBuild": "Refactor OF.trainer.completeSession() (trainer.js:283, currently void) to RETURN a deltas object it already computes: per-lift added/held/deloaded + kind reason, newly-seeded weights, next-session preview, total volume, session streak. In exercise.js finishSession (the call site at line 583 that currently discards the result) render a full-screen 'Here's what changed' recap sheet with per-lift chips ('Bench 60\u219262.5kg next time'), fire CSS/canvas confetti on a genuine e1RM PR (via OF.strength vs a persisted per-lift high-water mark), and add a one-tap 'Share as a Receipt' CTA into receipts.js prPayloadFor/exportImage.",
+   "impact": "Highest single-change ROI: makes silent auto-progression visible, delivers the app's missing emotional payoff loop, and pulls users into social virality \u2014 all from one small return-value change on code that already runs.",
+   "effort": "M",
+   "category": "delight"
+  },
+  {
+   "title": "Redraw the tier line \u2014 gate always-on on-device trainer intelligence, not the fragile server AI",
+   "whatToBuild": "In entitlements.js add on-device trainer-capability gates checked in trainer.js: free = tracking + one starter program + week-1 progression; Premium = auto-progression bumps/deloads beyond week 1, program regeneration/adaptation, and the muscle-balance analyzer's prescriptions. Keep the LLM coach as a Premium BONUS, not the whole tier. Everything gated runs on-device and never touches the owner's Mac/tunnel.",
+   "impact": "Fixes the biggest conversion liability: today Premium == the AI features, which visibly break whenever the tunnel is down. Re-anchoring the paid line on always-on value makes Premium worth paying for even offline. This is the reliability floor every other pay idea assumes.",
+   "effort": "M",
+   "category": "pay"
+  },
+  {
+   "title": "On-device coach fallback so Premium never looks broken",
+   "whatToBuild": "In coach.js, when GET /api/health fails, answer the existing suggestion chips ('Walk me through today's session', 'I'm sore \u2014 adjust today', 'What should I eat before?') fully on-device from OF.trainer.coachContext() + OF.engine insights + goals/targets. Present the LLM as 'live coach connected' only when the server is up; otherwise degrade to useful instead of a dead tab.",
+   "impact": "Directly neutralizes the stated tunnel constraint and protects the paid tier's credibility. The chips and coachContext already exist, so it degrades the AI to 'useful' rather than 'broken'.",
+   "effort": "M",
+   "category": "pay"
+  },
+  {
+   "title": "Daily streak engine with weekly freeze + comeback flow",
+   "whatToBuild": "New OF.streak in storage.js: {current, longest, lastDay, freezesLeft, previousLongest} counting consecutive local days with ANY log; auto-grant 1 freeze/week so one miss doesn't reset. Render a flame + count in dashboard.js renderHero next to the readiness ring, milestone toasts at 3/7/14/30/100, and a specific comeback hero card when the chain breaks ('You were on a 12-day streak \u2014 first log restarts it today'). Note receipts.js already computes a streak to reuse.",
+   "impact": "The single biggest missing retention primitive. Pure client, seeds the daily brief and the at-risk notification downstream, and is the most proven habit mechanic in the category.",
+   "effort": "M",
+   "category": "retention"
+  },
+  {
+   "title": "Activate: capture profile day-1 + end onboarding inside a real 'Today's session'",
+   "whatToBuild": "Add a compact height/weight/sex/age/activity mini-form to onboarding step 2 (reuse goals.js field shapes + units.js) so OF.targets renders real calorie/protein/water/step numbers at t=0 instead of placeholders \u2014 this is the cheap enabling piece. Then run the trainer intake as the final step (OF.trainer.createProgram), replace the last screen with a 3-beat program-reveal overlay ending on a big pulsing 'Start this workout' (OF.exercise.startPrescribed), and seed conservative beginner starting weights from bodyweight when historyWeight() is null.",
+   "impact": "Near-correctness fix plus the strongest retention predictor: without captured profile the adaptive-goal engine shows hollow numbers on day one, and first-workout completion is the biggest driver of week-2 retention.",
+   "effort": "M",
+   "category": "activate"
+  },
+  {
+   "title": "Weekly Trainer Check-in \u2014 the ritual that justifies a subscription",
+   "whatToBuild": "New weekly-checkin.js + a dash-checkin card (above dash-trainer) that activates on a chosen day. Composes a one-screen recap from existing engines: adherence14d vs targets (goals.coachContext), strength wins/stalls + muscle balance (OF.strength.analyze), body trend (engine.analyzeAll), longest streak, biggest PR. Asks 2-3 quick pills (energy/soreness/stress) and writes a checkin record. Free = the computed review; Premium unlocks the actual adaptive re-plan (deload insert, volume/exercise swaps) and the AI-written narrative via coach.js.",
+   "impact": "The recurring 'why I pay a trainer' moment the app lacks, and a clean free-vs-Premium split (review free, adaptive re-plan paid) that composes entirely from engines that already exist.",
+   "effort": "L",
+   "category": "retention"
+  },
+  {
+   "title": "Dynamic Daily Brief one-liner in the dashboard hero",
+   "whatToBuild": "In dashboard.js renderHero, compose ONE personal sentence from data already computed: readiness level + OF.trainer.nextSession() + today's biggest gap (protein/water/steps vs target) + streak status, e.g. 'Readiness 84 \u2014 Pull day today; 1 day from a 7-day streak and 40g short on protein.' Surface a single prioritized CTA. Pure client over OF.engine/OF.trainer/OF.goals, no backend.",
+   "impact": "Cheapest way to make every app open feel alive and personally coached; seen on every launch, reuses the streak and readiness data already on screen.",
+   "effort": "S",
+   "category": "retention"
+  },
+  {
+   "title": "Dashboard Premium strip \u2014 trial countdown + accumulated-value receipt",
+   "whatToBuild": "Add a render block in dashboard.js reading entitlements.trialDaysLeft() (already implemented) plus a value tally from trainer program history (times weight auto-added, PRs hit, lagging group caught): 'Trial: 4 days left \u2014 your trainer added weight 6\u00d7 and fixed 1 weak point.' Feed a personalized paywall preview from the trainer/balance analyzer, anchor price ('less than one session a month'), and on trial end flip to a single Premium status/re-check row instead of silently locking.",
+   "impact": "Cheapest high-leverage conversion lever: makes the invisible on-device value legible exactly when the clock matters. Pairs directly with the tier redraw; the trial primitive already exists.",
+   "effort": "S",
+   "category": "pay"
+  },
+  {
+   "title": "'Adjust today' \u2014 a trainer that adapts to your life",
+   "whatToBuild": "Add quick-action buttons to trainer.js's Today's-session card: 'Short on time', 'Traveling', 'Sore / low energy'. Each regenerates today's sessionForLogger on the fly \u2014 trim to top compounds + fewer sets for time, swap to bodyweight/DB via the existing EQUIP_ALLOW model for travel, drop ~10% load + a set for low energy \u2014 then starts the logger with the adapted plan. Auto-suggest the low-energy variant when readiness is low; keep it advisory (show struck-through original), don't mutate stored weights.",
+   "impact": "The clearest 'this coach actually gets my life' differentiator vs a static plan, and it directly prevents the top churn cause ('the plan didn't fit my day so I skipped'). Pure client over existing equipment/library models.",
+   "effort": "M",
+   "category": "trainer"
+  },
+  {
+   "title": "Proactive local notifications \u2014 best-time session nudge + streak-protect",
+   "whatToBuild": "Add @capacitor/local-notifications to native/. New OF.notify composing bodies fully on-device: a morning brief from OF.trainer.nextSession() + readiness ('Today: Push day, readiness 82'), an evening streak-protect nudge fired only when today has no log and current streak > 2, scheduled ~30-60 min before OF.engine.timeOfDay's best window (recompute weekly, sensible default until enough data). Opt-in at onboarding end + Settings toggle, quiet-hours default; web degrades to in-app only.",
+   "impact": "The only re-engagement channel the app has and the highest pure-retention lever, but ranked last of the ten: it is the sole L-effort native item, needs a Capacitor plugin plus an iOS build the memory flags as finicky, so it carries the most ship risk this week.",
+   "effort": "L",
+   "category": "retention"
+  }
+ ],
+ "rationale": "All three judges converged tightly, and the code confirms why. The strategy has three layers. First, one keystone refactor unblocks the emotional core: trainer.completeSession() (trainer.js:283) already computes every weight bump, deload, and seed but returns void, and its call site (exercise.js:583) already discards the result \u2014 returning that delta object unlocks the celebration recap, PR confetti, and one-tap Receipt sharing in a single change, so it ranks #1 across every judge. Second, the three hard constraints (fragile owner-tunnel AI coach, no IAP, no server premium enforcement) reshape monetization: today Premium == the AI features, which visibly break whenever the Mac is down, so you'd be charging for something that fails. Picks 2-3 redraw the paid line onto always-on, on-device trainer intelligence and give the coach an offline fallback \u2014 turning the biggest liability into the value prop; pick 8 then makes accumulated trial value legible right when the user decides. Note none of these produce revenue until IAP ships (Apple 3.1.1); pre-IAP, treat them as conversion-intent instrumentation. Third, the retention and activation foundations are simply absent: there is no streak (pick 4) and no notifications (pick 10) \u2014 the two most proven re-open mechanics \u2014 and day-one activation is gated by profile capture (folded into pick 5) that is closer to a correctness fix, since without height/weight/sex/age the adaptive engine renders hollow numbers. Sequencing: ship the recap refactor and streak first (cheap, pure-client, high-leverage), redraw the tier and add the coach fallback next (the reliability floor everything else assumes), then the S-effort dashboard surfaces (Daily Brief, Premium strip), then the recurring rituals (Weekly Check-in, Adjust-today), and notifications last because it is the only item with native/iOS build risk. Deliberately held just below the cut as strong fast-follows: the SVG muscle-balance body map (pure-client screenshot showpiece), one-tap in-session exercise Swap, RIR autoregulation, and 'why this weight?' tap-to-explain."
+}

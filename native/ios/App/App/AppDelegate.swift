@@ -1,4 +1,5 @@
 import UIKit
+import WebKit
 import Capacitor
 
 @UIApplicationMain
@@ -27,22 +28,28 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         // ...plus a slow safety-net sweep for the paths that fire no
         // notification at all, so the bounce can never persist more than ~2 s.
         // (The view walk touches a few dozen views — negligible cost.)
-        bounceKillTimer = Timer.scheduledTimer(withTimeInterval: 2.0, repeats: true) { [weak self] _ in
+        // Scheduled in .common run-loop mode: the default mode is starved while
+        // a finger is tracking a scroll — exactly when a bounce would show.
+        let timer = Timer(timeInterval: 2.0, repeats: true) { [weak self] _ in
             self?.reassertNoBounce()
         }
+        RunLoop.main.add(timer, forMode: .common)
+        bounceKillTimer = timer
         return true
     }
 
-    /// Disable the WKWebView rubber-band bounce: the app pins fixed bars to
-    /// both screen edges, and the bounce dragged the whole page (header + tab
-    /// bar) with it. `UIScrollView.appearance().bounces` is NOT a reliable
-    /// appearance property, so this sets `bounces` directly on the live
-    /// scroll view(s). Idempotent and cheap — safe to call repeatedly.
+    /// Disable the rubber-band bounce on the WKWebView's OWN scroll view only:
+    /// that page-level bounce is what drags the app's fixed header/tab bar.
+    /// Deliberately NOT a blanket sweep of every UIScrollView — WebKit backs
+    /// inner overflow scrollers (chat lists, horizontal strips) with their own
+    /// UIScrollViews on modern iOS, and those should keep their native feel.
+    /// Idempotent and cheap — safe to call repeatedly.
     private func disableWebViewBounce(in view: UIView) {
-        if let scroll = view as? UIScrollView {
-            scroll.bounces = false
-            scroll.alwaysBounceVertical = false
-            scroll.alwaysBounceHorizontal = false
+        if let web = view as? WKWebView {
+            web.scrollView.bounces = false
+            web.scrollView.alwaysBounceVertical = false
+            web.scrollView.alwaysBounceHorizontal = false
+            return   // don't descend into WebKit's internal scroller hierarchy
         }
         for sub in view.subviews {
             disableWebViewBounce(in: sub)

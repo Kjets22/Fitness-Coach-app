@@ -636,7 +636,7 @@ OF.dashboard = (function () {
         });
     }).join("");
     if (!anyData) {
-      html = OF.charts.empty("No body measurements in the last 90 days — log weight, body fat % and muscle mass % on the Body tab.");
+      html = OF.charts.empty("No body measurements in the last 90 days — log weight, body fat % and muscle mass on the Body tab.");
     }
     return chartCard("Body trends — last 90 days", html);
   }

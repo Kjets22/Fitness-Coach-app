@@ -172,11 +172,13 @@ OF.util = (function () {
   function muscleKg(rec) {
     if (!rec) return null;
     var kg = numOrNull(rec.muscleMassKg);
-    if (kg != null && isFinite(kg) && kg > 0) return Math.round(kg * 10) / 10;
+    // 0.01 kg precision (like weightKg): 0.1 kg ≈ 0.22 lb, coarser than the
+    // 0.1 lb display grid, so lb entries would visibly change on save.
+    if (kg != null && isFinite(kg) && kg > 0) return Math.round(kg * 100) / 100;
     var pct = numOrNull(rec.muscleMassPct), w = numOrNull(rec.weightKg);
     if (pct != null && isFinite(pct) && pct > 0 && pct <= 100 &&
         w != null && isFinite(w) && w > 0) {
-      return Math.round(w * pct / 10) / 10;   // w × pct/100, to 0.1 kg
+      return Math.round(w * pct) / 100;   // w × pct/100, to 0.01 kg
     }
     return null;
   }

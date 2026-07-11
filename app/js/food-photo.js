@@ -72,6 +72,8 @@ OF.foodPhoto = (function () {
     return OF.coachApi ? OF.coachApi.url(path) : path;
   }
 
+  var probeSeq = 0;   // guards against a stale slow probe overwriting a fresh result
+
   function checkServer() {
     // file:// -> there is no server origin to ask.
     if (location.protocol !== "http:" && location.protocol !== "https:" &&
@@ -80,25 +82,35 @@ OF.foodPhoto = (function () {
       statusChanged();
       return;
     }
-    fetch(apiUrl("/api/health"), { cache: "no-store", headers: apiHeaders() })
+    var seq = ++probeSeq;
+    var pc = ("AbortController" in window) ? new AbortController() : null;
+    var pt = pc ? setTimeout(function () { pc.abort(); }, 8000) : null;   // a hung probe dies in 8 s
+    fetch(apiUrl("/api/health"), { cache: "no-store", headers: apiHeaders(), signal: pc ? pc.signal : undefined })
       .then(function (res) { return res.json(); })
       .then(function (j) {
+        if (seq !== probeSeq) return;   // a newer probe already answered
         server = (j && j.ok && j.claude && j.keyOk !== false) ? "ok" : "no-server";
         statusChanged();
       })
       .catch(function () {
+        if (seq !== probeSeq) return;
         server = "no-server";
         statusChanged();
-      });
+      })
+      .then(function () { if (pt) clearTimeout(pt); });
   }
 
-  /** Refresh everything that shows server status: the Food-tab hint and,
-      when the modal is open on the pick step, its inline notice. */
+  /** Refresh everything that shows server status: the Food-tab hint and, when
+      the modal is open on the pick step, its inline notice. IMPORTANT: this
+      updates ONLY the dedicated notice slot — never renderModal() — because a
+      full innerHTML rebuild would destroy the live #photo-file input while the
+      iOS camera is open (silently swallowing the picked photo) and would blur
+      the description textarea mid-typing. */
   function statusChanged() {
     renderButton();
     if (isOpen() && state === "pick") {
-      saveDesc();          // keep whatever the user typed across the re-render
-      renderModal();
+      var slot = document.getElementById("photo-note-slot");
+      if (slot) slot.innerHTML = serverNoticeHtml();
     }
   }
 
@@ -195,8 +207,10 @@ OF.foodPhoto = (function () {
   }
 
   function pickHtml() {
+    // The slot stays in the DOM so statusChanged() can update the notice text
+    // WITHOUT rebuilding the whole panel (see statusChanged for why).
     return '<h2>Estimate from photo</h2>' +
-      serverNoticeHtml() +
+      '<div id="photo-note-slot">' + serverNoticeHtml() + '</div>' +
       '<div class="photo-pick-row">' +
         '<label class="btn photo-file-btn">' + OF.icons.get("camera") +
           '<span>' + (previewUrl ? 'Change photo' : 'Take / choose photo') + '</span>' +
@@ -350,13 +364,24 @@ OF.foodPhoto = (function () {
       .then(function (res) { httpStatus = res.status; return res.json(); })
       .then(function (j) {
         server = "ok";         // we reached it — keep the status hint truthful
+        renderButton();        // ...including the Food-tab hint under the button
         if (!isOpen()) return; // user closed the panel mid-request
         if (httpStatus === 401) {
-          // pairing code revoked (e.g. the PC server restarted)
-          clearPairKey();
           state = "error";
-          errorMsg = "The server asked to pair again. Open the Coach tab and " +
-            "enter the current 6-digit code from the server window, then retry.";
+          if (OF.coachApi && OF.coachApi.remote() && OF.coachApi.key()) {
+            // Remote/public mode sends the key BAKED into this app build — there
+            // is no pairing flow to redo, so don't send the user hunting for a
+            // 6-digit code that doesn't exist. This only happens when the server
+            // key was rotated without rebuilding the app.
+            errorMsg = "The server didn't accept this app's access key — the key on " +
+              "the computer was probably changed after this app was built. Restart the " +
+              "server with the matching key (or rebuild the app), then retry.";
+          } else {
+            // LAN phone-pairing mode: the code really is re-printed on restart.
+            clearPairKey();
+            errorMsg = "The server asked to pair again. Open the Coach tab and " +
+              "enter the current 6-digit code from the server window, then retry.";
+          }
         } else if (httpStatus === 429) {
           state = "error";
           errorMsg = (j && j.error) ||
@@ -463,7 +488,13 @@ OF.foodPhoto = (function () {
       if (e.target.closest("[data-close-photo]")) { closeModal(); return; }
       if (e.target.closest("#photo-estimate")) { doEstimate(); return; }
       if (e.target.closest("#photo-use")) { useValues(); return; }
-      if (e.target.closest("#photo-recheck")) { checkServer(); return; }
+      if (e.target.closest("#photo-recheck")) {
+        // immediate visible feedback — the probe result then replaces this
+        var slot = document.getElementById("photo-note-slot");
+        if (slot) slot.innerHTML = '<div class="photo-server-note"><span>Checking your computer&hellip;</span></div>';
+        checkServer();
+        return;
+      }
       if (e.target.closest("#photo-again")) {
         state = "pick";
         errorMsg = "";

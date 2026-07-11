@@ -100,7 +100,7 @@ OF.body = (function () {
         date: els.date.value,
         weightKg: Math.round(w * 100) / 100,
         bodyFatPct: bf !== null ? Math.round(bf * 10) / 10 : null,
-        muscleMassKg: mmKg !== null ? Math.round(mmKg * 10) / 10 : null,
+        muscleMassKg: mmKg !== null ? Math.round(mmKg * 100) / 100 : null,   // 0.01 kg so lb entries round-trip exactly (like weightKg)
         muscleMassPct: null,   // legacy % field: cleared on save so edited records converge to kg
         notes: els.notes.value.trim()
       }

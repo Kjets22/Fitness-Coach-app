@@ -74,3 +74,8 @@ Top picks (impact/effort/category), in priority order — see roadmap.json for f
 - trainer.js now tallies delivered value (optimalfit.trainerStats): weight bumps + deloads + sessions (in completeSession) and PRs (in the logger's detectPRs).
 - dashboard.js renderTrainerValue(): a strip that, on trial, shows "Premium trial — N days left" + concrete value ("So far I've added weight 6× and celebrated 2 PRs") + a price anchor ("less than one PT session a month"); off-trial, a soft "Your trainer so far: …" reinforcement. Makes the invisible on-device value legible exactly when the trial clock matters.
 - Verified: strip renders "added weight 6× · celebrated 2 PRs · kept a 37-day streak".
+
+## Self-review of the new overnight code — 1 real bug found + fixed
+- streak.js newMilestone(): would FALSELY celebrate an old milestone (e.g. "14-day streak") for a user importing/loading weeks of history at once (lastMilestone=0, cur=26 → celebrated 14). Fixed: celebrate only when the streak is EXACTLY at a not-yet-celebrated milestone (it increments 1/day in normal use, so it lands on each milestone the day it's hit; a history import no longer mis-fires).
+- Verified targets field names (proteinG/steps/status) used by the daily brief + value strip are correct.
+- Full integration sweep (returning user, program + streak + brief + trainer card + adapt + value strip): all render, 0 console errors across 9 tabs.

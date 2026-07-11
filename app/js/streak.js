@@ -77,16 +77,19 @@ OF.streak = (function () {
     return { current: current, longest: longest, freezesLeft: freezeBudget, loggedToday: loggedToday };
   }
 
-  /** If the current streak just reached a NEW milestone, return it once. */
+  /** If the current streak is EXACTLY at a not-yet-celebrated milestone, return
+      it once. Using exact equality (not >=) means importing weeks of history at
+      once doesn't wrongly fire an old milestone — the streak increments one day
+      at a time in normal use, so it lands on each milestone the day it's hit. */
   function newMilestone() {
     var cur = compute().current;
     var m = meta();
     var last = m.lastMilestone || 0;
+    // reset the marker if the streak fell below it, so milestones can re-fire on a comeback
+    if (cur < last) { setMeta({ lastMilestone: 0 }); last = 0; }
     var hit = 0;
-    MILESTONES.forEach(function (ms) { if (cur >= ms && ms > last) hit = ms; });
+    MILESTONES.forEach(function (ms) { if (cur === ms && ms > last) hit = ms; });
     if (hit) { setMeta({ lastMilestone: hit }); return hit; }
-    // streak reset below the last milestone → allow re-celebrating later
-    if (cur < last) setMeta({ lastMilestone: 0 });
     return 0;
   }
 

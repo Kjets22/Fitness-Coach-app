@@ -363,9 +363,10 @@ OF.trainer = (function () {
         }
       } else { ex.fails = 0; changes.push({ name: ex.name, kind: "held", to: ex.weightKg }); }
     });
-    // if the exercise had no baseline weight, seed it from what was just logged
+    // if a WEIGHTED exercise had no baseline yet, seed it from what was just
+    // logged (skip bodyweight/hold moves so they stay bodyweight).
     p.days[dayIndex].slots.forEach(function (ex) {
-      if (ex.weightKg != null) return;
+      if (ex.weightKg != null || ex.incKg <= 0) return;
       var logged = byName[ex.name.toLowerCase()];
       if (!logged) return;
       var w = null;

@@ -67,7 +67,9 @@ OF.streak = (function () {
     while (n > startN - 800) {
       if (days[isoFromDayNum(n)]) {
         current++; n--; sinceFreeze++;
-        if (sinceFreeze >= 7) { freezeBudget++; sinceFreeze = 0; }   // ~1 freeze / 7 days
+        // 6 logged days + 1 bridged gap = one 7-day week → replenish a freeze,
+        // so a user who misses exactly one day a week keeps their streak.
+        if (sinceFreeze >= 6) { freezeBudget++; sinceFreeze = 0; }
       } else if (freezeBudget > 0 && days[isoFromDayNum(n - 1)]) {
         freezeBudget--; n--; sinceFreeze = 0;                        // bridge a single missed day
       } else { break; }
@@ -77,18 +79,20 @@ OF.streak = (function () {
     return { current: current, longest: longest, freezesLeft: freezeBudget, loggedToday: loggedToday };
   }
 
-  /** If the current streak is EXACTLY at a not-yet-celebrated milestone, return
-      it once. Using exact equality (not >=) means importing weeks of history at
-      once doesn't wrongly fire an old milestone — the streak increments one day
-      at a time in normal use, so it lands on each milestone the day it's hit. */
+  /** If the streak just ADVANCED onto a not-yet-celebrated milestone, return it
+      once. We require the streak to have grown by exactly one from the last
+      observed value (prevCurrent) — so a bulk history import (Apple Health /
+      Samsung CSV) that jumps the count straight onto a milestone (e.g. 30) does
+      NOT wrongly fire; only day-by-day growth does. */
   function newMilestone() {
     var cur = compute().current;
     var m = meta();
     var last = m.lastMilestone || 0;
-    // reset the marker if the streak fell below it, so milestones can re-fire on a comeback
+    var prev = (typeof m.prevCurrent === "number") ? m.prevCurrent : cur;
+    setMeta({ prevCurrent: cur });                       // remember for next call
     if (cur < last) { setMeta({ lastMilestone: 0 }); last = 0; }
     var hit = 0;
-    MILESTONES.forEach(function (ms) { if (cur === ms && ms > last) hit = ms; });
+    MILESTONES.forEach(function (ms) { if (cur === ms && ms > last && prev === cur - 1) hit = ms; });
     if (hit) { setMeta({ lastMilestone: hit }); return hit; }
     return 0;
   }

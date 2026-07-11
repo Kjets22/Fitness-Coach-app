@@ -375,10 +375,12 @@ OF.coach = (function () {
     // with an offline banner rather than a dead "can't reach the server" card.
     if (offlineUsable()) {
       els.chat.classList.remove("hidden");
-      els.status.innerHTML = '<div class="coach-offline-banner">💪 Live AI coach offline — answering from your on-device plan. ' +
-        ((OF.coachApi && OF.coachApi.remote())
-          ? 'Reconnect your computer for full chat.'
-          : 'Start the OptimalFit server on your computer for full chat.') +
+      var hint = (health === "no-claude")
+        ? "Install &amp; sign into Claude Code on your computer for full AI chat."
+        : ((OF.coachApi && OF.coachApi.remote())
+          ? "Reconnect your computer for full chat."
+          : "Start the OptimalFit server on your computer for full chat.");
+      els.status.innerHTML = '<div class="coach-offline-banner">💪 Live AI coach offline — answering from your on-device plan. ' + hint +
         ' <button type="button" class="btn mini" id="coach-retry-inline">Retry</button></div>';
       renderLog();
       var rt = document.getElementById("coach-retry-inline");
@@ -424,12 +426,7 @@ OF.coach = (function () {
         checkHealth(); // server verifies the code via /api/health keyOk
       });
       return;
-    } else if (health === "no-claude") {
-      els.status.innerHTML = statusCard("Claude Code not found",
-        '<p class="muted">The server is running, but the Claude Code CLI was not found on this ' +
-        'computer. The coach uses your existing Claude subscription (no extra cost). Install the ' +
-        '<strong>Claude Code desktop app</strong> and sign in, then check again.</p>');
-    } else { // still checking
+    } else { // still checking (no-claude is handled by the offlineUsable() banner above)
       els.status.innerHTML = '<div class="card coach-status-card"><p class="muted">Checking for the local server&hellip;</p></div>';
     }
     var retry = document.getElementById("coach-retry");
@@ -541,11 +538,19 @@ OF.coach = (function () {
     try { ns = OF.trainer && OF.trainer.nextSession ? OF.trainer.nextSession() : null; } catch (e) {}
     try { t = OF.goals && OF.goals.currentTargets ? OF.goals.currentTargets() : null; } catch (e) {}
     function list() { return ns ? ns.exercises.map(function (ex) { return "• " + ex.name + " — " + OF.trainer.prescription(ex); }).join("\n") : ""; }
-    if (/harder|heavier|more|tough|intens/.test(q) && ns) {
-      return "Today is " + ns.name + ". To push harder: add a set to your main lifts, or take a small jump on anything you completed all your reps on last time — but keep 1 rep in reserve on the last set so every rep stays clean.";
+    if (/readiness|recovery|recovered|rested|how ready|am i ready/.test(q)) {
+      var r = null;
+      try { if (OF.engine && OF.engine.analyzeAll) r = OF.engine.analyzeAll({ sleep: S.getAll("sleep"), food: S.getAll("food"), exercise: S.getAll("exercise"), body: S.getAll("body") }).readiness; } catch (e) {}
+      if (r && r.status === "ok") return "Your readiness is " + r.score + "/100 (" + r.level + "). " + (r.verdict || "") +
+        (r.level === "low" ? " Sleep and back-to-back training days are the usual culprits — a lighter session or a rest day is smart." : "");
+      return "Log a few nights of sleep and some workouts and I'll score your daily readiness (recovery) so we train hard when you're fresh and back off when you're not.";
     }
-    if (/sore|tired|low energy|rest|adjust|easier|light|short on time|busy|travel/.test(q) && ns) {
+    // check recovery/back-off BEFORE 'push harder' so "give me more rest" isn't hijacked
+    if (/sore|tired|low energy|rest day|adjust|easier|lighter|light day|short on time|busy|travel/.test(q) && ns) {
       return "Back off but don't skip — do today's " + ns.name + " lighter: drop each working set ~10% and cut one set per exercise. Hit the first two compound lifts for sure; drop the last accessory if you're gassed. A lighter session still counts.";
+    }
+    if (/harder|heavier|tough|intens|add weight|push me/.test(q) && ns) {
+      return "Today is " + ns.name + ". To push harder: add a set to your main lifts, or take a small jump on anything you completed all your reps on last time — but keep 1 rep in reserve on the last set so every rep stays clean.";
     }
     if (/eat|food|meal|nutrition|protein|before|pre-?workout|fuel|breakfast/.test(q)) {
       var kcal = t && t.status === "ok" ? t.calories : null, prot = t && t.status === "ok" ? t.proteinG : null;

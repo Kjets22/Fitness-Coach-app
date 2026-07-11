@@ -78,7 +78,7 @@ OF.trainer = (function () {
     { name: "Close-Grip Bench Press", group: "Triceps", equip: ["gym"], compound: true, incKg: 2.5 },
     { name: "Dips (Triceps)", group: "Triceps", equip: ["bw"], compound: true, incKg: 0 },
     // Core
-    { name: "Plank", group: "Core", equip: ["bw"], compound: false, incKg: 0 },
+    { name: "Plank", group: "Core", equip: ["bw"], compound: false, incKg: 0, hold: true },
     { name: "Hanging Leg Raise", group: "Core", equip: ["bw"], compound: false, incKg: 0 },
     { name: "Cable Crunch", group: "Core", equip: ["cable"], compound: false, incKg: 2.5 },
     { name: "Russian Twist", group: "Core", equip: ["bw", "db"], compound: false, incKg: 1 }
@@ -203,10 +203,13 @@ OF.trainer = (function () {
         if (!ex) continue;
         used[ex.name.toLowerCase()] = true;
         var sc = scheme(gt, ex.compound);
-        var w = historyWeight(ex.name);
+        var isHold = !!ex.hold;
+        var w = isHold ? null : historyWeight(ex.name);
         exercises.push({
-          name: ex.name, group: ex.group, compound: ex.compound,
-          sets: sc.sets, repLow: sc.lo, repHigh: sc.hi,
+          name: ex.name, group: ex.group, compound: ex.compound, hold: isHold,
+          sets: isHold ? 3 : sc.sets,
+          repLow: isHold ? 30 : sc.lo,       // holds: seconds, not reps
+          repHigh: isHold ? 60 : sc.hi,
           weightKg: w, incKg: ex.incKg
         });
       }
@@ -242,9 +245,15 @@ OF.trainer = (function () {
 
   /** prescription text for one exercise, e.g. "3×6–10 @ 60 kg". */
   function prescription(ex) {
+    if (ex.hold) {
+      var s = ex.repLow === ex.repHigh ? String(ex.repLow) : ex.repLow + "–" + ex.repHigh;
+      return ex.sets + "×" + s + "s hold";
+    }
     var reps = ex.repLow === ex.repHigh ? String(ex.repLow) : ex.repLow + "–" + ex.repHigh;
-    var load = ex.weightKg != null ? " @ " + U.fmtWeight(ex.weightKg, 1)
-      : (ex.incKg === 0 ? " · bodyweight" : " · work up to a hard set");
+    var load;
+    if (ex.weightKg != null) load = " @ " + U.fmtWeight(ex.weightKg, 1);
+    else if (ex.incKg === 0) load = " · bodyweight";
+    else load = " · start ~2 reps shy of failure";   // concrete cue for a first-time/no-history lift
     return ex.sets + "×" + reps + load;
   }
 

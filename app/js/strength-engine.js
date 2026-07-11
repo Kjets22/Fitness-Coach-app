@@ -323,13 +323,19 @@ OF.strength = (function () {
         message: "Log sets (weight × reps) in at least 2 different weeks to see your volume trend."
       };
     }
-    // Fit the trend only up to the last week with volume — trailing zero-volume weeks
-    // (user just hasn't logged lately) otherwise drag the slope hugely negative.
+    // Fit the trend only over the ACTIVE span — from the first logged week to the
+    // last. Trailing zero-volume weeks (haven't logged lately) drag the slope
+    // negative; leading zeros (hadn't started yet) inflate it positive. Interior
+    // zero weeks are kept — a real week off legitimately dips the trend.
+    var firstLogged = 0;
+    for (var fi = 0; fi < weeks.length; fi++) {
+      if (weeks[fi].volumeKg > 0) { firstLogged = fi; break; }
+    }
     var lastLogged = 0;
     for (var li = weeks.length - 1; li >= 0; li--) {
       if (weeks[li].volumeKg > 0) { lastLogged = li; break; }
     }
-    var trendWeeks = weeks.slice(0, lastLogged + 1);
+    var trendWeeks = weeks.slice(firstLogged, lastLogged + 1);
     return {
       status: "ok",
       weeks: weeks,
@@ -674,8 +680,16 @@ OF.strength = (function () {
       };
     }
 
-    var vol = weeklyVolume(qualified, todayNum);
-    var reps = repRange(qualified, todayNum, data.goalType || null);
+    // Weekly volume and rep-distribution are AGGREGATE stats: they must count
+    // every logged set, not just exercises with MIN_SESSIONS+ (that bar is for
+    // per-exercise TREND analysis). Feed them all exercises' raw sessions —
+    // otherwise 8 accessories done once each vanish from the volume/rep totals.
+    var allForAgg = keys.map(function (k) {
+      var e = col.byName[k];
+      return { _sessions: Object.keys(e.days).map(function (dn) { return e.days[dn]; }) };
+    });
+    var vol = weeklyVolume(allForAgg, todayNum);
+    var reps = repRange(allForAgg, todayNum, data.goalType || null);
     var vm = volumeMuscle(vol, data.body || [], todayNum);
 
     var maps = buildDayMaps(data.sleep, data.food, exercise);

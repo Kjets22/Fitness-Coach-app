@@ -229,7 +229,10 @@ OF.trainer = (function () {
     var now = new Date().toISOString();
     return {
       createdAt: now, updatedAt: now,
-      split: split.name, daysPerWeek: profile.daysPerWeek, goalType: gt,
+      // store the ACTUAL number of days generated, not the raw request: an
+      // out-of-range daysPerWeek (e.g. 7) falls back to SPLITS[3] above, and the
+      // stored field / "N days/wk" string must match the real split.
+      split: split.name, daysPerWeek: split.days.length, goalType: gt,
       experience: profile.experience, equipment: profile.equipment,
       sessionMinutes: profile.sessionMinutes, emphasis: emphasis,
       pointer: 0, days: days
@@ -297,18 +300,25 @@ OF.trainer = (function () {
     if (mode === "time") {
       slots = slots.slice().sort(function (a, b) { return (b.compound ? 1 : 0) - (a.compound ? 1 : 0); }).slice(0, 4);
     }
+    // Reserve every name already in the day so a travel swap can never collide
+    // into a duplicate (usedAlt tracks both originals kept and alternatives added).
     var usedAlt = {};
+    slots.forEach(function (s) { usedAlt[s.name.toLowerCase()] = true; });
     return slots.map(function (ex) {
       var name = ex.name, weightKg = ex.weightKg, sets = ex.sets;
       if (mode === "time") sets = Math.min(3, sets);
       if (mode === "sore") { sets = Math.max(2, sets - 1); if (weightKg != null) weightKg = Math.round(weightKg * 0.9 * 100) / 100; }
       if (mode === "travel" && !ex.hold) {
-        var alts = POOL.filter(function (pp) {
-          return pp.group === ex.group && pp.name !== ex.name &&
-            pp.equip.some(function (t) { return t === "bw" || t === "db"; });
-        });
-        var alt = alts.filter(function (a) { return !usedAlt[a.name]; })[0] || alts[0];
-        if (alt) { usedAlt[alt.name] = true; name = alt.name; weightKg = null; }  // different lift → let the user set the load
+        var self = POOL.filter(function (pp) { return pp.name === ex.name; })[0];
+        var portable = self && self.equip.some(function (t) { return t === "bw" || t === "db"; });
+        if (!portable) {                                    // db/bw moves already travel — only swap gym-only lifts
+          var alt = POOL.filter(function (pp) {
+            return pp.group === ex.group && !pp.hold &&      // never swap a rep lift to a timed hold (would be mis-prescribed in reps)
+              !usedAlt[pp.name.toLowerCase()] &&             // fresh only — no duplicate
+              pp.equip.some(function (t) { return t === "bw" || t === "db"; });
+          })[0];
+          if (alt) { usedAlt[alt.name.toLowerCase()] = true; name = alt.name; weightKg = null; }  // let the user set the load
+        }
       }
       var arr = [];
       for (var i = 0; i < sets; i++) arr.push({ weightKg: weightKg != null ? weightKg : null, reps: ex.repLow });

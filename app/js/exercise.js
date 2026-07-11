@@ -613,7 +613,10 @@ OF.exercise = (function () {
       if (best == null) return;
       var key = ex.name.trim().toLowerCase(), prev = meta[key];
       if (prev == null || best > prev * 1.001) {
-        if (prev != null) prs.push({ name: ex.name, e1RMkg: Math.round(best * 10) / 10, prev: Math.round(prev * 10) / 10 });
+        if (prev != null) {
+          prs.push({ name: ex.name, e1RMkg: Math.round(best * 10) / 10, prev: Math.round(prev * 10) / 10 });
+          try { OF.trainer && OF.trainer.bumpStat && OF.trainer.bumpStat("prs"); } catch (e2) {}
+        }
         meta[key] = Math.round(best * 100) / 100; changed = true;
       }
     });

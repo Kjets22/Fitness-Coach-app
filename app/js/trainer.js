@@ -123,6 +123,16 @@ OF.trainer = (function () {
   }
   function hasProgram() { var p = load(); return !!(p && Array.isArray(p.days) && p.days.length); }
 
+  /* Running tally of the value the trainer has delivered (for the dashboard
+     value strip / trial-conversion nudge). */
+  var STATS_KEY = "optimalfit.trainerStats";
+  function stats() { try { return JSON.parse(localStorage.getItem(STATS_KEY) || "{}") || {}; } catch (e) { return {}; } }
+  function bumpStat(key, n) {
+    var s = stats(); s[key] = (s[key] || 0) + (n || 1);
+    try { localStorage.setItem(STATS_KEY, JSON.stringify(s)); } catch (e) {}
+  }
+  function getStats() { return stats(); }
+
   /* ---------------- helpers ---------------- */
   function goalType() {
     try { var g = OF.goals && OF.goals.activeGoal ? OF.goals.activeGoal() : null; return g ? g.type : null; }
@@ -362,6 +372,8 @@ OF.trainer = (function () {
       logged.forEach(function (s) { var v = Number(s.weightKg); if (isFinite(v) && v > 0 && (w == null || v > w)) w = v; });
       if (w != null) { ex.weightKg = w; changes.push({ name: ex.name, kind: "seeded", to: w }); }
     });
+    changes.forEach(function (c) { if (c.kind === "added") bumpStat("bumps"); else if (c.kind === "deloaded") bumpStat("deloads"); });
+    bumpStat("sessions");
     // advance from the day just trained (not a possibly-skipped pointer)
     p.pointer = (dayIndex + 1) % p.days.length;
     p.updatedAt = new Date().toISOString();
@@ -605,6 +617,8 @@ OF.trainer = (function () {
     sessionForLogger: sessionForLogger,
     adaptSession: adaptSession,
     completeSession: completeSession,
+    getStats: getStats,
+    bumpStat: bumpStat,
     skipDay: skipDay,
     coachContext: coachContext,
     EQUIP_ALLOW: EQUIP_ALLOW,

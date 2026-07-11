@@ -18,6 +18,31 @@ OF.dashboard = (function () {
   var U = OF.util, S = OF.storage;
   var grid = null, chartsEl = null, targetsEl = null, heroEl = null;
 
+  /** Trial countdown + accumulated-trainer-value strip → makes the invisible
+      on-device value legible exactly when the trial clock matters. */
+  function renderTrainerValue() {
+    var el = document.getElementById("dash-value");
+    if (!el) return;
+    var trialDays = null;
+    try { trialDays = OF.entitlements && OF.entitlements.trialDaysLeft ? OF.entitlements.trialDaysLeft() : null; } catch (e) {}
+    var st = {}; try { st = OF.trainer ? OF.trainer.getStats() : {}; } catch (e) {}
+    var bits = [];
+    if (st.bumps) bits.push("added weight <strong>" + st.bumps + "×</strong>");
+    if (st.prs) bits.push("celebrated <strong>" + st.prs + "</strong> PR" + (st.prs > 1 ? "s" : ""));
+    var streakN = 0; try { streakN = OF.streak ? OF.streak.compute().current : 0; } catch (e) {}
+    if (streakN >= 3) bits.push("kept a <strong>" + streakN + "-day</strong> streak");
+    if (trialDays != null) {
+      var val = bits.length ? "So far I've " + bits.slice(0, 2).join(" and ") + "." : "Your AI trainer, coach and photo tools are unlocked.";
+      el.innerHTML = '<div class="card value-strip">' +
+        '<div class="value-strip-head">✨ Premium trial — ' + trialDays + ' day' + (trialDays === 1 ? "" : "s") + ' left</div>' +
+        '<p class="value-strip-body">' + val + ' Keep your always-on trainer, the AI coach and photo tools — for less than one session with a human PT a month.</p></div>';
+      el.hidden = false;
+    } else if (bits.length >= 2) {
+      el.innerHTML = '<div class="card value-strip value-strip-soft"><p class="value-strip-body">💪 Your trainer so far: ' + bits.join(" · ") + '.</p></div>';
+      el.hidden = false;
+    } else { el.hidden = true; el.innerHTML = ""; }
+  }
+
   function init() {
     grid = document.getElementById("dash-stats");
     chartsEl = document.getElementById("dash-charts");
@@ -760,6 +785,7 @@ OF.dashboard = (function () {
     renderHero(readiness);
     renderStats();
     if (OF.trainer && OF.trainer.refresh) { try { OF.trainer.refresh(); } catch (e) {} }
+    try { renderTrainerValue(); } catch (e) {}
     renderTargets();
     renderCharts(sleep, food, exercise, body);
 

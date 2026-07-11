@@ -2407,3 +2407,10 @@ body.metric-modal-open { overflow: hidden; }
 .tr-adapt { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin-top: var(--sp-3); padding-top: var(--sp-3); border-top: 1px solid var(--card-edge); }
 .tr-adapt-lbl { font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-dim); margin-right: 2px; }
 .tr-adapt .btn.mini { min-height: 36px; font-size: 0.78rem; }
+
+/* Dashboard trial / accumulated-value strip */
+.value-strip { border: 1px solid color-mix(in srgb, var(--g1) 35%, var(--card-edge)); background: linear-gradient(135deg, color-mix(in srgb, var(--g1) 10%, transparent), color-mix(in srgb, var(--g2) 8%, transparent)); }
+.value-strip-head { font-weight: 800; font-size: 0.95rem; letter-spacing: -0.01em; margin-bottom: 4px; }
+.value-strip-body { margin: 0; font-size: 0.85rem; line-height: 1.45; color: var(--text); }
+.value-strip-soft { border-color: var(--card-edge); background: var(--bg-2); }
+.value-strip-soft .value-strip-body { color: var(--text-dim); }

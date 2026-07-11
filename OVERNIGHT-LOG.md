@@ -69,3 +69,8 @@ Top picks (impact/effort/category), in priority order — see roadmap.json for f
   - "Sore / low energy" → ~10% lighter + one fewer set (auto-suggested when readiness is low)
 - Today's-session card gains an "Adjust for today" row; tapping starts the live logger with the adapted session (labelled e.g. "Upper (light)"). Progression holds (lighter/swapped → no false deload) and the split still advances.
 - Verified all three adaptations produce sensible sessions; fixed travel duplicate-swap + wrong-weight-on-swap.
+
+## BUILT #8 Dashboard value strip (conversion lever) — verified
+- trainer.js now tallies delivered value (optimalfit.trainerStats): weight bumps + deloads + sessions (in completeSession) and PRs (in the logger's detectPRs).
+- dashboard.js renderTrainerValue(): a strip that, on trial, shows "Premium trial — N days left" + concrete value ("So far I've added weight 6× and celebrated 2 PRs") + a price anchor ("less than one PT session a month"); off-trial, a soft "Your trainer so far: …" reinforcement. Makes the invisible on-device value legible exactly when the trial clock matters.
+- Verified: strip renders "added weight 6× · celebrated 2 PRs · kept a 37-day streak".

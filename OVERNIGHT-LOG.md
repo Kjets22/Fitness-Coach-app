@@ -120,3 +120,15 @@ Wrote a 19-case node routing test. It caught that my recovery regex ("rest day"/
 - Full trainer loop through real code: on-target reps → weight added (Squat 100→105, Bench 65→67.5), null-baseline lifts seeded, Plank stays bodyweight (seed-fix), miss-floor×2 → held then deloaded (×0.9).
 - Live logger UI: "Start this workout" preloads the 5 correct exercises, timer runs, cards + add-set + complete/discard render.
 - coach localAnswer routing: 19/19 node cases (incl. restaurant/delight/interested word-boundary guards).
+
+## Deep-dive: architecture map + exhaustive hunt (Jul 11 afternoon)
+- Built the interactive Code Atlas (dependency mind map of all 39 modules, from an 8-agent source scan): https://claude.ai/code/artifact/bfaf2de3-b471-4f2a-ba32-316d7e1c5170
+- 12 feature-hunter agents (running real node tests on the actual files) + adversarial verifiers + my own UI-journey and iOS-simulator testing.
+- 54 findings raised -> triaged (verifier-confirmed or self-verified by executing the failing path) -> **39 real bugs fixed** across 4 commits, incl. 5 HIGH:
+  1. Backup import CRASHED on any backup containing HealthKit active-energy records.
+  2. Apple Health sleep import split fragmented nights into bogus extra "nights".
+  3. Hub "Start workout" silently wiped an in-progress live session.
+  4. Streak showed 0 the morning after a single missed day (freeze never bridged the anchor gap).
+  5. Calorie adaptation permanently starved for goals older than ~30 weeks.
+  Plus: backups now include the training program/PRs/streak; unit-switch mid-edit corruption; duplicate-card progression; 1RM-single seeding; 0-kg set poisoning; steps merge duplicates; sign-out state leak between accounts; and ~20 more (see commits d38cba8, 531191d, 36240a0).
+- iPhone verification: bundle integrity (real key + all fixes in native/www), simulator boot/foreground/cold-restart clean, zero JS errors in the WebView console, no crash reports from today's builds.

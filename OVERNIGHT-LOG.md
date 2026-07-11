@@ -92,5 +92,31 @@ A leaner multi-agent review (after the broad 12-lens hunt stalled) confirmed 6 b
 ### Follow-up: unit-tested the localAnswer routing → caught 2 regressions in my own fix
 Wrote a 19-case node routing test. It caught that my recovery regex ("rest day"/"light day") no longer matched the common phrasings "give me more rest"/"go lighter", and that the readiness regex's bare "rested" false-matched inside "interested". Fixed both with word boundaries (`\brest\b`, `\blight(er)?\b`, `\brested\b`); guards verified against restaurant/delight/interested. 19/19 pass. Committed.
 
-## Second focused adversarial review (logger persistence, dashboard, engine math, trainer paths) — running
-Targets: exercise.js (live-session persistence, PR detection, number parsing, XSS), dashboard.js (hero/brief/value-strip/trend-modal edge cases), insights-engine.js + strength-engine.js (readiness/muscle-balance/correlation math NaN + empty-data), trainer.js (adaptSession mutation, pointer wrap, empty-program guards). Find → adversarial verify → fix confirmed. Results appended below.
+## Second focused adversarial review (logger, dashboard, engine math, trainer) — 10 confirmed, ALL fixed
+4 finder agents (find) → 10 findings → 10 independent verifiers, ALL returned CONFIRMED (0 false positives). Every one is fixed, runtime-verified, committed, and pushed. (14 agents, 0 errors, ~19 min, ~844k subagent tokens.)
+
+**Live workout logger (exercise.js) — 3:**
+1. [MEDIUM] detectPRs wrote prMeta mid-loop → logging the same exercise name in two ascending cards in one session raced card 2 against card 1's just-written value, falsely celebrating a "PR" (confetti + bumpStat) on a lift's very first session. Fixed: aggregate best e1RM per name across all cards, then compare each once vs the persisted prior. (7 unit cases pass.)
+2. [LOW] renderFinish prefilled Duration from elapsed-since-startedAt; a session resumed the next day showed >600 min, which saveSession then REJECTED — the workout couldn't be saved. Clamped the prefill to the field's 1–600 range.
+3. [LOW] Finish-screen Notes weren't bound to state → tapping Back then Complete (re-render) wiped them. Bound #wo-notes → finish.notes.
+
+**Dashboard (dashboard.js) — 2 (both runtime-verified with a 1-entry dataset):**
+4. [LOW] Weight trend modal built real stat pills ("Entries: 1") but rendered a degenerate/empty line chart with a single weigh-in. Now shows "Log one more weigh-in to chart your trend."
+5. [LOW] 'Body trends' card said "No body measurements in the last 90 days" when exactly one existed (anyData only true at pts≥2). Now any single point counts; each per-metric chart keeps its own accurate hint.
+
+**Engine math (strength-engine.js) — 2 (both runtime-verified):**
+6. [MEDIUM] weeklyVolume/repRange only counted 'qualified' exercises (3+ sessions), silently dropping all volume from lifts done once/twice. Now fed all logged sessions (aggregate stats). Verified: recent-week volume 6900kg incl. the 5100kg of accessories that used to vanish.
+7. [MEDIUM] weeklyVolume trend trimmed trailing zero-volume weeks but not LEADING ones → a user who started mid-window got a hugely inflated positive slope. Now fits only the active span. Verified: constant recent volume [0,0,0,0,0,3000,3000,3000] → slope 0 (was steep +).
+
+**Trainer (trainer.js) — 3 (runtime-verified across 18 program-days + daysPerWeek 2–7):**
+8. [MEDIUM] adaptSession travel mode could swap a rep lift onto a timed hold (Plank prescribed in reps).
+9. [LOW] travel mode could emit duplicate exercises when a day had more same-group slots than fresh alternatives.
+   → 8+9 fixed together: only swap gym-only lifts, exclude holds, and reserve every name in the day so a swap never collides. Verified clean (no dupes, no Plank-as-reps) across 18 days; gym lifts still swap.
+10. [LOW] createProgram stored the raw daysPerWeek even when an out-of-range value fell back to SPLITS[3]; now stores split.days.length so the field/"N days/wk" string match the real split. Verified 2–7 d/wk.
+
+## Runtime verification this session (clean-boot + live code, no console errors)
+- App boots clean: 0 console errors, all 35 OF.* modules present, dashboard renders.
+- Readiness engine returns the exact {status,score,level,verdict} shape the new coach readiness branch reads.
+- Full trainer loop through real code: on-target reps → weight added (Squat 100→105, Bench 65→67.5), null-baseline lifts seeded, Plank stays bodyweight (seed-fix), miss-floor×2 → held then deloaded (×0.9).
+- Live logger UI: "Start this workout" preloads the 5 correct exercises, timer runs, cards + add-set + complete/discard render.
+- coach localAnswer routing: 19/19 node cases (incl. restaurant/delight/interested word-boundary guards).

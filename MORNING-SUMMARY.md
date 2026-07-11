@@ -31,8 +31,12 @@ I tested three ways — automated adversarial review, hands-on runtime testing, 
 
 **A. Automated adversarial hunts (multi-agent, find → independently verify).**
 - Earlier in the project: two full-app hunts (23 + 25 confirmed bugs) and per-feature reviews on the muscle-balance analyzer, the dashboard trend modals, and the whole trainer system (13 confirmed, including 3 high-severity progression bugs) — **all fixed and re-verified** before tonight.
-- Tonight: a focused adversarial review of the new overnight code is running as I write this; any confirmed findings will be fixed and noted (see §6 / the log).
-- One caveat, logged honestly: the big 12-lens overnight hunt **stalled** (~1 hour, no output) — I stopped it and relaunched a leaner, focused version that completes reliably.
+- Tonight, **two** focused adversarial reviews of the new + surrounding code, both completed with every finding fixed:
+  - **Review 1 (new overnight code):** 6 confirmed (2 high) — streak freeze off-by-one, coach offline-banner wrong text for a no-claude host + dead card, streak milestone false-fire on history import, coach 'more'-token hijack, missing readiness answer, trainer seeding bodyweight moves. All fixed. Unit-tested the coach routing (19/19) — which caught **2 regressions in my own fix** before they shipped (word-boundary issues on "more rest"/"interested").
+  - **Review 2 (logger, dashboard, engine math, trainer):** 10 confirmed (3 medium, 7 low), **0 false positives** across 10 independent verifiers. Highlights: a live session resumed the next day couldn't be saved (elapsed >600 min was rejected); a false "personal record" with confetti could fire on an exercise's first session; weekly-volume stats silently dropped every set from lifts done <3 times; the volume trend line was inflated by leading empty weeks; travel-mode adaptation could prescribe a plank in reps or duplicate an exercise. All fixed and **runtime-verified in the browser** (see the log for the exact before/after numbers).
+- One caveat, logged honestly: the big 12-lens overnight hunt **stalled** (~1 hour, no output) — I stopped it and relaunched leaner, focused reviews that complete reliably. In review 2, one of the four finder agents briefly stalled too but recovered on its own; the run finished cleanly.
+
+**Net from tonight's reviews: 16 more confirmed bugs found and fixed** (2 high, 5 medium, 9 low), each committed and pushed.
 
 **B. Hands-on runtime testing (drove the app in a real browser).** I set up a clean no-cache test server and:
 - Tested the **brand-new-user path** (no goal, no history) — found and fixed the two prescription issues above.
@@ -94,8 +98,8 @@ I ran a 3-angle strategy panel (retention, willingness-to-pay, trainer authentic
 
 ## 6. Status & what's committed
 
-- **All 6 features + all fixes are committed and pushed to `main`** (commits from "Trainer: timed holds…" through "streak: only celebrate…"). Nothing is left in a broken state; every change was syntax-checked, integration-tested, and the app is runtime-clean.
-- The **focused new-code review** was still running when I wrote this; its confirmed findings (if any) are fixed in follow-up commits and noted in `OVERNIGHT-LOG.md`.
-- **Your to-dos are unchanged from before:** re-archive the iOS build to ship all of this; add the HealthKit capability if you want live Health sync; and the payment/hosting decisions above when you're ready to monetize.
+- **All 6 features + all fixes are committed and pushed to `main`.** Nothing is left in a broken state; every change was syntax-checked, and the code paths were unit- and/or runtime-tested. The app is runtime-clean (0 console errors on a clean boot, all 35 modules load, dashboard renders).
+- **Both focused reviews are complete and every confirmed finding is fixed, committed, and pushed** (16 bugs total tonight). The last commits: "Fix 4 focused-review findings…", "coach: word-boundary regexes…", "logger: fix false PR…", "dashboard: fix single-data-point…", "engine + trainer: fix volume undercount…". Full blow-by-blow with before/after numbers is in `OVERNIGHT-LOG.md`.
+- **Your to-dos are unchanged from before:** re-archive the iOS build to ship all of this (bump to the next build number — the app bundle now includes all of tonight's fixes, service worker at v43); add the HealthKit capability if you want live Health sync; and the payment/hosting decisions above when you're ready to monetize.
 
 Everything I built is designed to make OptimalFit feel like a trainer people *want* in their pocket — and to make the value legible enough that they'll pay to keep it.

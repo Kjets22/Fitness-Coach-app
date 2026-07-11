@@ -23,6 +23,14 @@ OF.dashboard = (function () {
     chartsEl = document.getElementById("dash-charts");
     targetsEl = document.getElementById("dash-targets");
     heroEl = document.getElementById("dash-hero");
+    if (grid) {
+      grid.addEventListener("click", onStatClick);
+      grid.addEventListener("keydown", function (e) {
+        if ((e.key === "Enter" || e.key === " ") && e.target.closest("[data-metric]")) {
+          e.preventDefault(); onStatClick(e);
+        }
+      });
+    }
     refresh();
   }
 
@@ -152,12 +160,17 @@ OF.dashboard = (function () {
 
   function card(label, valueHtml, sub, extras) {
     extras = extras || {};
-    return '<div class="stat-card">' +
+    var tap = extras.metric
+      ? ' stat-card-tap" data-metric="' + extras.metric + '" role="button" tabindex="0" aria-label="' +
+        U.esc(label) + ' — tap for trend'
+      : '';
+    return '<div class="stat-card' + tap + '">' +
       '<div class="stat-head"><div class="stat-label">' + U.esc(label) + '</div>' +
       (extras.chip || "") + '</div>' +
       '<div class="stat-value">' + valueHtml + '</div>' +
       (sub ? '<div class="stat-sub">' + U.esc(sub) + '</div>' : '') +
       (extras.spark || "") +
+      (extras.metric ? '<span class="stat-tap-hint" aria-hidden="true">View trend ›</span>' : '') +
     '</div>';
   }
 
@@ -286,13 +299,150 @@ OF.dashboard = (function () {
     }
 
     grid.innerHTML =
-      card("Latest weight", weightHtml, weightSub, { chip: wChip, spark: wSpark }) +
-      card("Last sleep", sleepHtml, sleepSub, { chip: sChip, spark: sSpark }) +
-      card("Workouts this week", String(workouts.length), wSub2, { chip: exChip }) +
+      card("Latest weight", weightHtml, weightSub, { chip: wChip, spark: wSpark, metric: "weight" }) +
+      card("Last sleep", sleepHtml, sleepSub, { chip: sChip, spark: sSpark, metric: "sleep" }) +
+      card("Workouts this week", String(workouts.length), wSub2, { chip: exChip, metric: "workouts" }) +
       card("Calories today",
         kcal ? String(Math.round(kcal)) + ' <span class="unit">kcal</span>' : '<span class="unit">&mdash;</span>',
-        kcalSub, { chip: kChip, spark: kSpark }) +
+        kcalSub, { chip: kChip, spark: kSpark, metric: "calories" }) +
       card("Goal progress", goalHtml, goalSub);
+  }
+
+  /* ---------------- tap-a-tile → trend detail modal ---------------- */
+
+  function statPill(label, value) {
+    return '<div class="metric-stat"><div class="metric-stat-val">' + value +
+      '</div><div class="metric-stat-lbl">' + U.esc(label) + '</div></div>';
+  }
+
+  function fmt1(v) { return Math.round(v * 10) / 10; }
+
+  /** Build {title, tab, statsHtml, chartHtml} for a metric. */
+  function buildDetail(metric) {
+    var todayN = dayNum(U.todayISO());
+    if (metric === "weight") {
+      var body = S.getAll("body").filter(function (r) { return isFinite(Number(r.weightKg)); })
+        .sort(function (a, b) { return a.date < b.date ? -1 : 1; });
+      if (!body.length) return { title: "Weight trend", tab: "body", statsHtml: "", chartHtml: OF.charts.empty("No weight logged yet — add one on the Body tab.") };
+      var pts = body.map(function (r) { return { x: dayNum(r.date), y: Number(U.toDisplayWeight(r.weightKg)) }; });
+      var ys = pts.map(function (p) { return p.y; });
+      var first = ys[0], last = ys[ys.length - 1];
+      var unit = U.weightUnit();
+      var stats = statPill("Current", fmt1(last) + " " + unit) +
+        statPill("Change", (last - first >= 0 ? "+" : "") + fmt1(last - first) + " " + unit) +
+        statPill("Lowest", fmt1(Math.min.apply(null, ys)) + " " + unit) +
+        statPill("Highest", fmt1(Math.max.apply(null, ys)) + " " + unit) +
+        statPill("Entries", String(body.length));
+      var chart = OF.charts.lineChart({ series: [{ points: pts, color: "var(--accent)" }],
+        width: 640, height: 220, yFmt: function (v) { return fmt1(v) + ""; } });
+      return { title: "Weight trend", tab: "body", statsHtml: stats, chartHtml: chart };
+    }
+    if (metric === "sleep") {
+      var sleep = S.getAll("sleep").filter(function (r) { return isFinite(Number(r.durationMin)); })
+        .sort(function (a, b) { return a.date < b.date ? -1 : 1; }).slice(-21);
+      if (!sleep.length) return { title: "Sleep trend", tab: "sleep", statsHtml: "", chartHtml: OF.charts.empty("No sleep logged yet — add a night on the Sleep tab.") };
+      var qcol = ["var(--danger)", "var(--warn)", "var(--accent)", "var(--g2)", "var(--accent-2)"];
+      var bars = sleep.map(function (r) {
+        var q = Math.max(1, Math.min(5, Number(r.quality) || 3));
+        return { label: shortDate(r.date), value: fmt1(Number(r.durationMin) / 60), color: qcol[q - 1] };
+      });
+      var hrs = sleep.map(function (r) { return Number(r.durationMin) / 60; });
+      var avg = hrs.reduce(function (a, b) { return a + b; }, 0) / hrs.length;
+      var last7 = hrs.slice(-7), avg7 = last7.reduce(function (a, b) { return a + b; }, 0) / last7.length;
+      var stats = statPill("Last night", fmt1(hrs[hrs.length - 1]) + "h") +
+        statPill("7-day avg", fmt1(avg7) + "h") +
+        statPill("Best", fmt1(Math.max.apply(null, hrs)) + "h") +
+        statPill("Nights", String(sleep.length));
+      return { title: "Sleep trend", tab: "sleep", statsHtml: stats,
+        chartHtml: OF.charts.barChart({ bars: bars, width: 640, height: 220, yFmt: function (v) { return fmt1(v) + "h"; } }) };
+    }
+    if (metric === "calories") {
+      var food = S.getAll("food");
+      var byDay = {};
+      food.forEach(function (r) {
+        var dn = dayNum(r.date), v = Number(r.calories);
+        if (dn == null || !isFinite(v) || v <= 0) return;
+        if (todayN - dn < 0 || todayN - dn > 20) return;
+        byDay[dn] = (byDay[dn] || 0) + v;
+      });
+      var barsC = [], vals = [];
+      for (var d = todayN - 20; d <= todayN; d++) {
+        var v = byDay[d] != null ? Math.round(byDay[d]) : null;
+        barsC.push({ label: shortDate(isoFromDayNum(d)), value: v, color: "var(--warn)" });
+        if (v != null) vals.push(v);
+      }
+      if (!vals.length) return { title: "Calories trend", tab: "food", statsHtml: "", chartHtml: OF.charts.empty("No meals logged yet — add one on the Food tab.") };
+      var tC = OF.goals ? OF.goals.currentTargets() : null;
+      var avgC = Math.round(vals.reduce(function (a, b) { return a + b; }, 0) / vals.length);
+      var stats = statPill("Avg / day", avgC + " kcal") +
+        (tC && tC.status === "ok" ? statPill("Target", tC.calories + " kcal") : "") +
+        statPill("Highest", Math.max.apply(null, vals) + " kcal") +
+        statPill("Days logged", String(vals.length));
+      return { title: "Calories trend", tab: "food", statsHtml: stats,
+        chartHtml: OF.charts.barChart({ bars: barsC, width: 640, height: 220, yFmt: function (v) { return Math.round(v) + ""; } }) };
+    }
+    // workouts — per-week counts over 8 weeks
+    var exercise = S.getAll("exercise");
+    var weeksB = [], counts = [];
+    for (var w = 7; w >= 0; w--) {
+      var end = todayN - 7 * w, start = end - 6, c = 0, mins = 0;
+      exercise.forEach(function (r) {
+        var dn = dayNum(r.date);
+        if (dn != null && dn >= start && dn <= end) { c++; mins += Number(r.durationMin) || 0; }
+      });
+      weeksB.push({ label: shortDate(isoFromDayNum(end)), value: c, color: "var(--accent)" });
+      counts.push(c);
+    }
+    if (!counts.some(function (c) { return c > 0; })) return { title: "Workout frequency", tab: "exercise", statsHtml: "", chartHtml: OF.charts.empty("No workouts logged yet — start one on the Workout tab.") };
+    var totalMin = 0, totalW = 0;
+    exercise.forEach(function (r) { var dn = dayNum(r.date); if (dn != null && todayN - dn <= 55 && todayN - dn >= 0) { totalW++; totalMin += Number(r.durationMin) || 0; } });
+    var statsW = statPill("This week", String(counts[counts.length - 1])) +
+      statPill("Avg / week", fmt1(counts.reduce(function (a, b) { return a + b; }, 0) / counts.length) + "") +
+      statPill("8-wk total", String(counts.reduce(function (a, b) { return a + b; }, 0))) +
+      statPill("Total minutes", String(totalMin));
+    return { title: "Workout frequency", tab: "exercise", statsHtml: statsW,
+      chartHtml: OF.charts.barChart({ bars: weeksB, width: 640, height: 220, yFmt: function (v) { return Math.round(v) + ""; } }) };
+  }
+
+  var modalEl = null;
+  function ensureModal() {
+    if (modalEl) return modalEl;
+    modalEl = document.createElement("div");
+    modalEl.className = "metric-modal";
+    modalEl.hidden = true;
+    modalEl.innerHTML = '<div class="metric-modal-backdrop" data-close-metric></div>' +
+      '<div class="metric-modal-panel" role="dialog" aria-modal="true" aria-labelledby="metric-modal-title">' +
+      '<div class="metric-modal-head"><h2 id="metric-modal-title"></h2>' +
+      '<button type="button" class="metric-modal-close" data-close-metric aria-label="Close">&times;</button></div>' +
+      '<div class="metric-stats"></div><div class="metric-chart"></div>' +
+      '<a class="btn ghost metric-modal-link" href="#">Open full tab</a></div>';
+    document.body.appendChild(modalEl);
+    modalEl.addEventListener("click", function (e) {
+      if (e.target.closest("[data-close-metric]") || e.target.closest(".metric-modal-link")) closeModal();
+    });
+    document.addEventListener("keydown", function (e) { if (e.key === "Escape" && !modalEl.hidden) closeModal(); });
+    return modalEl;
+  }
+  function closeModal() { if (modalEl) modalEl.hidden = true; document.body.classList.remove("metric-modal-open"); }
+
+  function openMetricDetail(metric) {
+    var d;
+    try { d = buildDetail(metric); } catch (e) { return; }
+    if (!d) return;
+    var m = ensureModal();
+    m.querySelector("#metric-modal-title").textContent = d.title;
+    m.querySelector(".metric-stats").innerHTML = d.statsHtml || "";
+    m.querySelector(".metric-chart").innerHTML = d.chartHtml || "";
+    var link = m.querySelector(".metric-modal-link");
+    link.setAttribute("href", "#" + d.tab);
+    link.textContent = "Open " + (d.tab === "exercise" ? "Workout" : d.tab.charAt(0).toUpperCase() + d.tab.slice(1)) + " tab";
+    m.hidden = false;
+    document.body.classList.add("metric-modal-open");
+  }
+
+  function onStatClick(e) {
+    var t = e.target.closest("[data-metric]");
+    if (t) openMetricDetail(t.getAttribute("data-metric"));
   }
 
   /* ---------------- "today vs targets" ring strip ---------------- */

@@ -617,6 +617,42 @@ input[type="checkbox"], input[type="radio"] { -webkit-appearance: auto; appearan
 .stat-value { font-size: 1.55rem; font-weight: 750; letter-spacing: -0.02em; margin-top: 4px; }
 .stat-sub { color: var(--text-dim); font-size: 0.79rem; margin-top: 2px; }
 .stat-value .unit { font-size: 0.9rem; color: var(--text-dim); font-weight: 550; }
+
+/* Tappable stat tiles → trend modal */
+.stat-card-tap { cursor: pointer; }
+.stat-card-tap:active { transform: scale(0.985); }
+.stat-tap-hint {
+  display: block; margin-top: 8px;
+  color: var(--accent); font-size: 0.7rem; font-weight: 700; letter-spacing: 0.02em;
+  opacity: 0; transition: opacity var(--dur) var(--ease);
+}
+.stat-card-tap:hover .stat-tap-hint, .stat-card-tap:focus-visible .stat-tap-hint { opacity: 1; }
+@media (hover: none) { .stat-tap-hint { opacity: 0.75; } }
+
+/* Metric trend modal */
+.metric-modal { position: fixed; inset: 0; z-index: 320; display: flex; align-items: flex-end; justify-content: center; }
+.metric-modal[hidden] { display: none; }
+.metric-modal-backdrop { position: absolute; inset: 0; background: rgba(2, 6, 16, 0.55); -webkit-backdrop-filter: blur(3px); backdrop-filter: blur(3px); }
+.metric-modal-panel {
+  position: relative; width: 100%; max-width: 560px;
+  max-height: 88vh; overflow-y: auto;
+  background: var(--bg); border: 1px solid var(--card-edge);
+  border-radius: var(--r-lg) var(--r-lg) 0 0;
+  box-shadow: var(--e2); padding: var(--sp-4) var(--sp-4) calc(var(--sp-4) + env(safe-area-inset-bottom, 0px));
+  animation: metric-in 0.18s var(--ease);
+}
+@media (min-width: 640px) { .metric-modal { align-items: center; } .metric-modal-panel { border-radius: var(--r-lg); } }
+@keyframes metric-in { from { transform: translateY(16px); opacity: 0; } to { transform: none; opacity: 1; } }
+.metric-modal-head { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-3); margin-bottom: var(--sp-3); }
+.metric-modal-head h2 { margin: 0; font-size: 1.15rem; }
+.metric-modal-close { background: transparent; border: none; color: var(--text-dim); font-size: 1.7rem; line-height: 1; min-width: 44px; min-height: 44px; cursor: pointer; }
+.metric-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(74px, 1fr)); gap: 8px; margin-bottom: var(--sp-3); }
+.metric-stat { background: var(--bg-2); border: 1px solid var(--card-edge); border-radius: var(--r-md); padding: 8px 6px; text-align: center; }
+.metric-stat-val { font-weight: 800; font-size: 1rem; font-variant-numeric: tabular-nums; letter-spacing: -0.01em; }
+.metric-stat-lbl { color: var(--text-dim); font-size: 0.68rem; font-weight: 600; margin-top: 2px; }
+.metric-chart { margin: var(--sp-2) 0 var(--sp-3); }
+.metric-modal-link { width: 100%; min-height: 44px; }
+body.metric-modal-open { overflow: hidden; }
 .stat-spark { margin-top: 8px; }
 .stat-spark svg { display: block; width: 100%; height: 30px; }
 

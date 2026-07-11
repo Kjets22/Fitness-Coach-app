@@ -584,12 +584,14 @@ OF.dashboard = (function () {
   }
 
   /** Points {x: dayNum, y} for a body metric over the last `days` days. */
+  /** key may be a field name OR a getter function(rec) -> value|null. */
   function metricPoints(body, key, days) {
     var todayN = dayNum(U.todayISO());
     var pts = [];
     body.forEach(function (r) {
-      var dn = dayNum(r.date), v = Number(r[key]);
-      if (dn == null || !isFinite(v)) return;
+      var raw = typeof key === "function" ? key(r) : r[key];
+      var dn = dayNum(r.date), v = Number(raw);
+      if (dn == null || raw == null || !isFinite(v)) return;
       if (todayN - dn > days || todayN - dn < 0) return;
       pts.push({ x: dn, y: v });
     });
@@ -613,7 +615,8 @@ OF.dashboard = (function () {
     var defs = [
       { key: "weightKg", label: "Weight (" + U.weightUnit() + ")", color: "var(--accent)", convert: true },
       { key: "bodyFatPct", label: "Body fat (%)", color: "var(--warn)" },
-      { key: "muscleMassPct", label: "Muscle mass (%)", color: "var(--accent-2)" }
+      // muscle mass is a weight (kg canonical, legacy % converts via U.muscleKg)
+      { key: U.muscleKg, label: "Muscle mass (" + U.weightUnit() + ")", color: "var(--accent-2)", convert: true }
     ];
     var anyData = false;
     var html = defs.map(function (def) {

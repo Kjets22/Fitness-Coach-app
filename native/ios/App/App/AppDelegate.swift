@@ -5,9 +5,31 @@ import Capacitor
 class AppDelegate: UIResponder, UIApplicationDelegate {
 
     var window: UIWindow?
+    private var bounceKillTimer: Timer?
 
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
-        // Override point for customization after application launch.
+        // iOS re-enables the WKWebView scroll bounce behind our back during a
+        // session — most reliably around keyboard show/hide, and after the
+        // WebContent process is relaunched. Re-assert "no bounce" on every
+        // signal we can observe...
+        let nc = NotificationCenter.default
+        let triggers: [Notification.Name] = [
+            UIResponder.keyboardWillShowNotification,
+            UIResponder.keyboardDidShowNotification,
+            UIResponder.keyboardWillHideNotification,
+            UIResponder.keyboardDidHideNotification,
+            UIResponder.keyboardDidChangeFrameNotification,
+            UIApplication.didBecomeActiveNotification
+        ]
+        for name in triggers {
+            nc.addObserver(self, selector: #selector(reassertNoBounce), name: name, object: nil)
+        }
+        // ...plus a slow safety-net sweep for the paths that fire no
+        // notification at all, so the bounce can never persist more than ~2 s.
+        // (The view walk touches a few dozen views — negligible cost.)
+        bounceKillTimer = Timer.scheduledTimer(withTimeInterval: 2.0, repeats: true) { [weak self] _ in
+            self?.reassertNoBounce()
+        }
         return true
     }
 
@@ -15,7 +37,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     /// both screen edges, and the bounce dragged the whole page (header + tab
     /// bar) with it. `UIScrollView.appearance().bounces` is NOT a reliable
     /// appearance property, so this sets `bounces` directly on the live
-    /// scroll view(s). Runs on every foreground — idempotent and cheap.
+    /// scroll view(s). Idempotent and cheap — safe to call repeatedly.
     private func disableWebViewBounce(in view: UIView) {
         if let scroll = view as? UIScrollView {
             scroll.bounces = false
@@ -24,6 +46,12 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         }
         for sub in view.subviews {
             disableWebViewBounce(in: sub)
+        }
+    }
+
+    @objc private func reassertNoBounce() {
+        if let root = window?.rootViewController?.view {
+            disableWebViewBounce(in: root)
         }
     }
 

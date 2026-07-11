@@ -405,11 +405,13 @@ OF.demo = (function () {
       if (dayIdx % 3 === 0) {
         var progress = dayIdx / days;                       // 0 -> 1 over the window
         var bulk = Math.max(0, (dayIdx - days / 2) / (days / 2)); // 0 until halfway, then 0 -> 1
+        var wKg = Math.round((weight0 + 1.4 * bulk + (rnd() - 0.5) * 0.5) * 10) / 10;
+        var mmPct = muscle0 + 1.2 * progress + (rnd() - 0.5) * 0.5;  // same rising story
         if (S.add("body", {
           date: date,
-          weightKg: Math.round((weight0 + 1.4 * bulk + (rnd() - 0.5) * 0.5) * 10) / 10,
+          weightKg: wKg,
           bodyFatPct: Math.round((fat0 - 1.2 * progress + (rnd() - 0.5) * 0.6) * 10) / 10,
-          muscleMassPct: Math.round((muscle0 + 1.2 * progress + (rnd() - 0.5) * 0.5) * 10) / 10,
+          muscleMassKg: Math.round(wKg * mmPct / 10) / 10,           // stored as a weight now
           notes: ""
         })) counts.body++;
       }

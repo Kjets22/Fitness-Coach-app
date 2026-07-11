@@ -169,7 +169,7 @@ OF.storage = (function () {
     sleep: ["quality", "durationMin"],
     food: ["calories", "protein", "carbs", "fat"],
     exercise: ["durationMin", "intensity", "performance"],
-    body: ["weightKg", "bodyFatPct", "muscleMassPct"],
+    body: ["weightKg", "bodyFatPct", "muscleMassKg", "muscleMassPct"],
     water: ["amountMl"],
     steps: ["count"],
     goal: ["targetAmountKg", "heightCm", "age"],
@@ -207,7 +207,8 @@ OF.storage = (function () {
     },
     body: {
       weightKg: { min: 20, max: 400 },
-      bodyFatPct: { min: 0, max: 100 }, muscleMassPct: { min: 0, max: 100 }
+      bodyFatPct: { min: 0, max: 100 },
+      muscleMassKg: { min: 0, max: 300 }, muscleMassPct: { min: 0, max: 100 }
     },
     water: { amountMl: { min: 0, max: 10000 } },
     steps: { count: { min: 0, max: 200000 } },

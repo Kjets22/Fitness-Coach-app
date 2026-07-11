@@ -1,7 +1,11 @@
 /* ============================================================
    body.js — body metrics tracker: form + history list.
-   Record: { date, weightKg, bodyFatPct, muscleMassPct, notes }
-   Weight is required; body fat % and muscle mass % optional.
+   Record: { date, weightKg, bodyFatPct, muscleMassKg, notes }
+   Weight is required; body fat % and muscle mass optional.
+   Muscle mass is a WEIGHT (smart scales report it in kg/lb), entered
+   in the user's display unit and stored as muscleMassKg. Legacy
+   records that stored muscleMassPct still render/convert everywhere
+   via U.muscleKg(rec).
    ============================================================ */
 
 window.OF = window.OF || {};
@@ -33,7 +37,7 @@ OF.body = (function () {
     renderList();
   }
 
-  /** Weight is stored in kg but entered/shown in the preferred unit. */
+  /** Weight + muscle mass are stored in kg but entered/shown in the preferred unit. */
   function applyUnits() {
     var unit = U.weightUnit();
     var lbl = document.getElementById("body-weight-unit");
@@ -42,6 +46,13 @@ OF.body = (function () {
       els.weight.min = unit === "lb" ? 44 : 20;
       els.weight.max = unit === "lb" ? 880 : 400;
       els.weight.placeholder = unit === "lb" ? "165.0" : "75.0";
+    }
+    var mlbl = document.getElementById("body-muscle-unit");
+    if (mlbl) mlbl.textContent = unit;
+    if (els.muscle) {
+      els.muscle.min = unit === "lb" ? 11 : 5;
+      els.muscle.max = unit === "lb" ? 660 : 300;
+      els.muscle.placeholder = unit === "lb" ? "optional — e.g. 120.0" : "optional — e.g. 55.0";
     }
   }
 
@@ -71,14 +82,17 @@ OF.body = (function () {
     if (bf !== null && (isNaN(bf) || bf < 0 || bf > 100)) {
       return { err: "Body fat % must be between 0 and 100." };
     }
-    var mm = U.numOrNull(els.muscle.value);
-    if (mm !== null && (isNaN(mm) || mm < 0 || mm > 100)) {
-      return { err: "Muscle mass % must be between 0 and 100." };
+    var mmDisp = U.numOrNull(els.muscle.value);
+    var mLo = U.weightUnit() === "lb" ? 11 : 5;
+    var mHi = U.weightUnit() === "lb" ? 660 : 300;
+    if (mmDisp !== null && (isNaN(mmDisp) || mmDisp < mLo || mmDisp > mHi)) {
+      return { err: "Muscle mass must be between " + mLo + " and " + mHi + " " + U.weightUnit() + "." };
     }
-    // Non-blocking sanity warning: the two percentages can't really sum past 100.
-    var warn = (bf !== null && mm !== null && bf + mm > 100)
-      ? "Heads up: body fat + muscle mass add up to " + Math.round((bf + mm) * 10) / 10 +
-        "% — double-check the values."
+    var mmKg = mmDisp !== null ? U.fromDisplayWeight(mmDisp) : null;
+    // Non-blocking sanity warning: muscle mass can't exceed body weight.
+    var warn = (mmKg !== null && mmKg > w)
+      ? "Heads up: muscle mass (" + U.fmtWeight(mmKg) + ") is more than your body weight (" +
+        U.fmtWeight(w) + ") — double-check the values."
       : "";
     return {
       warn: warn,
@@ -86,7 +100,8 @@ OF.body = (function () {
         date: els.date.value,
         weightKg: Math.round(w * 100) / 100,
         bodyFatPct: bf !== null ? Math.round(bf * 10) / 10 : null,
-        muscleMassPct: mm !== null ? Math.round(mm * 10) / 10 : null,
+        muscleMassKg: mmKg !== null ? Math.round(mmKg * 10) / 10 : null,
+        muscleMassPct: null,   // legacy % field: cleared on save so edited records converge to kg
         notes: els.notes.value.trim()
       }
     };
@@ -121,7 +136,8 @@ OF.body = (function () {
     els.date.value = rec.date;
     els.weight.value = rec.weightKg != null ? U.toDisplayWeight(rec.weightKg) : "";
     els.fat.value = rec.bodyFatPct != null ? rec.bodyFatPct : "";
-    els.muscle.value = rec.muscleMassPct != null ? rec.muscleMassPct : "";
+    var mKg = U.muscleKg(rec);   // handles both new kg records and legacy % records
+    els.muscle.value = mKg != null ? U.toDisplayWeight(mKg) : "";
     els.notes.value = rec.notes || "";
     els.title.textContent = "Edit measurement";
     els.submit.textContent = "Save changes";
@@ -163,7 +179,8 @@ OF.body = (function () {
     var latest = arr[0];
     var extra = [];
     if (latest.bodyFatPct != null) extra.push(latest.bodyFatPct + "% fat");
-    if (latest.muscleMassPct != null) extra.push(latest.muscleMassPct + "% muscle");
+    var latestMuscle = U.muscleKg(latest);
+    if (latestMuscle != null) extra.push(U.fmtWeight(latestMuscle) + " muscle");
     els.summary.innerHTML =
       '<span class="entry-ico">' + OF.icons.get("scale") + '</span>' +
       '<span>Latest: <strong>' + U.esc(U.fmtWeight(latest.weightKg)) + '</strong> · ' +
@@ -183,7 +200,8 @@ OF.body = (function () {
     els.list.innerHTML = arr.map(function (r) {
       var parts = [];
       if (r.bodyFatPct != null) parts.push(r.bodyFatPct + "% fat");
-      if (r.muscleMassPct != null) parts.push(r.muscleMassPct + "% muscle");
+      var rMuscle = U.muscleKg(r);
+      if (rMuscle != null) parts.push(U.fmtWeight(rMuscle) + " muscle");
       if (r.notes) parts.push(r.notes);
       return '<div class="entry">' +
         '<span class="entry-ico">' + OF.icons.get("scale") + '</span>' +

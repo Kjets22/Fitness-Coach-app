@@ -270,7 +270,7 @@ OF.insights = (function () {
     var d = r.trends;
     if (d.status !== "ok") return needCard("Body trends (30 days)", d.message, null, "trend");
     var goalType = gi && gi.goal ? gi.goal.type : null;
-    var lines = [], keys = ["weightKg", "bodyFatPct", "muscleMassPct"];
+    var lines = [], keys = ["weightKg", "bodyFatPct", "muscleMassKg"];
     keys.forEach(function (k) {
       var m = d.metrics[k];
       if (!m) return;
@@ -279,10 +279,11 @@ OF.insights = (function () {
         return;
       }
       var arrow = m.direction === "up" ? "&uarr;" : m.direction === "down" ? "&darr;" : "&rarr;";
-      var isWeight = k === "weightKg";
-      var delta = isWeight ? U.toDisplayWeight(m.delta30) : m.delta30;
-      var latest = isWeight ? U.toDisplayWeight(m.latest) : m.latest;
-      var unit = isWeight ? U.weightUnit() : m.unit;
+      var isWeight = k === "weightKg";                       // goal-verdict logic: body weight only
+      var inKg = isWeight || k === "muscleMassKg";           // unit conversion: both stored in kg
+      var delta = inKg ? U.toDisplayWeight(m.delta30) : m.delta30;
+      var latest = inKg ? U.toDisplayWeight(m.latest) : m.latest;
+      var unit = inKg ? U.weightUnit() : m.unit;
       var change = m.direction === "stable"
         ? "stable"
         : (delta > 0 ? "+" : "") + delta + " " + unit + " / 30 days";

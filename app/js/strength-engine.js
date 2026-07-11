@@ -407,9 +407,9 @@ OF.strength = (function () {
       var end = todayNum - 7 * (VOL_WEEKS - 1 - i), start = end - 6;
       var vals = [];
       (body || []).forEach(function (r) {
-        var dn = dayNum(r.date), wt = num(r.weightKg), mm = num(r.muscleMassPct);
-        if (dn == null || wt == null || mm == null) return;
-        if (dn >= start && dn <= end) vals.push(wt * mm / 100);
+        var dn = dayNum(r.date), mk = U.muscleKg(r);   // kg (new records + legacy %)
+        if (dn == null || mk == null) return;
+        if (dn >= start && dn <= end) vals.push(mk);
       });
       var m = mean(vals);
       if (m != null && w.volumeKg > 0) pairs.push({ vol: w.volumeKg, muscle: m });
@@ -417,7 +417,7 @@ OF.strength = (function () {
     if (pairs.length < 5) {
       return {
         status: "insufficient", n: pairs.length,
-        message: "Needs 5+ weeks that have BOTH logged sets and a body measurement with muscle % (have " +
+        message: "Needs 5+ weeks that have BOTH logged sets and a body measurement with muscle mass (have " +
           pairs.length + ") — log body comp weekly and this fills in."
       };
     }

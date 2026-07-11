@@ -6,9 +6,14 @@
    tool so it can view the image. The result prefills the normal
    food form; the user reviews/edits and saves as usual.
 
-   Degrades exactly like coach.js: without the server the button
-   renders disabled with a hint. Phone mode reuses the SAME
-   pairing key coach.js stores (optimalfit.pairKey, X-OF-Key).
+   RELIABILITY CONTRACT: the button is NEVER disabled and NEVER
+   silently does nothing. Picking a photo is fully on-device and
+   always works; only the Estimate call needs the server. When the
+   server is unreachable (computer asleep, tunnel down) the modal
+   says so in plain words, keeps the photo, and offers retry — and
+   the health check re-runs automatically when the app comes back
+   to the foreground or the network returns. Phone mode reuses the
+   SAME pairing key coach.js stores (optimalfit.pairKey, X-OF-Key).
    All rendered text goes through U.esc().
    ============================================================ */
 
@@ -72,21 +77,29 @@ OF.foodPhoto = (function () {
     if (location.protocol !== "http:" && location.protocol !== "https:" &&
         !(OF.coachApi && OF.coachApi.remote())) {
       server = "no-server";
-      renderButton();
+      statusChanged();
       return;
     }
     fetch(apiUrl("/api/health"), { cache: "no-store", headers: apiHeaders() })
       .then(function (res) { return res.json(); })
       .then(function (j) {
-        // Respect keyOk like coach.js: an unpaired phone (keyOk:false) must not
-        // get an enabled button — the hint points them to the Coach tab to pair.
         server = (j && j.ok && j.claude && j.keyOk !== false) ? "ok" : "no-server";
-        renderButton();
+        statusChanged();
       })
       .catch(function () {
         server = "no-server";
-        renderButton();
+        statusChanged();
       });
+  }
+
+  /** Refresh everything that shows server status: the Food-tab hint and,
+      when the modal is open on the pick step, its inline notice. */
+  function statusChanged() {
+    renderButton();
+    if (isOpen() && state === "pick") {
+      saveDesc();          // keep whatever the user typed across the re-render
+      renderModal();
+    }
   }
 
   /* ---------------- button (Food tab, above the form) ---------------- */
@@ -102,14 +115,16 @@ OF.foodPhoto = (function () {
       OF.entitlements.bindPaywall(els.area, renderButton);
       return;
     }
-    var disabled = server !== "ok";
+    // The button is ALWAYS enabled: picking a photo works on-device no matter
+    // what, and any server problem is explained inside the modal with retry.
+    // (A disabled button reads as "pressed it and nothing happened" — never again.)
+    var hint = server === "no-server"
+      ? 'Your computer looks offline &mdash; you can still snap the photo and retry'
+      : 'Snap your meal, get the macros prefilled';
     els.area.innerHTML =
-      '<button type="button" class="btn photo-btn" id="photo-open"' +
-      (disabled ? ' disabled' : '') + '>' + OF.icons.get("camera") +
+      '<button type="button" class="btn photo-btn" id="photo-open">' + OF.icons.get("camera") +
       '<span>Estimate from photo</span></button>' +
-      (disabled
-        ? '<span class="muted small photo-hint">Needs the OptimalFit server &mdash; see Coach tab</span>'
-        : '<span class="muted small photo-hint">Snap your meal, get the macros prefilled</span>');
+      '<span class="muted small photo-hint">' + hint + '</span>';
   }
 
   /* ---------------- image re-encode ----------------
@@ -166,8 +181,22 @@ OF.foodPhoto = (function () {
       '<div class="sheet-grab" aria-hidden="true"></div>' + inner + '</div>';
   }
 
+  /** Inline server-status notice on the pick step. Only shown when the last
+      health check failed — the user can keep going (photo is on-device) and
+      either recheck now or just hit Estimate, which retries anyway. */
+  function serverNoticeHtml() {
+    if (server !== "no-server") return "";
+    return '<div class="photo-server-note">' +
+      '<span>&#9888;&#65039; Can&rsquo;t reach OptimalFit on your computer right now ' +
+      '(it may be asleep or offline). You can still pick your photo &mdash; ' +
+      'Estimate will retry the connection.</span> ' +
+      '<button type="button" class="btn mini" id="photo-recheck">Check again</button>' +
+      '</div>';
+  }
+
   function pickHtml() {
     return '<h2>Estimate from photo</h2>' +
+      serverNoticeHtml() +
       '<div class="photo-pick-row">' +
         '<label class="btn photo-file-btn">' + OF.icons.get("camera") +
           '<span>' + (previewUrl ? 'Change photo' : 'Take / choose photo') + '</span>' +
@@ -276,6 +305,7 @@ OF.foodPhoto = (function () {
     errorMsg = "";
     renderModal();
     els.modal.classList.remove("hidden");
+    checkServer();   // refresh status in the background — updates the notice when done
   }
 
   function closeModal() {
@@ -319,6 +349,7 @@ OF.foodPhoto = (function () {
     })
       .then(function (res) { httpStatus = res.status; return res.json(); })
       .then(function (j) {
+        server = "ok";         // we reached it — keep the status hint truthful
         if (!isOpen()) return; // user closed the panel mid-request
         if (httpStatus === 401) {
           // pairing code revoked (e.g. the PC server restarted)
@@ -340,13 +371,17 @@ OF.foodPhoto = (function () {
         renderModal();
       })
       .catch(function (e) {
+        var aborted = e && e.name === "AbortError";
+        if (!aborted) { server = "no-server"; renderButton(); }
         if (!isOpen()) return;
         state = "error";
-        errorMsg = (e && e.name === "AbortError")
-          ? "The estimate took too long and was cancelled. Try again."
-          : (isNativeApp()
-              ? "Could not reach OptimalFit on your computer. Make sure it's running there and this phone is on the same Wi-Fi."
-              : "Could not reach the local server. Is “" + launcherName() + "” still running?");
+        errorMsg = aborted
+          ? "The estimate took too long and was cancelled. Your photo is kept — tap Try again."
+          : ((OF.coachApi && OF.coachApi.remote())
+              ? "Could not reach OptimalFit on your computer — it may be asleep or offline. Wake it up (or check its internet), then tap Try again. Your photo is kept."
+              : (isNativeApp()
+                  ? "Could not reach OptimalFit on your computer. Make sure it's running there and this phone is on the same Wi-Fi. Your photo is kept — tap Try again."
+                  : "Could not reach the local server. Is “" + launcherName() + "” still running? Your photo is kept — tap Try again."));
         renderModal();
       })
       .then(function () { // finally
@@ -428,10 +463,12 @@ OF.foodPhoto = (function () {
       if (e.target.closest("[data-close-photo]")) { closeModal(); return; }
       if (e.target.closest("#photo-estimate")) { doEstimate(); return; }
       if (e.target.closest("#photo-use")) { useValues(); return; }
+      if (e.target.closest("#photo-recheck")) { checkServer(); return; }
       if (e.target.closest("#photo-again")) {
         state = "pick";
         errorMsg = "";
         renderModal();
+        checkServer();   // the photo is kept; refresh the status notice too
       }
     });
     els.modal.addEventListener("change", function (e) {
@@ -439,6 +476,15 @@ OF.foodPhoto = (function () {
     });
     document.addEventListener("keydown", function (e) {
       if (e.key === "Escape" && isOpen()) closeModal();
+    });
+    // The computer being asleep is the #1 real-world failure. Re-check health
+    // whenever the app returns to the foreground or the network comes back, so
+    // the hint recovers by itself instead of staying stuck on "offline".
+    document.addEventListener("visibilitychange", function () {
+      if (!document.hidden && server !== "ok") checkServer();
+    });
+    window.addEventListener("online", function () {
+      if (server !== "ok") checkServer();
     });
   }
 

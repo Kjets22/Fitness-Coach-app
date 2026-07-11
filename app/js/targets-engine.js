@@ -330,8 +330,7 @@ OF.targets = (function () {
         if (dn == null) return;
         var v = null;
         if (metric === "muscle") {
-          var w = num(r.weightKg), m = num(r.muscleMassPct);
-          if (w != null && m != null) v = w * m / 100; // kg of muscle
+          v = U.muscleKg(r);   // kg of muscle (new kg records + legacy % records)
         } else {
           v = num(r.weightKg);
         }

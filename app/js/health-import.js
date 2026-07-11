@@ -477,7 +477,7 @@ OF.healthImport = (function () {
         if (failed) return;
         if (bodyDates[rec.date]) { bs++; return; }
         if (!S.add("body", { date: rec.date, weightKg: rec.weightKg,
-                             bodyFatPct: null, muscleMassPct: null, notes: "" })) {
+                             bodyFatPct: null, muscleMassKg: null, notes: "" })) {
           failed = true; return;
         }
         ba++;

@@ -165,6 +165,22 @@ OF.util = (function () {
     return kb < ka ? -1 : kb > ka ? 1 : 0;
   }
 
+  /** Canonical muscle mass in KG for a body record. New records store
+      muscleMassKg (scales report muscle as a weight); legacy records stored
+      muscleMassPct — convert via that day's body weight so old data keeps
+      working in every chart/engine. Returns null when not derivable. */
+  function muscleKg(rec) {
+    if (!rec) return null;
+    var kg = numOrNull(rec.muscleMassKg);
+    if (kg != null && isFinite(kg) && kg > 0) return Math.round(kg * 10) / 10;
+    var pct = numOrNull(rec.muscleMassPct), w = numOrNull(rec.weightKg);
+    if (pct != null && isFinite(pct) && pct > 0 && pct <= 100 &&
+        w != null && isFinite(w) && w > 0) {
+      return Math.round(w * pct / 10) / 10;   // w × pct/100, to 0.1 kg
+    }
+    return null;
+  }
+
   return {
     uid: uid,
     todayISO: todayISO,
@@ -178,6 +194,7 @@ OF.util = (function () {
     progressBar: progressBar,
     progressRing: progressRing,
     numOrNull: numOrNull,
-    byNewest: byNewest
+    byNewest: byNewest,
+    muscleKg: muscleKg
   };
 })();

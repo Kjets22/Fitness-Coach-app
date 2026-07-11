@@ -5,7 +5,7 @@
      sleep    { date(wake), bedTime, wakeTime, quality 1-5, durationMin }
      food     { date, time, mealType, foodName, calories, protein, carbs, fat }
      exercise { date, startTime, type, durationMin, intensity, performance 1-5 }
-     body     { date, weightKg, bodyFatPct, muscleMassPct }
+     body     { date, weightKg, bodyFatPct, muscleMassKg (legacy: muscleMassPct) }
 
    Every insight returns { status: "ok" | "insufficient", ... }.
    "insufficient" always carries a human `message` saying how much
@@ -633,7 +633,8 @@ OF.engine = (function () {
     var defs = [
       { key: "weightKg", label: "Weight", unit: "kg", stableBelow: 0.5, goodDir: null },
       { key: "bodyFatPct", label: "Body fat", unit: "%", stableBelow: 0.5, goodDir: "down" },
-      { key: "muscleMassPct", label: "Muscle mass", unit: "%", stableBelow: 0.5, goodDir: "up" }
+      // muscle mass is a weight (kg canonical; legacy % records convert via U.muscleKg)
+      { key: "muscleMassKg", get: U.muscleKg, label: "Muscle mass", unit: "kg", stableBelow: 0.5, goodDir: "up" }
     ];
     var metrics = {};
     var anyOk = false;
@@ -641,7 +642,7 @@ OF.engine = (function () {
     defs.forEach(function (def) {
       var pts = [];
       (body || []).forEach(function (r) {
-        var dn = dayNum(r.date), v = num(r[def.key]);
+        var dn = dayNum(r.date), v = num(def.get ? def.get(r) : r[def.key]);
         if (dn == null || v == null) return;
         if (todayNum - dn > TREND_WINDOW_DAYS || todayNum - dn < 0) return;
         pts.push({ x: dn, y: v });

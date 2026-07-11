@@ -148,7 +148,7 @@ OF.coach = (function () {
 
     if (r.trends.status === "ok") {
       var t = [];
-      ["weightKg", "bodyFatPct", "muscleMassPct"].forEach(function (k) {
+      ["weightKg", "bodyFatPct", "muscleMassKg"].forEach(function (k) {
         var m = r.trends.metrics[k];
         if (m && m.status === "ok") {
           t.push(m.label + ": " + m.direction +
@@ -327,7 +327,7 @@ OF.coach = (function () {
         date: latestBody.date,
         weightKg: latestBody.weightKg,
         bodyFatPct: latestBody.bodyFatPct,
-        muscleMassPct: latestBody.muscleMassPct
+        muscleMassKg: U.muscleKg(latestBody)   // canonical kg; converts legacy % records
       } : null,
       physique: physique
     };

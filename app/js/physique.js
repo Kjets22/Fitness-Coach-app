@@ -84,6 +84,8 @@ OF.physique = (function () {
     return OF.coachApi ? OF.coachApi.url(path) : path;
   }
 
+  var probeSeq = 0;   // a stale slow probe must never overwrite a fresh result
+
   function checkServer() {
     if (location.protocol !== "http:" && location.protocol !== "https:" &&
         !(OF.coachApi && OF.coachApi.remote())) {
@@ -91,16 +93,22 @@ OF.physique = (function () {
       renderButton();
       return;
     }
-    fetch(apiUrl("/api/health"), { cache: "no-store", headers: apiHeaders() })
+    var seq = ++probeSeq;
+    var pc = ("AbortController" in window) ? new AbortController() : null;
+    var pt = pc ? setTimeout(function () { pc.abort(); }, 8000) : null;   // a hung probe dies in 8 s
+    fetch(apiUrl("/api/health"), { cache: "no-store", headers: apiHeaders(), signal: pc ? pc.signal : undefined })
       .then(function (res) { return res.json(); })
       .then(function (j) {
+        if (seq !== probeSeq) return;
         server = (j && j.ok && j.claude && j.keyOk !== false) ? "ok" : "no-server";
         renderButton();
       })
       .catch(function () {
+        if (seq !== probeSeq) return;
         server = "no-server";
         renderButton();
-      });
+      })
+      .then(function () { if (pt) clearTimeout(pt); });
   }
 
   /* ---------------- button (Body tab, above the form) ---------------- */
@@ -398,10 +406,18 @@ OF.physique = (function () {
       .then(function (j) {
         if (!isOpen()) return;
         if (httpStatus === 401) {
-          clearPairKey();
           state = "error";
-          errorMsg = "The server asked to pair again. Open the Coach tab and " +
-            "enter the current 6-digit code from the server window, then retry.";
+          if (OF.coachApi && OF.coachApi.remote() && OF.coachApi.key()) {
+            // remote/public mode uses the key BAKED into this build — there is
+            // no pairing code to enter, so don't send the user hunting for one
+            errorMsg = "The server didn't accept this app's access key — the key on " +
+              "the computer was probably changed after this app was built. Restart the " +
+              "server with the matching key (or rebuild the app), then retry.";
+          } else {
+            clearPairKey();
+            errorMsg = "The server asked to pair again. Open the Coach tab and " +
+              "enter the current 6-digit code from the server window, then retry.";
+          }
         } else if (httpStatus === 429) {
           state = "error";
           errorMsg = (j && j.error) ||
@@ -419,10 +435,12 @@ OF.physique = (function () {
         if (!isOpen()) return;
         state = "error";
         errorMsg = (e && e.name === "AbortError")
-          ? "The analysis took too long and was cancelled. Try again."
-          : (isNativeApp()
-              ? "Could not reach OptimalFit on your computer. Make sure it’s running there and this phone is on the same Wi-Fi."
-              : "Could not reach the local server. Is “" + launcherName() + "” still running?");
+          ? "The analysis took too long and was cancelled. Your photo is kept — tap Try again."
+          : ((OF.coachApi && OF.coachApi.remote())
+              ? "Could not reach OptimalFit on your computer — it may be asleep or offline. Wake it up, then tap Try again. Your photo is kept."
+              : (isNativeApp()
+                  ? "Could not reach OptimalFit on your computer. Make sure it’s running there and this phone is on the same Wi-Fi."
+                  : "Could not reach the local server. Is “" + launcherName() + "” still running?"));
         renderModal();
       })
       .then(function () { // finally

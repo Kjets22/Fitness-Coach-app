@@ -459,6 +459,11 @@ OF.foodPhoto = (function () {
     var file = input.files && input.files[0];
     if (!file) return;
     errorMsg = "";
+    // Invalidate the PREVIOUS photo right away: tapping Estimate while the new
+    // one is still re-encoding must not silently analyze the old image.
+    imgB64 = null;
+    saveDesc();
+    renderModal();
     reencode(file, function (b64, dataUrl, err) {
       if (!isOpen() || state !== "pick") return;
       if (err) {

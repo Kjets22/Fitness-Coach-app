@@ -171,7 +171,9 @@ OF.charts = (function () {
     var yMax = opts.yMax != null ? opts.yMax : dataMax * 1.15;
     if (yMax <= 0) yMax = 1;
 
-    function Y(v) { return padT + (1 - v / yMax) * plotH; }
+    // clamp into [0, yMax]: with a fixed opts.yMax a bigger value (an 11h
+    // night on a 10h axis) drew its bar OUTSIDE the plot area
+    function Y(v) { return padT + (1 - Math.max(0, Math.min(v, yMax)) / yMax) * plotH; }
 
     var out = svgOpen(W, H);
 

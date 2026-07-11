@@ -230,6 +230,7 @@ OF.storage = (function () {
     water: { amountMl: { min: 0, max: 10000 } },
     steps: { count: { min: 0, max: 200000 } },
     activeEnergy: { kcal: { min: 0, max: 20000 } },
+    goal: { targetAmountKg: { min: 0, max: 500 }, heightCm: { min: 90, max: 250 }, age: { min: 5, max: 120, int: true } },
     physique: {
       bodyFatMidpoint: { min: 3, max: 60 },
       bodyFatRangeLow: { min: 3, max: 60 }, bodyFatRangeHigh: { min: 3, max: 60 }
@@ -368,6 +369,10 @@ OF.storage = (function () {
       rec.durationMin = clampNum(type, "durationMin",
         coerceNum(OF.util.sleepDurationMin(rec.bedTime, rec.wakeTime)));
     }
+    if (type === "goal" && rec.targetDate != null &&
+        !(typeof rec.targetDate === "string" && /^\d{4}-\d{2}-\d{2}$/.test(rec.targetDate))) {
+      delete rec.targetDate;   // a garbage date would render "NaN-NaN-NaN" on the goal card
+    }
     return rec;
   }
 
@@ -399,6 +404,12 @@ OF.storage = (function () {
     // Build the full next-state for every type IN MEMORY first, without
     // touching storage. Replace starts each type from empty; merge starts
     // from current data and only adds imported ids it doesn't already have.
+    // Types with a ONE-RECORD-PER-DAY invariant (the UIs "last one wins" /
+    // upsert by date): merging a backup must not create a second record for a
+    // day that already has one — the duplicate would shadow the user's entry
+    // with the imported (stale) count and be uneditable/undeletable in the UI.
+    var ONE_PER_DAY = { steps: true, activeEnergy: true };
+
     var nextState = {}; // type -> array to write (absent = leave storage untouched)
     TYPES.forEach(function (t) {
       var incoming = Array.isArray(data[t]) ? data[t] : [];
@@ -407,16 +418,22 @@ OF.storage = (function () {
       if (!replace && !incoming.length) return;
       var current = replace ? [] : getAll(t);
       var seen = Object.create(null);   // null proto: an id named "__proto__"/"constructor" must not hit Object.prototype and get skipped as a "duplicate"
-      current.forEach(function (r) { if (r && r.id) seen[r.id] = true; });
+      var seenDates = Object.create(null);
+      current.forEach(function (r) {
+        if (r && r.id) seen[r.id] = true;
+        if (ONE_PER_DAY[t] && r && r.date) seenDates[r.date] = true;
+      });
       incoming.forEach(function (raw) {
         var r = normalizeRecord(t, raw);
         if (!r) { skipped++; return; } // not an object / missing essential date
         if (r.id && seen[r.id]) { skipped++; return; } // already have it (merge/dupe)
+        if (ONE_PER_DAY[t] && r.date && seenDates[r.date]) { skipped++; return; } // the local day's entry wins
         if (!r.id) r.id = OF.util.uid();
         if (!r.createdAt) r.createdAt = new Date().toISOString();
         r.updatedAt = r.updatedAt || r.createdAt;
         current.push(r);
         seen[r.id] = true;
+        if (ONE_PER_DAY[t] && r.date) seenDates[r.date] = true;
         imported++;
       });
       nextState[t] = current;

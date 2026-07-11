@@ -179,9 +179,13 @@ OF.healthSync = (function () {
       if (!isFinite(startMs) || !isFinite(endMs) || endMs <= startMs) return;
       var wake = new Date(endMs), bed = new Date(startMs);
       var date = isoDate(wake);                 // sleep is keyed by wake-up date
+      var durationMin = Math.round((endMs - startMs) / 60000);
+      if (durationMin < 10 || durationMin > 20 * 60) return;  // matches the form's own sanity cap
       var existing = S.getAll("sleep").filter(function (s) { return s.date === date; })[0];
       if (existing) return;                     // gap-fill only; manual sleep logs win
-      S.add("sleep", { date: date, bedTime: hhmm(bed), wakeTime: hhmm(wake), quality: 3, source: "health" });
+      S.add("sleep", { date: date, bedTime: hhmm(bed), wakeTime: hhmm(wake),
+                       durationMin: durationMin,   // without it the list showed "?" and averages skewed
+                       quality: 3, source: "health" });
     });
   }
 

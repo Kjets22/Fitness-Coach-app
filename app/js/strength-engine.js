@@ -123,8 +123,9 @@ OF.strength = (function () {
   function conf(n, med, high) { return n >= high ? "high" : n >= med ? "medium" : "low"; }
   function plural(n, w) { return n + " " + w + (n === 1 ? "" : "s"); }
 
-  /** Epley estimated 1RM. reps 1 -> the weight itself. */
-  function epley(w, reps) { return w * (1 + reps / 30); }
+  /** Epley estimated 1RM. reps 1 -> the weight itself (the formula would
+      otherwise overstate a true max single by 3.3%). */
+  function epley(w, reps) { return reps <= 1 ? w : w * (1 + reps / 30); }
 
   /** kg for messages, in the user's display unit. */
   function fmtW(kg) { return U.fmtWeight ? U.fmtWeight(kg, 1) : (round1(kg) + " kg"); }
@@ -138,6 +139,7 @@ OF.strength = (function () {
     if (reps < 1 || reps > 100) return null;
     var w = num(s.weightKg);
     if (w != null && (w < 0 || w > 500)) return null;
+    if (w === 0) w = null;   // "0 kg" means bodyweight — counting it as weighted work produced 0-kg "bests" and poisoned e1RM trends
     return { weightKg: w, reps: reps };
   }
 
@@ -209,8 +211,10 @@ OF.strength = (function () {
     var lastImproveDay = weighted.length ? weighted[0].day : null;
     var lastImproveDate = weighted.length ? weighted[0].date : null;
     var rollingMax = null;
+    var improvedOverPrior = false;   // a first-ever session seeds the max — that's a baseline, not a PR
     weighted.forEach(function (s) {
       if (rollingMax == null || s.e1RM > rollingMax * IMPROVE_EPS) {
+        if (rollingMax != null) improvedOverPrior = true;
         rollingMax = s.e1RM;
         lastImproveDay = s.day; lastImproveDate = s.date;
       }
@@ -252,7 +256,7 @@ OF.strength = (function () {
     // A "recent PR" must clear the same IMPROVE_EPS bar as lastImproveDay, so an
     // exercise can't be BOTH stalling and recentPR (a sub-0.5% new absolute max is
     // not a real PR). PR_RECENT_DAYS (7) < STALL_MIN_DAYS (14) keeps them exclusive.
-    var recentPR = lastImproveDay != null && (todayNum - lastImproveDay) <= PR_RECENT_DAYS;
+    var recentPR = improvedOverPrior && lastImproveDay != null && (todayNum - lastImproveDay) <= PR_RECENT_DAYS;
 
     // Weekday frequency (for "keep doing X" callouts): days with 2+ sessions.
     var wdCount = [0, 0, 0, 0, 0, 0, 0];

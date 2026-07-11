@@ -157,12 +157,18 @@ OF.trainer = (function () {
         if (!Array.isArray(exs)) continue;
         for (var j = 0; j < exs.length; j++) {
           if (exs[j] && String(exs[j].name).toLowerCase() === target && Array.isArray(exs[j].sets)) {
-            var w = null;
+            // Seed from a WORKING set (4+ reps), not the single heaviest set:
+            // a 1RM/PR single would otherwise become the prescribed weight for
+            // a 6-10 rep scheme — guaranteed failure on day one.
+            var w = null, wAny = null;
             exs[j].sets.forEach(function (s) {
-              var v = Number(s.weightKg);
-              if (isFinite(v) && v > 0 && (w == null || v > w)) w = v;
+              var v = Number(s.weightKg), r = Number(s.reps);
+              if (!isFinite(v) || v <= 0) return;
+              if (isFinite(r) && r >= 4 && (w == null || v > w)) w = v;
+              if (wAny == null || v > wAny) wAny = v;
             });
             if (w != null) return w;
+            if (wAny != null) return Math.round(wAny * 0.85 * 100) / 100;  // near-max single → approx working weight
           }
         }
       }
@@ -186,6 +192,12 @@ OF.trainer = (function () {
           p.equip.some(function (t) { return allow.indexOf(t) !== -1; }) &&
           !usedLower[p.name.toLowerCase()];
       });
+      // accessory slots: prefer ISOLATION moves — otherwise leftover heavy
+      // compounds fill them and a "full gym" day stacks 5-6 compounds
+      if (!compound) {
+        var iso = cands.filter(function (p) { return !p.compound; });
+        if (iso.length) cands = iso;
+      }
       // prefer compounds for compound slots; if none, relax to any in-group
       if (!cands.length) {
         cands = POOL.filter(function (p) {
@@ -336,7 +348,12 @@ OF.trainer = (function () {
     if (!p || !p.days[dayIndex]) return;
     var byName = {};
     (loggedExercises || []).forEach(function (ex) {
-      if (ex && ex.name) byName[String(ex.name).toLowerCase()] = ex.sets || [];
+      if (ex && ex.name) {
+        var k = String(ex.name).toLowerCase();
+        // same lift logged as several cards: judge ALL its sets together —
+        // overwriting dropped every card but the last (false deload/hold)
+        byName[k] = (byName[k] || []).concat(ex.sets || []);
+      }
     });
     // TOL covers the lb display round-trip (kg→0.1 lb→kg loses up to ~0.023 kg),
     // so a set logged at the prescribed weight isn't wrongly seen as lighter.

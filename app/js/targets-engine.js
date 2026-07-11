@@ -260,12 +260,17 @@ OF.targets = (function () {
     var span = pts.length ? pts[pts.length - 1].x - pts[0].x : 0;
 
     if (foodDays < 14 || avgKcal == null || avgKcal < 1000 || pts.length < 4 || span < 14) {
+      // name the condition that actually failed — the generic count message
+      // contradicted itself when the counts were fine but avg intake was
+      // implausibly low (incomplete food days)
+      var why =
+        foodDays < 14 ? foodDays + " of 14 needed food-logging days" :
+        (avgKcal == null || avgKcal < 1000) ? "logged intake averages under 1,000 kcal/day — log complete days so the math is trustworthy" :
+        pts.length < 4 ? pts.length + " of 4 needed weigh-ins" :
+        "weigh-ins need to span 2+ weeks";
       return {
         ready: false, foodDays: foodDays, weightPts: pts.length,
-        message: "The adaptive coach needs 14+ days of food logging and 4+ weigh-ins " +
-          "spanning 2+ weeks (within the last 4 weeks). So far: " + foodDays +
-          " food day" + (foodDays === 1 ? "" : "s") + ", " + pts.length + " weigh-in" +
-          (pts.length === 1 ? "" : "s") + "."
+        message: "The adaptive coach isn't ready yet: " + why + " (within the last 4 weeks)."
       };
     }
 
@@ -378,7 +383,10 @@ OF.targets = (function () {
       out.pct = Math.max(0, Math.min(1, achieved / amount));
       if (rate != null && t.dir * rate > 0.01 && remaining > 0) {
         var weeks = remaining / (t.dir * rate);
-        if (weeks < 260) out.projectedDate = isoFromDayNum(cur.x + Math.round(weeks * 7));
+        // anchor from TODAY, not the last weigh-in — with stale data the
+        // projection otherwise lands in the past
+        var anchor = Math.max(cur.x, dayNum(U.todayISO()));
+        if (weeks < 260) out.projectedDate = isoFromDayNum(anchor + Math.round(weeks * 7));
       }
       if (remaining <= 0) out.reached = true;
       if (goal.targetDate && dayNum(goal.targetDate) != null) {

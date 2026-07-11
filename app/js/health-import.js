@@ -74,6 +74,13 @@ OF.healthImport = (function () {
     return Date.UTC(+iso.slice(0, 4), +iso.slice(5, 7) - 1, +iso.slice(8, 10)) / 86400000;
   }
 
+  function isoFromDayNum(dn) {
+    var d = new Date((dn + 0.5) * 86400000);
+    return d.getUTCFullYear() + "-" +
+      String(d.getUTCMonth() + 1).padStart(2, "0") + "-" +
+      String(d.getUTCDate()).padStart(2, "0");
+  }
+
   function dateRange(recs) {
     var min = null, max = null;
     recs.forEach(function (r) {
@@ -173,9 +180,15 @@ OF.healthImport = (function () {
         var eDate = em[1], eKey = dayNum(eDate) * 1440 + (+em[2]) * 60 + (+em[3]);
         var dur = eKey - sKey;
         if (dur <= 0 || dur > 24 * 60) return; // nonsense interval
-        // QA3-4: keep the raw intervals; overlapping ones (iPhone + Watch
-        // logging the same night) are merged in finishApple().
-        (acc.sleep[eDate] = acc.sleep[eDate] || []).push({ s: sKey, e: eKey });
+        // Bucket by the NIGHT the interval belongs to (the day you wake), not
+        // by its own end date: a fragmented night (asleep 23:00-23:50, brief
+        // wake, asleep 00:05-07:00) would otherwise split into a bogus
+        // 50-minute "night" dated yesterday PLUS the real night today.
+        // Anything ending after 18:00 rolls into the next day's night;
+        // afternoon naps (end <= 18:00) stay on their own day. Overlapping
+        // intervals (iPhone + Watch same night) still merge in finishApple().
+        var nightDate = isoFromDayNum(Math.floor((eKey + 6 * 60) / 1440));
+        (acc.sleep[nightDate] = acc.sleep[nightDate] || []).push({ s: sKey, e: eKey });
       }
     }
 

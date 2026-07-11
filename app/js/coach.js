@@ -197,14 +197,18 @@ OF.coach = (function () {
     var byDay = {};
     food14.forEach(function (r) {
       var d = byDay[r.date] || (byDay[r.date] = { kcal: 0, protein: 0 });
-      if (typeof r.calories === "number") d.kcal += r.calories;
-      if (typeof r.protein === "number") d.protein += r.protein;
+      if (typeof r.calories === "number") { d.kcal += r.calories; d.hasKcal = true; }
+      if (typeof r.protein === "number") { d.protein += r.protein; d.hasProt = true; }
     });
     var days = Object.keys(byDay);
-    var kcalAvg = days.length
-      ? Math.round(days.reduce(function (a, d) { return a + byDay[d].kcal; }, 0) / days.length) : null;
-    var protAvg = days.length
-      ? round1(days.reduce(function (a, d) { return a + byDay[d].protein; }, 0) / days.length) : null;
+    // Average only over days that actually carry the number — a day of
+    // name-only food entries must not drag the average toward 0 kcal.
+    var kcalDays = days.filter(function (d) { return byDay[d].hasKcal; });
+    var protDays = days.filter(function (d) { return byDay[d].hasProt; });
+    var kcalAvg = kcalDays.length
+      ? Math.round(kcalDays.reduce(function (a, d) { return a + byDay[d].kcal; }, 0) / kcalDays.length) : null;
+    var protAvg = protDays.length
+      ? round1(protDays.reduce(function (a, d) { return a + byDay[d].protein; }, 0) / protDays.length) : null;
 
     var latestBody = data.body.slice().sort(function (a, b) {
       return (b.date || "") < (a.date || "") ? -1 : 1;
@@ -301,7 +305,8 @@ OF.coach = (function () {
       last14days: {
         sleep: {
           nights: sleep14.length,
-          avgHours: avg(sleep14, function (r) { return r.durationMin / 60; }),
+          // null durations must be SKIPPED, not counted as 0-hour nights (null/60 === 0)
+          avgHours: avg(sleep14, function (r) { return r.durationMin == null ? null : r.durationMin / 60; }),
           avgQuality: avg(sleep14, function (r) { return r.quality; })
         },
         workouts: {
@@ -376,7 +381,7 @@ OF.coach = (function () {
     if (offlineUsable()) {
       els.chat.classList.remove("hidden");
       var hint = (health === "no-claude")
-        ? "Install &amp; sign into Claude Code on your computer for full AI chat."
+        ? "Install &amp; sign into Claude Code on the computer running the OptimalFit server for full AI chat."
         : ((OF.coachApi && OF.coachApi.remote())
           ? "Reconnect your computer for full chat."
           : "Start the OptimalFit server on your computer for full chat.");
@@ -491,8 +496,11 @@ OF.coach = (function () {
 
   /* ---------------- health + send ---------------- */
 
+  var healthSeq = 0;   // a stale slow probe must never overwrite a fresh result
+
   function checkHealth() {
     var remote = OF.coachApi && OF.coachApi.remote();
+    var seq = ++healthSeq;
     health = null;
     renderStatus();
     // [20] don't hang forever on 'checking' if the server/tunnel is unreachable
@@ -502,6 +510,7 @@ OF.coach = (function () {
                                    signal: ctrl ? ctrl.signal : undefined })
       .then(function (res) { return res.json(); })
       .then(function (j) {
+        if (seq !== healthSeq) return;   // a newer probe already answered
         if (!(j && j.ok)) {
           health = "no-server";
         } else if (j.keyOk === false) {
@@ -523,6 +532,7 @@ OF.coach = (function () {
         renderStatus();
       })
       .catch(function () {
+        if (seq !== healthSeq) return;
         health = "no-server";
         renderStatus();
       })
@@ -553,7 +563,7 @@ OF.coach = (function () {
     if (/harder|heavier|tough|intens|add weight|push me/.test(q) && ns) {
       return "Today is " + ns.name + ". To push harder: add a set to your main lifts, or take a small jump on anything you completed all your reps on last time — but keep 1 rep in reserve on the last set so every rep stays clean.";
     }
-    if (/eat|food|meal|nutrition|protein|before|pre-?workout|fuel|breakfast/.test(q)) {
+    if (/\beat(ing)?\b|\bfood\b|\bmeals?\b|nutrition|protein|pre-?workout|\bfuel\b|breakfast|before (training|a workout|the gym|my workout)/.test(q)) {
       var kcal = t && t.status === "ok" ? t.calories : null, prot = t && t.status === "ok" ? t.proteinG : null;
       return "Pre-training, aim for easy carbs + a bit of protein 60–90 min out (oats or fruit + Greek yogurt or a scoop of protein)." +
         (prot ? " Your daily target is ~" + prot + "g protein" + (kcal ? " / " + kcal + " kcal" : "") + " — spread protein across the day and get a solid feed in after you lift." : "");
@@ -627,7 +637,10 @@ OF.coach = (function () {
       .then(function () { // finally
         if (timer) clearTimeout(timer);
         setBusy(false);
-        if (health === "need-key") renderStatus(); // swaps chat for the pairing card
+        // need-key swaps chat for the pairing card; a mid-chat 401/failure in
+        // remote mode must ALSO surface the offline banner — otherwise later
+        // questions get silently answered on-device with no explanation
+        if (health === "need-key" || (health !== "ok" && offlineUsable())) { renderStatus(); renderLog(); }
         else renderLog();
         els.input.focus();
       });

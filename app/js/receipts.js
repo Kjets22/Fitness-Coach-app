@@ -206,7 +206,7 @@ OF.receipts = (function () {
         lift: ex.name.slice(0, 50),
         training_age: trainingAge(),
         series: chain.map(function (p) { return { day: T().isoFromDayNum(p.x), e1rm: p.y }; }),
-        sessions: ex.sessions
+        sessions: chain.length   // sessions IN this receipt's series — the lifetime count read as if it covered the short window
       };
       if (chain.length < pts.length) payload.records_only = true;
       if (validate(payload).ok) return payload;

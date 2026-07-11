@@ -638,7 +638,11 @@ OF.social = (function () {
         st.state = "offline";
         render();
       } else if (err.authExpired) {
-        A.signOut().then(function () { st.state = "out"; render(); });
+        A.signOut().then(function () {
+          st.state = "out";
+          st.gyms = []; st.checkins = []; st.streak = 0; st.checkedToday = false;  // same reset as the sign-out button
+          render();
+        });
       } else {
         st.state = "offline";
         render();
@@ -1235,7 +1239,17 @@ OF.social = (function () {
       // scrub their content from the loaded feed immediately
       st.feed.filter(function (r) { return r.author_id === userId; })
         .forEach(function (r) { removePostEverywhere(r.id); });
+      // ...and their already-loaded comments under other people's posts
+      Object.keys(comments).forEach(function (pid) {
+        var c = comments[pid];
+        if (c && Array.isArray(c.rows)) {
+          var before = c.rows.length;
+          c.rows = c.rows.filter(function (row) { return row.author_id !== userId; });
+          if (c.total != null) c.total -= (before - c.rows.length);
+        }
+      });
       U.toast("Blocked. You won't see each other anymore.", "warn");
+      render();
       renderSettingsCard();
     }).catch(function (e) { handleErr(e, "Couldn't block right now."); });
   }
@@ -1350,6 +1364,10 @@ OF.social = (function () {
       case "signout":
         A.signOut().then(function () {
           st.profile = null; st.feed = []; postReg = {}; comments = {};
+          // gym membership + check-in streak belong to the signed-out account —
+          // without this reset the NEXT account saw the previous user's gym/streak
+          st.gyms = []; st.checkins = []; st.streak = 0; st.checkedToday = false;
+          st.lb.rows = null;
           st.state = "out"; render();
         });
         break;

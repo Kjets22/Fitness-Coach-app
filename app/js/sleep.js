@@ -81,13 +81,27 @@ OF.sleep = (function () {
     };
   }
 
+  var lastSaveAt = 0;
   function onSubmit(e) {
     e.preventDefault();
+    // Double-tap/double-Enter guard: setDefaults() refills VALID times, so a
+    // second immediate submit would save a phantom 23:00-07:00 entry.
+    if (Date.now() - lastSaveAt < 800) return;
     var r = readForm();
     if (r.err) { showError(r.err); return; }
     showError("");
     var editId = els.editId.value;
     if (editId) {
+      // Health-imported nights store durationMin as the union of the actual
+      // asleep intervals (awake gaps excluded), which is LESS than the
+      // bed-to-wake span. If the user edits the record without touching the
+      // times (e.g. just fixes quality), keep the imported duration instead
+      // of silently inflating it to the full span.
+      var orig = S.get("sleep", editId);
+      if (orig && orig.durationMin != null &&
+          orig.bedTime === r.rec.bedTime && orig.wakeTime === r.rec.wakeTime) {
+        r.rec.durationMin = orig.durationMin;
+      }
       if (!S.update("sleep", editId, r.rec)) {
         showError("Could not save — browser storage is full or blocked. Your entry was NOT saved.");
         return;
@@ -100,6 +114,7 @@ OF.sleep = (function () {
       }
       setDefaults();
     }
+    lastSaveAt = Date.now();
     renderList();
     OF.dashboard && OF.dashboard.refresh();
   }

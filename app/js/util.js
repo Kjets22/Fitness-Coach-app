@@ -170,7 +170,12 @@ OF.util = (function () {
   function byNewest(a, b) {
     var ka = (a.date || "") + "T" + padTime(a.time || a.startTime || a.wakeTime || "00:00");
     var kb = (b.date || "") + "T" + padTime(b.time || b.startTime || b.wakeTime || "00:00");
-    return kb < ka ? -1 : kb > ka ? 1 : 0;
+    if (kb < ka) return -1;
+    if (kb > ka) return 1;
+    // tie-break same date+time by creation moment, so a second weigh-in on the
+    // same day counts as "latest" instead of the morning one shadowing it
+    var ca = a.createdAt || "", cb = b.createdAt || "";
+    return cb < ca ? -1 : cb > ca ? 1 : 0;
   }
 
   /** Canonical muscle mass in KG for a body record. New records store

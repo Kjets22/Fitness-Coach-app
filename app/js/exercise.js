@@ -603,6 +603,27 @@ OF.exercise = (function () {
 
   /* ---- post-session recap + PR celebration ---- */
   function prMeta() { try { return JSON.parse(localStorage.getItem("optimalfit.prMeta") || "{}") || {}; } catch (e) { return {}; } }
+
+  /** Rebuild the per-lift e1RM high-water marks from the FULL history.
+      Called after a past workout is edited or deleted — otherwise a typo'd
+      500 kg entry would permanently suppress every future (real) PR. */
+  function rebuildPrMeta() {
+    var meta = {};
+    S.getAll("exercise").forEach(function (rec) {
+      (rec.exercises || []).forEach(function (ex) {
+        if (!ex || !ex.name || !Array.isArray(ex.sets)) return;
+        var key = ex.name.trim().toLowerCase();
+        ex.sets.forEach(function (s) {
+          var w = Number(s.weightKg), r = Number(s.reps);
+          if (isFinite(w) && w > 0 && isFinite(r) && r >= 1 && r <= 12) {
+            var eOne = r <= 1 ? w : w * (1 + r / 30);
+            if (!meta[key] || eOne > meta[key]) meta[key] = Math.round(eOne * 100) / 100;
+          }
+        });
+      });
+    });
+    try { localStorage.setItem("optimalfit.prMeta", JSON.stringify(meta)); } catch (e) {}
+  }
   function detectPRs(loggedExercises) {
     var meta = prMeta(), prs = [], changed = false;
     // Aggregate the best e1RM per exercise NAME across all cards first, then
@@ -617,7 +638,7 @@ OF.exercise = (function () {
       ex.sets.forEach(function (s) {
         var w = Number(s.weightKg), r = Number(s.reps);
         if (isFinite(w) && w > 0 && isFinite(r) && r >= 1 && r <= 12) {
-          var eOne = w * (1 + r / 30);
+          var eOne = r <= 1 ? w : w * (1 + r / 30);   // a true single IS its own 1RM (match strength-engine)
           if (!bestByName[key] || eOne > bestByName[key].best) bestByName[key] = { best: eOne, name: ex.name };
         }
       });
@@ -780,6 +801,8 @@ OF.exercise = (function () {
       showError("Could not save — browser storage is full or blocked. Your entry was NOT saved.");
       return;
     }
+    if (editId) rebuildPrMeta();   // an edited history must re-derive the PR high-water marks
+    else detectPRs(r.rec.exercises || []);
     exList = [];
     closeManual();
     renderList();
@@ -888,6 +911,11 @@ OF.exercise = (function () {
       e.preventDefault();
       addExercise(t.value);
     }
+    // Enter/Go inside a set's weight/reps input must not submit the manual
+    // form — it would save a half-entered workout.
+    if (e.key === "Enter" && t.hasAttribute && t.hasAttribute("data-field")) {
+      e.preventDefault();
+    }
   }
 
   /* type-select change fires "change" not "input" on some browsers */
@@ -969,11 +997,18 @@ OF.exercise = (function () {
     if (btn.getAttribute("data-act") === "del") {
       if (confirm("Delete this workout?")) {
         S.remove("exercise", id);
+        rebuildPrMeta();   // deleting (e.g. a typo'd entry) must free up its PR high-water mark
         if (els.editId && els.editId.value === id) closeManual();
         renderList();
         OF.dashboard && OF.dashboard.refresh();
       }
     } else {
+      // The manual editor shares its exercise-builder state with the live
+      // logger — opening it mid-session would clobber the running workout.
+      if (mode === "active") {
+        U.toast("Finish or discard your live workout first, then edit past workouts.", "warn");
+        return;
+      }
       var rec = S.get("exercise", id);
       if (rec) enterEditMode(rec);
     }

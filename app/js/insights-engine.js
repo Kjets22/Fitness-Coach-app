@@ -195,11 +195,13 @@ OF.engine = (function () {
     // Rank on sleep-adjusted performance so a lucky-sleep bucket can't win.
     eligible.sort(function (a, b) { return b.avgAdj - a.avgAdj || b.count - a.count; });
     var best = eligible[0];
-    // Compare against the weakest RAW eligible bucket so the headline reads naturally.
+    // Pick the weakest bucket on the SAME adjusted metric the winner was
+    // chosen by — mixing raw and adjusted made the headline contradict
+    // itself whenever the sleep adjuster flipped the ranking.
     var worst = null;
     eligible.forEach(function (s) {
       if (s === best) return;
-      if (!worst || s.avgPerf < worst.avgPerf) worst = s;
+      if (!worst || s.avgAdj < worst.avgAdj) worst = s;
     });
     return {
       status: "ok",
@@ -515,16 +517,35 @@ OF.engine = (function () {
     });
 
     /* --- pre-workout meal vs none --- */
+    function prevDateISO(iso) {
+      var pm = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso || "");
+      if (!pm) return null;
+      var pd = new Date(Date.UTC(+pm[1], +pm[2] - 1, +pm[3] - 1, 12));
+      return pd.getUTCFullYear() + "-" + String(pd.getUTCMonth() + 1).padStart(2, "0") +
+        "-" + String(pd.getUTCDate()).padStart(2, "0");
+    }
     var withPre = [], withoutPre = [];
     (exercise || []).forEach(function (w) {
       var p = perfOf(w), start = U.timeToMinutes(w.startTime);
       if (p == null || start == null) return;
-      var pre = null, preT = -1;
+      var pre = null, preT = -Infinity;
       (byDate[w.date] || []).forEach(function (m) {
         var t = U.timeToMinutes(m.time);
         if (t == null || t >= start || t < start - PRE_WINDOW_MIN) return;
         if (t > preT) { preT = t; pre = m; }
       });
+      // A session just after midnight: a meal late the PREVIOUS evening is
+      // still a pre-workout meal — the window crosses the calendar boundary.
+      if (start < PRE_WINDOW_MIN) {
+        var pd = prevDateISO(w.date);
+        (byDate[pd] || []).forEach(function (m) {
+          var t = U.timeToMinutes(m.time);
+          if (t == null) return;
+          var tt = t - 1440;   // relative to the workout's day
+          if (tt >= start || tt < start - PRE_WINDOW_MIN) return;
+          if (tt > preT) { preT = tt; pre = m; }
+        });
+      }
       if (pre) withPre.push({ perf: p, carbs: num(pre.carbs) });
       else withoutPre.push({ perf: p });
     });
@@ -700,19 +721,32 @@ OF.engine = (function () {
 
     // Candidate training days: best-performing weekdays; fall back to most-trained.
     var candidates = r.weekdays.ranked.slice(0, Math.min(5, r.weekdays.ranked.length));
+    // Don't schedule training on a day the rest card simultaneously names as a
+    // best day to rest — the two cards would contradict each other on the same
+    // screen. Only when enough other candidates exist.
+    if (r.rest.status === "ok" && Array.isArray(r.rest.restDayNames) && r.rest.restDayNames.length) {
+      var nonRest = candidates.filter(function (s) {
+        return !s.name || r.rest.restDayNames.indexOf(s.name) === -1;
+      });
+      if (nonRest.length >= 2) candidates = nonRest;
+    }
     var chosen = {};
     candidates.slice(0, 4).forEach(function (s) { chosen[s.day] = s; });
 
-    // Enforce the max-consecutive-days constraint in Mon..Sun order:
-    // walk the week; when a run gets too long, drop the weakest day in the run.
+    // Enforce the max-consecutive-days constraint on the CIRCULAR week (a
+    // Sat/Sun/Mon/Tue run wraps the Sun->Mon boundary — a single Mon..Sun
+    // pass never saw it): walk two concatenated weeks; when a run gets too
+    // long, drop the weakest day in the run.
     var weekOrder = [1, 2, 3, 4, 5, 6, 0]; // Mon..Sun
+    var walk = weekOrder.concat(weekOrder);
     var changed = true;
     while (changed) {
       changed = false;
       var run = [];
-      for (var i = 0; i < weekOrder.length; i++) {
-        var day = weekOrder[i];
+      for (var i = 0; i < walk.length; i++) {
+        var day = walk[i];
         if (chosen[day]) {
+          if (run.indexOf(day) !== -1) break;   // came full circle (every chosen day in one run)
           run.push(day);
           if (run.length > maxConsec) {
             var weakest = run.reduce(function (a, b) {

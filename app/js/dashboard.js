@@ -213,7 +213,7 @@ OF.dashboard = (function () {
    * Delta chip vs last week. goodWhenUp: true (more is better),
    * false (less is better), null (neutral — no judgment color).
    */
-  function deltaChip(delta, fmtTxt, goodWhenUp) {
+  function deltaChip(delta, fmtTxt, goodWhenUp, title) {
     if (delta == null || !isFinite(delta)) return "";
     var eps = 1e-9;
     var cls = "chip-flat", arrow = "→";
@@ -223,7 +223,7 @@ OF.dashboard = (function () {
       var good = goodWhenUp ? delta > 0 : delta < 0;
       cls = good ? "chip-up" : "chip-down";
     }
-    return '<span class="chip ' + cls + '" title="vs last week">' + arrow + " " +
+    return '<span class="chip ' + cls + '" title="' + U.esc(title || "vs last week") + '">' + arrow + " " +
       U.esc(fmtTxt) + '</span>';
   }
 
@@ -284,7 +284,7 @@ OF.dashboard = (function () {
       }
       if (prev && isFinite(Number(prev.weightKg)) && isFinite(Number(body[0].weightKg))) {
         var dKg = Number(body[0].weightKg) - Number(prev.weightKg);
-        wChip = deltaChip(dKg, U.fmtWeightDelta(dKg), null);
+        wChip = deltaChip(dKg, U.fmtWeightDelta(dKg), null, "vs previous weigh-in");   // it's not necessarily a week apart
       }
       var wVals = [];
       var byDay = {};
@@ -302,7 +302,8 @@ OF.dashboard = (function () {
       ? U.esc(U.fmtDuration(sleep[0].durationMin))
       : '<span class="unit">&mdash;</span>';
     var sleepSub = sleep.length
-      ? U.fmtDate(sleep[0].date) + " · quality " + sleep[0].quality + "/5"
+      ? U.fmtDate(sleep[0].date) +
+        (sleep[0].quality != null ? " · quality " + sleep[0].quality + "/5" : "")   // imported nights may have no quality — never print "null/5"
       : "no data yet";
     var sChip = "", sSpark = "";
     if (sleep.length) {
@@ -310,8 +311,9 @@ OF.dashboard = (function () {
       sSpark = sparkline(sVals, "var(--g2)");
       var thisWk = avgNums(sVals.slice(7)), lastWk = avgNums(sVals.slice(0, 7));
       if (thisWk != null && lastWk != null) {
-        var dH = thisWk - lastWk;
-        sChip = deltaChip(dH, (dH > 0 ? "+" : "") + (Math.round(dH * 10) / 10) + "h", true);
+        // round FIRST so a ±0.04h difference can't render a colored "↑ +0h" chip
+        var dH = Math.round((thisWk - lastWk) * 10) / 10;
+        if (dH !== 0) sChip = deltaChip(dH, (dH > 0 ? "+" : "") + dH + "h", true);
       }
     }
 

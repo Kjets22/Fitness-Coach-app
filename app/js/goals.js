@@ -405,19 +405,26 @@ OF.goals = (function () {
     var hasAmount = type === "lean-bulk" || type === "cut";
 
     var amtRaw = U.numOrNull((document.getElementById("gf-amount") || {}).value);
-    if (amtRaw !== null && (isNaN(amtRaw) || amtRaw < 0 || amtRaw > 500)) {
+    // only validate the amount when the field is actually shown for this goal
+    // type — a leftover value in the HIDDEN field must not block saving
+    if (hasAmount && amtRaw !== null && (isNaN(amtRaw) || amtRaw < 0 || amtRaw > 500)) {
       showFormError("Target amount must be a positive number."); return;
     }
     var targetAmountKg = hasAmount && amtRaw ? Math.round(U.fromDisplayWeight(amtRaw) * 100) / 100 : null;
 
     var targetDate = (document.getElementById("gf-date") || {}).value || null;
-    if (targetDate && targetDate <= U.todayISO()) {
+    // enforce "future" only when the date CHANGED — editing another field of a
+    // goal whose date already passed must not be blocked by the old prefill
+    if (targetDate && targetDate <= U.todayISO() &&
+        !(existing && existing.targetDate === targetDate)) {
       showFormError("Target date needs to be in the future."); return;
     }
 
     var hRaw = U.numOrNull((document.getElementById("gf-height") || {}).value);
     if (hRaw !== null && isNaN(hRaw)) { showFormError("Height must be a number."); return; }
-    var heightCm = hRaw !== null ? Math.round(U.fromDisplayHeight(hRaw)) : null;
+    // 0.1 cm precision: whole-cm storage is coarser than the 0.1-in display
+    // grid, so inch entries visibly shifted on save (70.0 -> 70.1)
+    var heightCm = hRaw !== null ? Math.round(U.fromDisplayHeight(hRaw) * 10) / 10 : null;
     if (heightCm !== null && (heightCm < 90 || heightCm > 250)) {
       showFormError("Height looks off — expected " +
         (U.heightUnit() === "in" ? "36-98 in" : "90-250 cm") + "."); return;

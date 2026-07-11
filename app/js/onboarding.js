@@ -183,6 +183,13 @@ OF.onboarding = (function () {
     }
     if (t.id === "ob-done") { hide(); return; }
     if (t.id === "ob-demo") {
+      // The intro can be replayed later — never dump ~460 demo records on top
+      // of real data without asking (mirrors the Settings demo button).
+      if (OF.storage.countAll() > 0 &&
+          !confirm("Demo data will be ADDED on top of your existing " +
+                   OF.storage.countAll() + " records. Continue?")) {
+        return;
+      }
       var c = OF.demo.generate(60);
       hide();
       if (OF.settings) OF.settings.refreshAll();

@@ -190,6 +190,19 @@ OF.body = (function () {
 
   function renderList() {
     applyUnits(); // keep the form label/bounds in sync with the unit pref
+    // If an edit is in progress, RE-PREFILL its number fields from the stored
+    // kg values: a unit switch in Settings re-renders this tab, and numbers
+    // left in the OLD unit would be silently reinterpreted in the NEW unit on
+    // save (165 lb -> "165" -> saved as 165 kg, a 2.2x corruption).
+    var editingId = els.editId && els.editId.value;
+    if (editingId) {
+      var editingRec = S.get("body", editingId);
+      if (editingRec) {
+        els.weight.value = editingRec.weightKg != null ? U.toDisplayWeight(editingRec.weightKg) : "";
+        var em = U.muscleKg(editingRec);
+        els.muscle.value = em != null ? U.toDisplayWeight(em) : "";
+      }
+    }
     renderSummary();
     var arr = S.getAll("body").slice().sort(U.byNewest);
     if (!arr.length) {

@@ -79,3 +79,18 @@ Top picks (impact/effort/category), in priority order — see roadmap.json for f
 - streak.js newMilestone(): would FALSELY celebrate an old milestone (e.g. "14-day streak") for a user importing/loading weeks of history at once (lastMilestone=0, cur=26 → celebrated 14). Fixed: celebrate only when the streak is EXACTLY at a not-yet-celebrated milestone (it increments 1/day in normal use, so it lands on each milestone the day it's hit; a history import no longer mis-fires).
 - Verified targets field names (proteinG/steps/status) used by the daily brief + value strip are correct.
 - Full integration sweep (returning user, program + streak + brief + trainer card + adapt + value strip): all render, 0 console errors across 9 tabs.
+
+## Focused adversarial review of the new overnight code — 6 confirmed findings, ALL fixed
+A leaner multi-agent review (after the broad 12-lens hunt stalled) confirmed 6 bugs; every one is now fixed, verified, committed, and pushed.
+1. [HIGH] streak.js freeze off-by-one — `sinceFreeze >= 7` replenished a freeze one day too late, so a user missing exactly one day per week would still lose the streak. Fixed to `>= 6` (6 logged days + 1 bridged gap = one 7-day week).
+2. [HIGH] coach.js offline banner wrong text for a no-claude host — when the server is UP but the Claude CLI is missing, the banner told the user to "start the server" (already running) AND a dedicated install-Claude card was made unreachable by offlineUsable(). Fixed: banner branches on health → "Install & sign into Claude Code…" for no-claude; removed the dead card.
+3. [MEDIUM] streak.js milestone false-fire on bulk history import — a data import that jumps the count straight onto a milestone (e.g. 30) would wrongly celebrate. Fixed with a prevCurrent guard: only fires on day-by-day growth (prev === cur-1).
+4. [MEDIUM] coach.js localAnswer 'more' hijack — the bare token 'more' in the push-harder regex caught unrelated questions ("give me more rest"). Fixed: dropped bare 'more', evaluate the recovery/rest branch BEFORE push-harder.
+5. [LOW] coach.js localAnswer had no readiness branch — added one that answers "how's my readiness / am I recovered" from the on-device engine (score/level/verdict).
+6. [LOW] trainer.js seed loop seeded bodyweight moves with a fixed weight — added `ex.incKg <= 0` guard so Push-Up/Plank/Pull-Up stay bodyweight.
+
+### Follow-up: unit-tested the localAnswer routing → caught 2 regressions in my own fix
+Wrote a 19-case node routing test. It caught that my recovery regex ("rest day"/"light day") no longer matched the common phrasings "give me more rest"/"go lighter", and that the readiness regex's bare "rested" false-matched inside "interested". Fixed both with word boundaries (`\brest\b`, `\blight(er)?\b`, `\brested\b`); guards verified against restaurant/delight/interested. 19/19 pass. Committed.
+
+## Second focused adversarial review (logger persistence, dashboard, engine math, trainer paths) — running
+Targets: exercise.js (live-session persistence, PR detection, number parsing, XSS), dashboard.js (hero/brief/value-strip/trend-modal edge cases), insights-engine.js + strength-engine.js (readiness/muscle-balance/correlation math NaN + empty-data), trainer.js (adaptSession mutation, pointer wrap, empty-program guards). Find → adversarial verify → fix confirmed. Results appended below.

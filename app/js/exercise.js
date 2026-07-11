@@ -526,7 +526,10 @@ OF.exercise = (function () {
     if (els.form) els.form.classList.add("hidden");
     els.active.classList.remove("hidden");
     stopTick();
-    var mins = Math.max(1, Math.round((Date.now() - activeStartedAt) / 60000));
+    // Clamp to the field's own 1–600 range: a session left open and resumed the
+    // next day would otherwise prefill a huge elapsed time that saveSession then
+    // rejects (>600), making the workout impossible to save.
+    var mins = Math.max(1, Math.min(600, Math.round((Date.now() - activeStartedAt) / 60000)));
     finish.durationMin = finish.durationMin || mins;
 
     els.active.innerHTML =
@@ -600,21 +603,28 @@ OF.exercise = (function () {
   function prMeta() { try { return JSON.parse(localStorage.getItem("optimalfit.prMeta") || "{}") || {}; } catch (e) { return {}; } }
   function detectPRs(loggedExercises) {
     var meta = prMeta(), prs = [], changed = false;
+    // Aggregate the best e1RM per exercise NAME across all cards first, then
+    // compare each name once against the persisted prior best. (Comparing
+    // card-by-card and writing meta mid-loop would make a second card of the
+    // same lift race against the first card's just-written value — falsely
+    // celebrating a "PR" on an exercise's very first session.)
+    var bestByName = {};
     (loggedExercises || []).forEach(function (ex) {
       if (!ex || !ex.name || !Array.isArray(ex.sets)) return;
-      var best = null;
+      var key = ex.name.trim().toLowerCase();
       ex.sets.forEach(function (s) {
         var w = Number(s.weightKg), r = Number(s.reps);
         if (isFinite(w) && w > 0 && isFinite(r) && r >= 1 && r <= 12) {
           var eOne = w * (1 + r / 30);
-          if (best == null || eOne > best) best = eOne;
+          if (!bestByName[key] || eOne > bestByName[key].best) bestByName[key] = { best: eOne, name: ex.name };
         }
       });
-      if (best == null) return;
-      var key = ex.name.trim().toLowerCase(), prev = meta[key];
+    });
+    Object.keys(bestByName).forEach(function (key) {
+      var best = bestByName[key].best, name = bestByName[key].name, prev = meta[key];
       if (prev == null || best > prev * 1.001) {
         if (prev != null) {
-          prs.push({ name: ex.name, e1RMkg: Math.round(best * 10) / 10, prev: Math.round(prev * 10) / 10 });
+          prs.push({ name: name, e1RMkg: Math.round(best * 10) / 10, prev: Math.round(prev * 10) / 10 });
           try { OF.trainer && OF.trainer.bumpStat && OF.trainer.bumpStat("prs"); } catch (e2) {}
         }
         meta[key] = Math.round(best * 100) / 100; changed = true;
@@ -861,6 +871,9 @@ OF.exercise = (function () {
       return;
     }
     if (t.hasAttribute && t.hasAttribute("data-field")) builderInput(t);
+    // finish-screen notes: keep in state so tapping Back then Complete (which
+    // re-renders the finish screen) doesn't silently wipe what was typed.
+    if (t.id === "wo-notes") { finish.notes = t.value; return; }
     // live type-select change
     if (t.classList && t.classList.contains("wo-type")) {
       sessType = t.value; saveActive();

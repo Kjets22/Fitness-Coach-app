@@ -56,3 +56,8 @@ Top picks (impact/effort/category), in priority order — see roadmap.json for f
 - trainer.completeSession() now RETURNS { changes:[{name,kind:added|held|deloaded|seeded,from,to}], nextName } (was void).
 - exercise.js showRecap(): after saving a workout, a recap sheet shows what changed ("Bench 132→138 lb next time"), celebrates new PRs (est-1RM vs a persisted per-lift high-water in optimalfit.prMeta) with a 🎉 banner + confetti burst, and previews the next session. Only appears when something notable happened (PR or weight change) — not after every log.
 - Verified: completeSession returns the deltas (Bench +weight, Squat held, next=Full Body B); PR math correct (80x5 → e1RM 93.3 beats prior 75); recap sheet + confetti render cleanly (screenshot).
+
+## BUILT #3 On-device coach fallback (pay-critical reliability) — verified
+- coach.js localAnswer(): when the live LLM (owner's Mac/tunnel) is unreachable, the coach still answers the common questions on-device from the trainer program + goal targets + readiness — "walk me through today", "I'm sore / adjust", "make it harder", "what to eat". Grounded, useful text.
+- renderStatus: when offline-but-usable (remote no-server / no-claude), the chat now shows with an "offline — answering from your on-device plan" banner + Retry, instead of a dead "can't reach the server" card. send() answers locally in that state.
+- Fixes the biggest conversion liability (Premium == AI features that break when the tunnel is down). Verified: on-device answers read like a real trainer's, grounded in the actual plan.

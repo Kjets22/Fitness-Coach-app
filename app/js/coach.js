@@ -371,6 +371,20 @@ OF.coach = (function () {
       renderLog();
       return;
     }
+    // Live LLM unreachable but the on-device coach can still help → show the chat
+    // with an offline banner rather than a dead "can't reach the server" card.
+    if (offlineUsable()) {
+      els.chat.classList.remove("hidden");
+      els.status.innerHTML = '<div class="coach-offline-banner">💪 Live AI coach offline — answering from your on-device plan. ' +
+        ((OF.coachApi && OF.coachApi.remote())
+          ? 'Reconnect your computer for full chat.'
+          : 'Start the OptimalFit server on your computer for full chat.') +
+        ' <button type="button" class="btn mini" id="coach-retry-inline">Retry</button></div>';
+      renderLog();
+      var rt = document.getElementById("coach-retry-inline");
+      if (rt) rt.addEventListener("click", checkHealth);
+      return;
+    }
     els.chat.classList.add("hidden");
     if (health === "no-server") {
       els.status.innerHTML = (OF.coachApi && OF.coachApi.remote())
@@ -518,9 +532,51 @@ OF.coach = (function () {
       .then(function () { if (timer) clearTimeout(timer); });
   }
 
+  /* On-device coach: when the live LLM (owner's Mac) is unreachable, still give
+     a useful, plan-grounded answer to the common questions so the coach never
+     looks broken. Rule-based, from the on-device trainer/goal/readiness data. */
+  function localAnswer(q) {
+    q = (q || "").toLowerCase();
+    var ns = null, t = null;
+    try { ns = OF.trainer && OF.trainer.nextSession ? OF.trainer.nextSession() : null; } catch (e) {}
+    try { t = OF.goals && OF.goals.currentTargets ? OF.goals.currentTargets() : null; } catch (e) {}
+    function list() { return ns ? ns.exercises.map(function (ex) { return "• " + ex.name + " — " + OF.trainer.prescription(ex); }).join("\n") : ""; }
+    if (/harder|heavier|more|tough|intens/.test(q) && ns) {
+      return "Today is " + ns.name + ". To push harder: add a set to your main lifts, or take a small jump on anything you completed all your reps on last time — but keep 1 rep in reserve on the last set so every rep stays clean.";
+    }
+    if (/sore|tired|low energy|rest|adjust|easier|light|short on time|busy|travel/.test(q) && ns) {
+      return "Back off but don't skip — do today's " + ns.name + " lighter: drop each working set ~10% and cut one set per exercise. Hit the first two compound lifts for sure; drop the last accessory if you're gassed. A lighter session still counts.";
+    }
+    if (/eat|food|meal|nutrition|protein|before|pre-?workout|fuel|breakfast/.test(q)) {
+      var kcal = t && t.status === "ok" ? t.calories : null, prot = t && t.status === "ok" ? t.proteinG : null;
+      return "Pre-training, aim for easy carbs + a bit of protein 60–90 min out (oats or fruit + Greek yogurt or a scoop of protein)." +
+        (prot ? " Your daily target is ~" + prot + "g protein" + (kcal ? " / " + kcal + " kcal" : "") + " — spread protein across the day and get a solid feed in after you lift." : "");
+    }
+    if (/today|session|workout|walk|do|plan|next/.test(q)) {
+      if (!ns) return "You don't have a program yet — tap “Build my program” on the dashboard and I'll set you up, then I can walk you through every session.";
+      return "Today is " + ns.name + " (day " + (ns.dayIndex + 1) + "). Here's the plan:\n" + list() +
+        "\n\nWarm up, then work through them in order — controlled reps, and log each set so I add weight for you next time.";
+    }
+    if (ns) return "My live side needs your computer online to chat freely — but your plan's ready. Today is " + ns.name + ". Tap “Start this workout” on the dashboard, or ask me to walk you through it, make it harder, or adjust for soreness.";
+    return "My live AI side needs your computer online. Meanwhile, build a program on the dashboard and I'll coach you through your sessions right here on your phone.";
+  }
+
+  function offlineUsable() {
+    return (health === "no-server" && OF.coachApi && OF.coachApi.remote()) || health === "no-claude";
+  }
+
   function send(question) {
     question = (question || "").trim();
-    if (!question || busy || health !== "ok") return;
+    if (!question || busy) return;
+    // Offline but usable: answer on-device instead of doing nothing.
+    if (health !== "ok") {
+      if (!offlineUsable()) return;
+      pushMsg("user", question);
+      els.input.value = "";
+      pushMsg("coach", localAnswer(question));
+      renderLog();
+      return;
+    }
 
     pushMsg("user", question);
     els.input.value = "";

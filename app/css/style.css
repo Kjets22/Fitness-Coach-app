@@ -2393,3 +2393,12 @@ body.metric-modal-open { overflow: hidden; }
 }
 .ent-paywall h2 { margin: 0 0 6px; }
 .ent-paywall .form-actions { margin-top: var(--sp-3); }
+
+/* On-device coach offline banner */
+.coach-offline-banner {
+  font-size: 0.82rem; line-height: 1.4; color: var(--text-dim);
+  background: var(--bg-2); border: 1px solid var(--card-edge); border-radius: var(--r-md);
+  padding: 8px 12px; margin-bottom: var(--sp-3);
+  display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+}
+.coach-offline-banner .btn.mini { min-height: 32px; margin-left: auto; }

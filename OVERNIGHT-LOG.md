@@ -61,3 +61,11 @@ Top picks (impact/effort/category), in priority order — see roadmap.json for f
 - coach.js localAnswer(): when the live LLM (owner's Mac/tunnel) is unreachable, the coach still answers the common questions on-device from the trainer program + goal targets + readiness — "walk me through today", "I'm sore / adjust", "make it harder", "what to eat". Grounded, useful text.
 - renderStatus: when offline-but-usable (remote no-server / no-claude), the chat now shows with an "offline — answering from your on-device plan" banner + Retry, instead of a dead "can't reach the server" card. send() answers locally in that state.
 - Fixes the biggest conversion liability (Premium == AI features that break when the tunnel is down). Verified: on-device answers read like a real trainer's, grounded in the actual plan.
+
+## BUILT #9 "Adjust for today" — trainer adapts to your life — verified
+- trainer.adaptSession(dayIndex, mode): advisory on-the-fly adaptation (never mutates the stored plan):
+  - "Short on time" → compounds first, ≤4 exercises, ≤3 sets
+  - "Traveling" → swaps gym lifts to bodyweight/dumbbell alternatives (deduped; weight cleared so the user sets it)
+  - "Sore / low energy" → ~10% lighter + one fewer set (auto-suggested when readiness is low)
+- Today's-session card gains an "Adjust for today" row; tapping starts the live logger with the adapted session (labelled e.g. "Upper (light)"). Progression holds (lighter/swapped → no false deload) and the split still advances.
+- Verified all three adaptations produce sensible sessions; fixed travel duplicate-swap + wrong-weight-on-swap.

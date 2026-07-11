@@ -2402,3 +2402,8 @@ body.metric-modal-open { overflow: hidden; }
   display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
 }
 .coach-offline-banner .btn.mini { min-height: 32px; margin-left: auto; }
+
+/* Trainer "adjust for today" quick-actions */
+.tr-adapt { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin-top: var(--sp-3); padding-top: var(--sp-3); border-top: 1px solid var(--card-edge); }
+.tr-adapt-lbl { font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-dim); margin-right: 2px; }
+.tr-adapt .btn.mini { min-height: 36px; font-size: 0.78rem; }

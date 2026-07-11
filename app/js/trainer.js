@@ -275,6 +275,37 @@ OF.trainer = (function () {
     });
   }
 
+  /** Adapt today's session to real life (advisory — never mutates stored plan):
+        "time"   → compounds first, ≤4 exercises, ≤3 sets
+        "travel" → swap gym lifts to a bodyweight/dumbbell alternative
+        "sore"   → ~10% lighter + one fewer set per exercise
+     Returns builder-shaped exercises for the live logger. */
+  function adaptSession(dayIndex, mode) {
+    var p = load();
+    if (!p || !p.days[dayIndex]) return [];
+    var slots = p.days[dayIndex].slots.slice();
+    if (mode === "time") {
+      slots = slots.slice().sort(function (a, b) { return (b.compound ? 1 : 0) - (a.compound ? 1 : 0); }).slice(0, 4);
+    }
+    var usedAlt = {};
+    return slots.map(function (ex) {
+      var name = ex.name, weightKg = ex.weightKg, sets = ex.sets;
+      if (mode === "time") sets = Math.min(3, sets);
+      if (mode === "sore") { sets = Math.max(2, sets - 1); if (weightKg != null) weightKg = Math.round(weightKg * 0.9 * 100) / 100; }
+      if (mode === "travel" && !ex.hold) {
+        var alts = POOL.filter(function (pp) {
+          return pp.group === ex.group && pp.name !== ex.name &&
+            pp.equip.some(function (t) { return t === "bw" || t === "db"; });
+        });
+        var alt = alts.filter(function (a) { return !usedAlt[a.name]; })[0] || alts[0];
+        if (alt) { usedAlt[alt.name] = true; name = alt.name; weightKg = null; }  // different lift → let the user set the load
+      }
+      var arr = [];
+      for (var i = 0; i < sets; i++) arr.push({ weightKg: weightKg != null ? weightKg : null, reps: ex.repLow });
+      return { name: name, sets: arr };
+    });
+  }
+
   /* ---------------- auto-progression (double progression) ----------------
      When a program session is completed, compare what was logged to the
      prescription: if every working set hit the top of the rep range at the
@@ -431,6 +462,11 @@ OF.trainer = (function () {
           '<button type="button" class="btn ghost" data-tr="program">Program</button>' +
           '<button type="button" class="btn ghost mini" data-tr="skip" title="Skip to the next day">Skip</button>' +
         '</div>' +
+        '<div class="tr-adapt"><span class="tr-adapt-lbl">Adjust for today:</span>' +
+          '<button type="button" class="btn mini" data-tr="adapt" data-mode="time">Short on time</button>' +
+          '<button type="button" class="btn mini" data-tr="adapt" data-mode="travel">Traveling</button>' +
+          '<button type="button" class="btn mini" data-tr="adapt" data-mode="sore">Sore / low energy</button>' +
+        '</div>' +
       '</div>';
   }
 
@@ -513,15 +549,15 @@ OF.trainer = (function () {
   }
 
   /* ---- start today's workout (hand off to the live logger) ---- */
-  function startToday() {
+  function startToday(mode) {
     var ns = nextSession();
     if (!ns) return;
+    var exercises = mode ? adaptSession(ns.dayIndex, mode) : sessionForLogger(ns.dayIndex);
+    var label = ns.name + (mode === "time" ? " (quick)" : mode === "travel" ? " (travel)" : mode === "sore" ? " (light)" : "");
     if (OF.exercise && OF.exercise.startPrescribed) {
-      OF.exercise.startPrescribed(sessionForLogger(ns.dayIndex), ns.dayIndex, ns.name);
-      location.hash = "#exercise";
-    } else {
-      location.hash = "#exercise";
+      OF.exercise.startPrescribed(exercises, ns.dayIndex, label);
     }
+    location.hash = "#exercise";
   }
 
   /* ---- click handling ---- */
@@ -532,6 +568,7 @@ OF.trainer = (function () {
       if (act === "setup") { openIntake(); return; }
       if (act === "program") { openProgram(); return; }
       if (act === "start") { closeModal(); startToday(); return; }
+      if (act === "adapt") { closeModal(); startToday(b.getAttribute("data-mode")); return; }
       if (act === "skip") { skipDay(); renderCard(); return; }
       if (act === "generate") {
         createProgram(intake); closeModal(); renderCard();
@@ -566,6 +603,7 @@ OF.trainer = (function () {
     nextSession: nextSession,
     prescription: prescription,
     sessionForLogger: sessionForLogger,
+    adaptSession: adaptSession,
     completeSession: completeSession,
     skipDay: skipDay,
     coachContext: coachContext,

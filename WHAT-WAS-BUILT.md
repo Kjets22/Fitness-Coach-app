@@ -4,7 +4,25 @@ A complete record of everything designed, built, fixed, and shipped for OptimalF
 
 **What OptimalFit is:** a two-sided fitness app — a **private-by-default tracker + on-device coaching engine** on one side, and an **opt-in social community** on the other. It runs as a web app, an installable PWA, and native **iOS + Android** apps (Capacitor), with a **Supabase** backend for the community and a small **companion server** for the AI coach.
 
-**Status:** feature-complete, security-hardened, on GitHub, native builds compiled. The AI coach is live on your phone through an internet tunnel. Remaining work is the App Store re-upload (build 3) and the store submission steps.
+**Status:** feature-complete, security-hardened, on GitHub, native builds compiled. The AI coach is live on your phone through an internet tunnel. Remaining work is the App Store re-upload (**build 6** — carries everything below) and the store submission steps.
+
+---
+
+## 0. Latest additions — it now acts like a personal trainer
+
+Recent work turned OptimalFit from a tracker into a coach that tells you what to do:
+
+- **Personal trainer / program engine** (`trainer.js`) — a quick intake (days/week, equipment, session length, experience, priority muscle) builds you a real **training program**: the right split (full-body / upper-lower / PPL), exercises chosen from an equipment-filtered pool balanced across muscle groups, set/rep schemes matched to your goal, and **starting weights seeded from your own logged history**.
+  - **"Today's session" card** on the dashboard: the exact exercises + sets×reps×weight for today, a **"Start this workout"** button that pre-loads the live logger, plus Program and Skip.
+  - **Auto-progression** (double progression): hit your reps and it **adds weight for you**; stall twice and it **deloads ~10%** — like a real trainer. (Hardened after an adversarial review: correct under pound units, ignores a heavier top set, holds on fewer sets, only progresses what you actually log.)
+  - **Reads your recovery** — nudges lighter/rest on a low-readiness day, "make it count" when you're fresh.
+  - **The AI coach is now your trainer** — reframed persona with your whole program + today's session in context, so it walks you through or adjusts the plan ("make it harder", "I'm sore", "swap an exercise").
+- **Muscle-group balance analyzer** — rolls your lifts up to body parts (chest/back/triceps/…), flags **lagging or untrained groups** and prescribes a fix (how many sets to add + which exercises you're not doing). In Insights + fed to the coach.
+- **Tap-a-tile trends** — the dashboard weight/sleep/calories/workout tiles open a trend modal with a chart + headline stats.
+- **Workout logging rebuilt** as a live Strong/Hevy-style session (start → runs even if the app closes → complete), with a built-in exercise library + fast autocomplete.
+- **Apple Health auto-sync (iOS)** — optional: reads steps, weight, sleep and active energy so you don't log them by hand; your manual entries always win.
+
+All of the above was adversarially reviewed and the confirmed bugs fixed. It's in **build 6** (bump the version and re-upload to ship it).
 
 ---
 

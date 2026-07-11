@@ -674,6 +674,10 @@ body.metric-modal-open { overflow: hidden; }
 .tr-kicker { font-size: 0.68rem; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; color: var(--accent); }
 .tr-title { margin: 2px 0 0; font-size: 1.25rem; }
 .tr-daychip { flex: 0 0 auto; font-size: 0.7rem; font-weight: 700; color: var(--text-dim); background: var(--bg-2); border: 1px solid var(--card-edge); border-radius: var(--r-full); padding: 4px 10px; }
+.tr-recovery { font-size: 0.85rem; line-height: 1.4; margin: 0 0 var(--sp-3); padding: 8px 12px; border-radius: var(--r-sm); }
+.tr-recovery.tr-note-good { color: var(--accent-2); background: color-mix(in srgb, var(--accent-2) 12%, transparent); }
+.tr-recovery.tr-note-warn { color: var(--warn); background: color-mix(in srgb, var(--warn) 14%, transparent); }
+.coach-today { font-size: 0.92rem; line-height: 1.45; margin: 0 0 var(--sp-3); color: var(--text); }
 .tr-exlist { display: flex; flex-direction: column; gap: 6px; margin-bottom: var(--sp-3); }
 .tr-ex { display: flex; align-items: baseline; justify-content: space-between; gap: var(--sp-3); padding: 7px 0; border-bottom: 1px solid var(--card-edge); }
 .tr-ex:last-child { border-bottom: none; }

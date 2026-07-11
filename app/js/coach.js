@@ -52,11 +52,24 @@ OF.coach = (function () {
     return OF.coachApi ? OF.coachApi.url(path) : path;
   }
 
-  var CHIPS = [
-    "Plan my workouts for next week",
-    "What should I eat before tomorrow's session?",
-    "Why is my readiness low today?"
-  ];
+  /* Suggestion chips — trainer-flavoured, and program-aware when a plan exists. */
+  function chips() {
+    var hasPlan = false;
+    try { hasPlan = !!(OF.trainer && OF.trainer.hasProgram && OF.trainer.hasProgram()); } catch (e) {}
+    if (hasPlan) {
+      return [
+        "Walk me through today's session",
+        "Make today's workout harder",
+        "I'm sore — adjust today's plan",
+        "What should I eat before today's session?"
+      ];
+    }
+    return [
+      "Build me a training plan for my goal",
+      "What should I eat before tomorrow's session?",
+      "Why is my readiness low today?"
+    ];
+  }
 
   /* ---------------- context builder ----------------
      Compact (~2-4 KB) summary: the computed insights from
@@ -412,9 +425,19 @@ OF.coach = (function () {
   function renderLog() {
     var html = "";
     if (!messages.length && !busy) {
-      html += '<p class="coach-empty muted">Ask anything about your training, food, sleep or recovery. ' +
-        'Answers are based on your tracked data and can take 10&ndash;60 seconds.</p>';
-      html += '<div class="coach-chips">' + CHIPS.map(function (c) {
+      var todayLine = "";
+      try {
+        if (OF.trainer && OF.trainer.nextSession) {
+          var ns = OF.trainer.nextSession();
+          if (ns) todayLine = '<p class="coach-today">I’m your coach. Today I’ve got you on <strong>' +
+            U.esc(ns.name) + '</strong> — ask me to walk you through it or change anything.</p>';
+        }
+      } catch (e) {}
+      html += todayLine ||
+        '<p class="coach-empty muted">I’m your personal trainer. Ask me anything about your training, food, ' +
+        'sleep or recovery — or build a plan on the dashboard and I’ll coach you through it. ' +
+        'Answers use your tracked data and can take 10&ndash;60 seconds.</p>';
+      html += '<div class="coach-chips">' + chips().map(function (c) {
         return '<button type="button" class="coach-chip" data-q="' + U.esc(c) + '">' + U.esc(c) + '</button>';
       }).join("") + '</div>';
     }

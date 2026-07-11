@@ -281,9 +281,18 @@ OF.trainer = (function () {
       var working = logged.filter(function (s) {
         return Number(s.weightKg) >= ex.weightKg - 0.01 && Number(s.reps) >= 1;
       });
-      if (working.length < ex.sets) return;               // didn't complete the prescribed sets at load
-      var allHitTop = working.slice(0, ex.sets).every(function (s) { return Number(s.reps) >= ex.repHigh; });
-      if (allHitTop) ex.weightKg = Math.round((ex.weightKg + ex.incKg) * 100) / 100;
+      var completed = working.length >= ex.sets;
+      var top = working.slice(0, ex.sets);
+      var allHitTop = completed && top.every(function (s) { return Number(s.reps) >= ex.repHigh; });
+      var hitFloor = completed && top.every(function (s) { return Number(s.reps) >= ex.repLow; });
+      if (allHitTop) {                                    // smashed it → add weight (double progression)
+        ex.weightKg = Math.round((ex.weightKg + ex.incKg) * 100) / 100; ex.fails = 0;
+      } else if (!hitFloor) {                             // missed the minimum reps
+        ex.fails = (ex.fails || 0) + 1;
+        if (ex.fails >= 2) {                              // stalled twice → deload ~10% and rebuild
+          ex.weightKg = Math.round(ex.weightKg * 0.9 * 100) / 100; ex.fails = 0;
+        }
+      } else { ex.fails = 0; }                            // in range → hold, chase more reps next time
     });
     // if the exercise had no baseline weight, seed it from what was just logged
     p.days[dayIndex].slots.forEach(function (ex) {
@@ -326,6 +335,33 @@ OF.trainer = (function () {
   var els = {}, intake = {};
   function e(s) { return U.esc(s); }
 
+  /* A trainer reads your recovery. Returns { cls, text } or null. */
+  function recoveryNote() {
+    var today = U.todayISO();
+    var trainedToday = false;
+    try {
+      trainedToday = S.getAll("exercise").some(function (r) { return r.date === today; });
+    } catch (x) {}
+    if (trainedToday) {
+      return { cls: "tr-note-good", text: "You’ve already trained today — nice. Today’s plan is here whenever you want it, or take the recovery." };
+    }
+    var r = null;
+    try {
+      if (OF.engine && OF.engine.analyzeAll) {
+        r = OF.engine.analyzeAll({ sleep: S.getAll("sleep"), food: S.getAll("food"),
+          exercise: S.getAll("exercise"), body: S.getAll("body") }).readiness;
+      }
+    } catch (x) {}
+    if (!r || r.status !== "ok") return null;
+    if (r.level === "low") {
+      return { cls: "tr-note-warn", text: "Your readiness is low today (" + r.score + "/100) — keep it lighter, drop a set or two, or take a rest day. Your call." };
+    }
+    if (r.level === "high") {
+      return { cls: "tr-note-good", text: "You’re well recovered (" + r.score + "/100) — let’s make today count." };
+    }
+    return null;
+  }
+
   /* ---- dashboard card ---- */
   function renderCard() {
     els.card = document.getElementById("dash-trainer");
@@ -349,6 +385,7 @@ OF.trainer = (function () {
         '<span class="tr-ex-rx">' + e(prescription(ex)) + '</span></div>';
     }).join("");
     var p = ns.program;
+    var note = recoveryNote();
     els.card.innerHTML =
       '<div class="card trainer-today">' +
         '<div class="tr-head">' +
@@ -356,6 +393,7 @@ OF.trainer = (function () {
           '<h2 class="tr-title">' + e(ns.name) + '</h2></div>' +
           '<span class="tr-daychip">Day ' + (ns.dayIndex + 1) + '/' + p.days.length + '</span>' +
         '</div>' +
+        (note ? '<p class="tr-recovery ' + note.cls + '">' + e(note.text) + '</p>' : '') +
         '<div class="tr-exlist">' + rows + '</div>' +
         '<div class="tr-actions">' +
           '<button type="button" class="btn primary tr-start" data-tr="start">Start this workout</button>' +

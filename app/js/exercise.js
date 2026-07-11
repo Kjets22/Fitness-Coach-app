@@ -107,6 +107,8 @@ OF.exercise = (function () {
      (called by trainer.js "Start this workout"). programDay ties the session
      back to the plan so completion auto-progresses the right day. */
   function startPrescribed(prescribed, programDay, dayName) {
+    // Don't silently wipe a workout already in progress.
+    if (loadActive() && !confirm("You have a workout in progress. Start today's plan and discard it?")) return;
     activeStartedAt = Date.now();
     sessType = "strength";
     activeProgramDay = (typeof programDay === "number") ? programDay : null;

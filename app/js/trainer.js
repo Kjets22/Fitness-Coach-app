@@ -47,10 +47,12 @@ OF.trainer = (function () {
     { name: "Lat Pulldown", group: "Back", equip: ["cable"], compound: true, incKg: 2.5 },
     { name: "Seated Cable Row", group: "Back", equip: ["cable"], compound: true, incKg: 2.5 },
     { name: "Dumbbell Row", group: "Back", equip: ["db"], compound: true, incKg: 2 },
+    { name: "Inverted Row", group: "Back", equip: ["bw"], compound: true, incKg: 0 },
     { name: "Face Pull", group: "Shoulders", equip: ["cable"], compound: false, incKg: 2.5 },
     // Shoulders
     { name: "Overhead Press", group: "Shoulders", equip: ["gym"], compound: true, incKg: 2.5 },
     { name: "Seated Dumbbell Press", group: "Shoulders", equip: ["db"], compound: true, incKg: 2 },
+    { name: "Pike Push-Up", group: "Shoulders", equip: ["bw"], compound: true, incKg: 0 },
     { name: "Lateral Raise", group: "Shoulders", equip: ["db"], compound: false, incKg: 1 },
     { name: "Rear Delt Fly", group: "Shoulders", equip: ["db"], compound: false, incKg: 1 },
     // Legs
@@ -255,7 +257,9 @@ OF.trainer = (function () {
       for (var i = 0; i < ex.sets; i++) {
         sets.push({
           weightKg: ex.weightKg != null ? ex.weightKg : null,
-          reps: ex.repHigh   // aim for the top of the range (double progression)
+          // prefill the FLOOR of the range — the user edits up to what they
+          // actually hit, so an untouched session never auto-adds weight.
+          reps: ex.repLow
         });
       }
       return { name: ex.name, sets: sets };
@@ -274,20 +278,29 @@ OF.trainer = (function () {
     (loggedExercises || []).forEach(function (ex) {
       if (ex && ex.name) byName[String(ex.name).toLowerCase()] = ex.sets || [];
     });
+    // TOL covers the lb display round-trip (kg→0.1 lb→kg loses up to ~0.023 kg),
+    // so a set logged at the prescribed weight isn't wrongly seen as lighter.
+    var TOL = 0.05;
     p.days[dayIndex].slots.forEach(function (ex) {
       if (ex.incKg <= 0 || ex.weightKg == null) return;   // bodyweight / no baseline: nothing to bump
       var logged = byName[ex.name.toLowerCase()];
       if (!logged || !logged.length) return;
+      // "working" sets = performed AT OR ABOVE the target weight
       var working = logged.filter(function (s) {
-        return Number(s.weightKg) >= ex.weightKg - 0.01 && Number(s.reps) >= 1;
+        return isFinite(Number(s.weightKg)) && Number(s.weightKg) >= ex.weightKg - TOL && Number(s.reps) >= 1;
       });
-      var completed = working.length >= ex.sets;
-      var top = working.slice(0, ex.sets);
-      var allHitTop = completed && top.every(function (s) { return Number(s.reps) >= ex.repHigh; });
-      var hitFloor = completed && top.every(function (s) { return Number(s.reps) >= ex.repLow; });
+      // Not enough sets at target (went lighter / did fewer): hold, don't count a fail.
+      if (working.length < ex.sets) return;
+      // Judge the BEST ex.sets by reps (order-independent). A set logged ABOVE
+      // target weight always satisfies the rep target (they lifted more).
+      var byReps = working.slice().sort(function (a, b) { return Number(b.reps) - Number(a.reps); }).slice(0, ex.sets);
+      function over(s) { return Number(s.weightKg) > ex.weightKg + TOL; }
+      var allHitTop = byReps.every(function (s) { return over(s) || Number(s.reps) >= ex.repHigh; });
+      var hitFloor = byReps.every(function (s) { return over(s) || Number(s.reps) >= ex.repLow; });
       if (allHitTop) {                                    // smashed it → add weight (double progression)
-        ex.weightKg = Math.round((ex.weightKg + ex.incKg) * 100) / 100; ex.fails = 0;
-      } else if (!hitFloor) {                             // missed the minimum reps
+        var maxKg = byReps.reduce(function (m, s) { return Math.max(m, Number(s.weightKg)); }, ex.weightKg);
+        ex.weightKg = Math.round((maxKg + ex.incKg) * 100) / 100; ex.fails = 0;
+      } else if (!hitFloor) {                             // hit the weight but missed the minimum reps
         ex.fails = (ex.fails || 0) + 1;
         if (ex.fails >= 2) {                              // stalled twice → deload ~10% and rebuild
           ex.weightKg = Math.round(ex.weightKg * 0.9 * 100) / 100; ex.fails = 0;
@@ -303,7 +316,8 @@ OF.trainer = (function () {
       logged.forEach(function (s) { var v = Number(s.weightKg); if (isFinite(v) && v > 0 && (w == null || v > w)) w = v; });
       if (w != null) ex.weightKg = w;
     });
-    p.pointer = (p.pointer + 1) % p.days.length;
+    // advance from the day just trained (not a possibly-skipped pointer)
+    p.pointer = (dayIndex + 1) % p.days.length;
     p.updatedAt = new Date().toISOString();
     save(p);
   }
@@ -320,7 +334,7 @@ OF.trainer = (function () {
     if (!p || !p.days.length) return null;
     var ns = nextSession();
     return {
-      split: p.split, daysPerWeek: p.daysPerWeek, goalType: p.goalType,
+      split: p.split, daysPerWeek: p.daysPerWeek, goalType: goalType() || p.goalType,
       equipment: p.equipment, experience: p.experience,
       todaySession: ns ? {
         name: ns.name,

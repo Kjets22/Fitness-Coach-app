@@ -402,8 +402,10 @@ OF.dashboard = (function () {
         statPill("Lowest", fmt1(Math.min.apply(null, ys)) + " " + unit) +
         statPill("Highest", fmt1(Math.max.apply(null, ys)) + " " + unit) +
         statPill("Entries", String(body.length));
-      var chart = OF.charts.lineChart({ series: [{ points: pts, color: "var(--accent)" }],
-        width: 640, height: 220, yFmt: function (v) { return fmt1(v) + ""; } });
+      var chart = pts.length < 2
+        ? OF.charts.empty("Log one more weigh-in to chart your trend.")   // a line needs 2+ points
+        : OF.charts.lineChart({ series: [{ points: pts, color: "var(--accent)" }],
+          width: 640, height: 220, yFmt: function (v) { return fmt1(v) + ""; } });
       return { title: "Weight trend", tab: "body", statsHtml: stats, chartHtml: chart };
     }
     if (metric === "sleep") {
@@ -619,7 +621,9 @@ OF.dashboard = (function () {
       if (def.convert) {
         pts = pts.map(function (p) { return { x: p.x, y: U.toDisplayWeight(p.y) }; });
       }
-      if (pts.length >= 2) anyData = true;
+      if (pts.length >= 1) anyData = true;   // ANY measurement means data exists; the
+      // per-metric chart shows its own accurate "not enough to chart" hint at 1 point,
+      // so don't replace the whole card with a false "No body measurements" message.
       return '<div class="chart-mini-label">' + U.esc(def.label) + '</div>' +
         OF.charts.lineChart({
           height: 120,

@@ -55,7 +55,9 @@ OF.util = (function () {
   /** 465 -> "7h 45m" */
   function fmtDuration(min) {
     if (min == null || isNaN(min)) return "?";
-    var h = Math.floor(min / 60), m = Math.round(min % 60);
+    // round the TOTAL first — rounding the remainder alone turns 419.6 into "6h 60m"
+    min = Math.round(min);
+    var h = Math.floor(min / 60), m = min - h * 60;
     return h + "h " + (m < 10 ? "0" : "") + m + "m";
   }
 
@@ -158,10 +160,16 @@ OF.util = (function () {
     return isNaN(n) ? NaN : n;
   }
 
-  /** Sort key for date+time strings; newest first when used with .sort(). */
+  /** Sort key for date+time strings; newest first when used with .sort().
+      Times are zero-padded before comparing — imported backups can carry
+      "9:30", which would otherwise string-compare as later than "19:30". */
+  function padTime(t) {
+    var m = /^(\d{1,2}):(\d{2})/.exec(String(t || ""));
+    return m ? (m[1].length < 2 ? "0" : "") + m[1] + ":" + m[2] : "00:00";
+  }
   function byNewest(a, b) {
-    var ka = (a.date || "") + "T" + (a.time || a.startTime || a.wakeTime || "00:00");
-    var kb = (b.date || "") + "T" + (b.time || b.startTime || b.wakeTime || "00:00");
+    var ka = (a.date || "") + "T" + padTime(a.time || a.startTime || a.wakeTime || "00:00");
+    var kb = (b.date || "") + "T" + padTime(b.time || b.startTime || b.wakeTime || "00:00");
     return kb < ka ? -1 : kb > ka ? 1 : 0;
   }
 

@@ -190,7 +190,8 @@ OF.storage = (function () {
     steps: ["count"],
     goal: ["targetAmountKg", "heightCm", "age"],
     adjustments: ["delta", "from", "to"],
-    physique: ["bodyFatMidpoint", "bodyFatRangeLow", "bodyFatRangeHigh"]
+    physique: ["bodyFatMidpoint", "bodyFatRangeLow", "bodyFatRangeHigh"],
+    activeEnergy: ["kcal"]   // HealthKit auto-sync records — missing here made importAll THROW on any backup containing them
   };
 
   /* Physique enum + region vocab (mirrors serve.py /api/physique). */
@@ -228,6 +229,7 @@ OF.storage = (function () {
     },
     water: { amountMl: { min: 0, max: 10000 } },
     steps: { count: { min: 0, max: 200000 } },
+    activeEnergy: { kcal: { min: 0, max: 20000 } },
     physique: {
       bodyFatMidpoint: { min: 3, max: 60 },
       bodyFatRangeLow: { min: 3, max: 60 }, bodyFatRangeHigh: { min: 3, max: 60 }
@@ -354,7 +356,7 @@ OF.storage = (function () {
     if (typeof r.date !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(r.date)) return null;
     var rec = Object.assign({}, r);
     if (rec.id != null && typeof rec.id !== "string") rec.id = String(rec.id);
-    NUM_FIELDS[type].forEach(function (f) { rec[f] = clampNum(type, f, coerceNum(rec[f])); });
+    (NUM_FIELDS[type] || []).forEach(function (f) { rec[f] = clampNum(type, f, coerceNum(rec[f])); });   // guard: a type without a field list must never crash the whole import
     if (type === "exercise" && !rec.type) rec.type = "other";
     if (type === "exercise" && rec.exercises !== undefined) {
       var exs = sanitizeExercises(rec.exercises);
@@ -404,7 +406,7 @@ OF.storage = (function () {
       // every type so any pre-existing records for it are cleared.
       if (!replace && !incoming.length) return;
       var current = replace ? [] : getAll(t);
-      var seen = {};
+      var seen = Object.create(null);   // null proto: an id named "__proto__"/"constructor" must not hit Object.prototype and get skipped as a "duplicate"
       current.forEach(function (r) { if (r && r.id) seen[r.id] = true; });
       incoming.forEach(function (raw) {
         var r = normalizeRecord(t, raw);

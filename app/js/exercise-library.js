@@ -73,10 +73,58 @@ OF.exerciseLibrary = (function () {
     return CAT_OF[(name || "").trim().toLowerCase()] || "";
   }
 
+  /* Fine-grained muscle group for ANY exercise name (library OR custom),
+     by keyword — this is what the balance analyzer groups by. It splits
+     "Arms" into Biceps/Triceps (so lagging triceps can be spotted) and is
+     deliberately a PRIMARY-mover heuristic, not anatomically exhaustive:
+     compound lifts hit several muscles; we attribute each to its main one.
+     Order matters — the most specific keywords are checked first. */
+  var KW = [
+    ["Core", ["plank", "crunch", "sit-up", "situp", "russian twist", "leg raise",
+      "hanging", "ab wheel", "rollout", "dead bug", "mountain climber", "oblique", "bicycle crunch"]],
+    ["Triceps", ["tricep", "pushdown", "skull", "close-grip", "close grip", "kickback"]],
+    ["Legs", ["squat", "lunge", "leg press", "leg curl", "leg extension", "calf",
+      "hip thrust", "glute", "hamstring", "quad", "step-up", "step up", "romanian", "bulgarian"]],
+    ["Biceps", ["bicep", "curl", "preacher", "concentration", "chin-up", "chin up"]],
+    ["Chest", ["bench", "chest", "fly", "pec", "push-up", "push up", "dip"]],
+    ["Shoulders", ["shoulder", "overhead press", "lateral raise", "front raise",
+      "arnold", "military", "delt", "upright row", "face pull"]],
+    ["Cardio", ["running", "run", "jog", "treadmill", "cycling", "bike", "cycl",
+      "elliptical", "stair", "jump rope", "swim", "walk", "hiit", "cardio", "rowing"]],
+    ["Back", ["deadlift", "row", "pull-up", "pull up", "pulldown", "lat ", "shrug", "rack pull", "pull "]]
+  ];
+  var CAT_TO_GROUP = { "Chest": "Chest", "Back": "Back", "Legs": "Legs",
+    "Shoulders": "Shoulders", "Core": "Core", "Cardio": "Cardio",
+    "Arms": "Arms", "Olympic & Power": "Legs" };
+
+  function muscleGroupFor(name) {
+    var s = (name || "").toLowerCase();
+    for (var i = 0; i < KW.length; i++) {
+      var kws = KW[i][1];
+      for (var j = 0; j < kws.length; j++) {
+        if (s.indexOf(kws[j]) !== -1) return KW[i][0];
+      }
+    }
+    return CAT_TO_GROUP[categoryOf(name)] || "Other";
+  }
+
+  /** Library exercise names in a muscle group, excluding ones already used
+      (excludeLower = { "bench press": true }). For prescribing new work. */
+  function suggestionsFor(group, excludeLower) {
+    excludeLower = excludeLower || {};
+    var out = [];
+    ALL.forEach(function (e) {
+      if (muscleGroupFor(e.name) === group && !excludeLower[e.name.toLowerCase()]) out.push(e.name);
+    });
+    return out;
+  }
+
   return {
     groups: GROUPS,
     all: function () { return ALL.slice(); },
     names: function () { return ALL.map(function (e) { return e.name; }); },
-    categoryOf: categoryOf
+    categoryOf: categoryOf,
+    muscleGroupFor: muscleGroupFor,
+    suggestionsFor: suggestionsFor
   };
 })();

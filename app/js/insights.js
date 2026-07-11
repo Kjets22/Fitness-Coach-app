@@ -449,6 +449,39 @@ OF.insights = (function () {
 
   function plural(n, w) { return n + " " + w + (n === 1 ? "" : "s"); }
 
+  /* ---------- muscle-group balance card ---------- */
+  function muscleBalanceCard(st) {
+    var mb = st.muscleBalance;
+    if (!mb || mb.status !== "ok" || !mb.groups.length) return "";
+    var maxSets = Math.max.apply(null, mb.groups.map(function (g) { return g.weeklySets || 0; })) || 1;
+    var lagSet = {};
+    mb.lagging.forEach(function (l) { lagSet[l.group] = true; });
+    var bars = mb.groups.map(function (g) {
+      var pct = Math.max(3, Math.round((g.weeklySets / maxSets) * 100));
+      var trend = g.trendPctWk == null ? "" :
+        '<span class="mb-trend ' + (g.trendPctWk >= 0.3 ? "up" : g.trendPctWk < 0 ? "down" : "flat") + '">' +
+        (g.trendPctWk >= 0 ? "+" : "") + g.trendPctWk + "%/wk</span>";
+      return '<div class="mb-row' + (lagSet[g.group] ? " mb-lag" : "") + '">' +
+        '<span class="mb-name">' + e(g.group) + '</span>' +
+        '<span class="mb-bar-wrap"><span class="mb-bar" style="width:' + pct + '%"></span></span>' +
+        '<span class="mb-sets">' + g.weeklySets + '/wk</span>' + trend + '</div>';
+    }).join("");
+    var sub = '<div class="mb-bars">' + bars + '</div>';
+    if (mb.lagging.length) {
+      sub += '<div class="mb-fixes"><div class="mb-fixes-head">Focus here</div><ul class="factor-list">' +
+        mb.lagging.slice(0, 3).map(function (l) {
+          return '<li><span class="f-bad">&minus;</span> <strong>' + e(l.group) + '</strong> — ' +
+            e(l.reason) + '.<br><span class="mb-rx">' + e(l.prescription) + '</span></li>';
+        }).join("") + '</ul></div>';
+    }
+    var headline = mb.lagging.length
+      ? plural(mb.lagging.length, "body part") + " lagging — bring " + (mb.lagging.length === 1 ? "it" : "them") +
+        " up to develop evenly."
+      : "Your muscle groups look balanced — keep spreading the work.";
+    var tag = mb.lagging.length ? '<span class="conf conf-bad">focus needed</span>' : confTag("medium");
+    return card("Muscle-group balance (last 4 weeks)", tag, e(headline), sub, "mb-card", "gauge");
+  }
+
   /* ---------- physique (photo-analysis) card ---------- */
 
   var MUSC_LABEL = {
@@ -558,6 +591,7 @@ OF.insights = (function () {
     return heading +
       strengthVolumeCard(st) +
       liftRowsCard(st) +
+      muscleBalanceCard(st) +
       repRangeCard(st) +
       strengthCalloutsCard(st);
   }

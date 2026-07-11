@@ -753,6 +753,35 @@ input[type="checkbox"], input[type="radio"] { -webkit-appearance: auto; appearan
 .f-bad { color: var(--danger); font-weight: 800; }
 .f-neutral { color: var(--text-dim); font-weight: 800; }
 
+/* ---------- Muscle-group balance card ---------- */
+.mb-bars { display: flex; flex-direction: column; gap: 7px; margin-top: 6px; }
+.mb-row {
+  display: grid;
+  grid-template-columns: 68px 1fr auto auto;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.82rem;
+}
+.mb-name { font-weight: 650; overflow-wrap: anywhere; }
+.mb-bar-wrap {
+  height: 10px; border-radius: var(--r-full);
+  background: color-mix(in srgb, var(--text-dim) 18%, transparent);
+  overflow: hidden;
+}
+.mb-bar { display: block; height: 100%; border-radius: var(--r-full); background: var(--grad); }
+.mb-row.mb-lag .mb-bar { background: linear-gradient(90deg, var(--danger), color-mix(in srgb, var(--danger) 55%, #ffae52)); }
+.mb-sets { color: var(--text-dim); font-variant-numeric: tabular-nums; min-width: 44px; text-align: right; }
+.mb-trend { font-size: 0.72rem; font-weight: 700; font-variant-numeric: tabular-nums; }
+.mb-trend.up { color: var(--accent-2); }
+.mb-trend.down { color: var(--danger); }
+.mb-trend.flat { color: var(--text-dim); }
+.mb-fixes { margin-top: var(--sp-3); }
+.mb-fixes-head {
+  font-size: 0.72rem; font-weight: 800; letter-spacing: 0.05em; text-transform: uppercase;
+  color: var(--text-dim); margin-bottom: 4px;
+}
+.mb-rx { color: var(--text); font-weight: 600; }
+
 /* ---------- 12. AI Coach ---------- */
 .coach-card { padding: 0; overflow: hidden; display: flex; flex-direction: column; }
 

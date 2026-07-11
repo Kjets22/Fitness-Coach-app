@@ -526,6 +526,111 @@ OF.strength = (function () {
     };
   }
 
+  /* ---------------- muscle-group balance ----------------
+     Rolls the per-exercise picture up to muscle GROUPS (chest, back,
+     triceps, …) so we can spot a body part that's under-trained or
+     lagging relative to the others, and prescribe a fix. Grouping is a
+     PRIMARY-mover heuristic (exercise-library.muscleGroupFor) — a guide,
+     not an anatomical measurement. */
+  var BALANCE_WINDOW = 28;                       // 4 weeks of recent work
+  var MAJOR_GROUPS = ["Chest", "Back", "Legs", "Shoulders", "Biceps", "Triceps"];
+  var LAG_SET_FRAC = 0.5;                        // < 50% of the best group's weekly sets = under-worked
+  var MISSING_REF_SETS = 6;                      // only flag a 0-set group as "missing" if you train 6+/wk elsewhere
+
+  function muscleBalance(col, qualified, todayNum) {
+    var lib = OF.exerciseLibrary;
+    if (!lib || !lib.muscleGroupFor) {
+      return { status: "insufficient", message: "Muscle-group analysis needs the exercise library." };
+    }
+    var weeks = BALANCE_WINDOW / 7;
+    var groups = {};
+    function bucket(name) {
+      var g = lib.muscleGroupFor(name);
+      return groups[g] || (groups[g] = { group: g, volumeKg: 0, sets: 0, exLower: {}, trendSum: 0, trendW: 0 });
+    }
+    // recent volume + set counts per group
+    Object.keys(col.byName).forEach(function (k) {
+      var e = col.byName[k], gg = bucket(e.name);
+      Object.keys(e.days).forEach(function (dn) {
+        var s = e.days[dn];
+        if (todayNum - s.day > BALANCE_WINDOW) return;
+        gg.volumeKg += s.volumeKg || 0;
+        gg.sets += s.sets.length;
+        gg.exLower[e.name.toLowerCase()] = true;
+      });
+    });
+    // progression per group from the qualified exercises' e1RM trend
+    qualified.forEach(function (ex) {
+      if (ex.trendPctWk == null) return;
+      var gg = groups[lib.muscleGroupFor(ex.name)];
+      if (!gg) return;
+      gg.trendSum += ex.trendPctWk * ex.sessions;
+      gg.trendW += ex.sessions;
+    });
+
+    var list = Object.keys(groups).map(function (gn) {
+      var gg = groups[gn];
+      return {
+        group: gn,
+        weeklySets: round1(gg.sets / weeks),
+        weeklyVolumeKg: round1(gg.volumeKg / weeks),
+        trendPctWk: gg.trendW ? round1(gg.trendSum / gg.trendW) : null,
+        exLower: gg.exLower
+      };
+    });
+
+    var trainedMajor = list.filter(function (x) { return MAJOR_GROUPS.indexOf(x.group) !== -1 && x.weeklySets > 0; });
+    if (trainedMajor.length < 2) {
+      return { status: "insufficient",
+        message: "Log a few weeks of workouts across different exercises and this compares how each body part is progressing and which is lagging." };
+    }
+    var refSets = Math.max.apply(null, trainedMajor.map(function (x) { return x.weeklySets; }));
+    var improvingElsewhere = list.some(function (x) { return x.trendPctWk != null && x.trendPctWk >= 0.3; });
+    list.sort(function (a, b) { return b.weeklySets - a.weeklySets; });
+
+    var lagging = [];
+    MAJOR_GROUPS.forEach(function (gn) {
+      var x = null;
+      for (var i = 0; i < list.length; i++) if (list[i].group === gn) { x = list[i]; break; }
+      var weeklySets = x ? x.weeklySets : 0;
+      var trend = x ? x.trendPctWk : null;
+      var reasons = [], severity = 0;
+      if (weeklySets === 0) {
+        if (refSets < MISSING_REF_SETS) return;   // you're not training much anywhere — don't nag
+        reasons.push("no direct sets in the last 4 weeks"); severity = 3;
+      } else {
+        if (weeklySets < LAG_SET_FRAC * refSets) {
+          reasons.push("only " + weeklySets + " weekly sets vs " + round1(refSets) + " for your most-trained group");
+          severity += 2;
+        }
+        if (trend != null && trend <= 0 && improvingElsewhere) {
+          reasons.push("flat or declining while your other lifts are improving"); severity += 2;
+        }
+      }
+      if (!reasons.length) return;
+      var target = Math.max(8, Math.round(refSets * 0.7));
+      var addSets = Math.max(2, Math.round(target - weeklySets));
+      var suggest = lib.suggestionsFor(gn, x ? x.exLower : {}).slice(0, 2);
+      lagging.push({
+        group: gn, weeklySets: weeklySets, trendPctWk: trend, severity: severity,
+        reason: reasons.join("; "),
+        prescription: "Add ~" + addSets + " weekly sets of " + gn + " work" +
+          (suggest.length ? " — try " + suggest.join(" or ") + " (not in your rotation yet)." : ".") +
+          (weeklySets === 0 ? " Right now you train it directly 0×/week." : "")
+      });
+    });
+    lagging.sort(function (a, b) { return b.severity - a.severity; });
+
+    return {
+      status: "ok",
+      refWeeklySets: round1(refSets),
+      groups: list.map(function (x) {
+        return { group: x.group, weeklySets: x.weeklySets, weeklyVolumeKg: x.weeklyVolumeKg, trendPctWk: x.trendPctWk };
+      }),
+      lagging: lagging
+    };
+  }
+
   /* ---------------- entry point ---------------- */
 
   function analyze(data) {
@@ -588,7 +693,8 @@ OF.strength = (function () {
       repRange: reps,
       volumeMuscle: vm,
       stalls: stalls,
-      working: working
+      working: working,
+      muscleBalance: muscleBalance(col, qualified, todayNum)
     };
   }
 
@@ -622,6 +728,16 @@ OF.strength = (function () {
     if (res.stalls.length) out.stalls = res.stalls.slice(0, 2).map(function (s) { return s.message; });
     if (res.working.length) out.working = res.working.slice(0, 2).map(function (s) { return s.message; });
     if (res.volumeMuscle.status === "ok") out.volumeVsMuscle = res.volumeMuscle.message;
+    if (res.muscleBalance && res.muscleBalance.status === "ok") {
+      out.muscleGroupWeeklySets = res.muscleBalance.groups.map(function (g) {
+        return g.group + ": " + g.weeklySets + "/wk" + (g.trendPctWk != null ? " (" + (g.trendPctWk >= 0 ? "+" : "") + g.trendPctWk + "%/wk)" : "");
+      });
+      if (res.muscleBalance.lagging.length) {
+        out.laggingMuscleGroups = res.muscleBalance.lagging.slice(0, 3).map(function (l) {
+          return l.group + " — " + l.reason + ". Fix: " + l.prescription;
+        });
+      }
+    }
     return out;
   }
 

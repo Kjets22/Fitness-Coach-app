@@ -148,6 +148,7 @@ OF.app = (function () {
     OF.insights.init();
     OF.coach.init();
     OF.settings.init();
+    if (OF.healthSync) OF.healthSync.init(); // Health card lives in the Settings tab
     if (OF.social) OF.social.init(); // after settings (renders its Community card)
 
     showTab(currentTabFromHash());

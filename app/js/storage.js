@@ -17,7 +17,7 @@ OF.storage = (function () {
   "use strict";
 
   var PREFIX = "optimalfit.";
-  var TYPES = ["sleep", "food", "exercise", "body", "water", "steps", "goal", "adjustments", "physique"];
+  var TYPES = ["sleep", "food", "exercise", "body", "water", "steps", "goal", "adjustments", "physique", "activeEnergy"];
   var SCHEMA_VERSION = 2;
 
   function key(type) {

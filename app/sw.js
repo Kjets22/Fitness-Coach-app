@@ -15,7 +15,7 @@
    ============================================================ */
 
 /* Bump this string when any shell file changes. */
-var VERSION = "v26";
+var VERSION = "v27";
 var CACHE = "optimalfit-shell-" + VERSION;
 
 var SHELL = [
@@ -46,6 +46,7 @@ var SHELL = [
   "./js/insights.js",
   "./js/coach.js",
   "./js/health-import.js",
+  "./js/health-sync.js",
   "./js/demo.js",
   "./js/settings.js",
   "./js/vendor/supabase.js",

@@ -211,9 +211,11 @@ OF.daily = (function () {
     }
     var count = Math.round(v);
     var existing = stepsRecordFor(date);
+    // Tag as a manual entry so an Apple Health / Health Connect auto-sync never
+    // overwrites a number the user typed themselves (source "manual" wins).
     var ok = existing
-      ? S.update("steps", existing.id, { count: count })
-      : S.add("steps", { date: date, count: count });
+      ? S.update("steps", existing.id, { count: count, source: "manual" })
+      : S.add("steps", { date: date, count: count, source: "manual" });
     if (!ok) {
       showErr(els.stepsErr, "Could not save — browser storage is full or blocked.");
       return;

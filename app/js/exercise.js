@@ -579,9 +579,11 @@ OF.exercise = (function () {
       return;
     }
     // If this session came from the trainer plan, auto-progress that day.
+    var planResult = null;
     if (activeProgramDay != null && OF.trainer && OF.trainer.completeSession) {
-      try { OF.trainer.completeSession(activeProgramDay, rec.exercises || []); } catch (e) {}
+      try { planResult = OF.trainer.completeSession(activeProgramDay, rec.exercises || []); } catch (e) {}
     }
+    var prs = detectPRs(rec.exercises || []);
     activeProgramDay = null;
     stopTick();
     clearActive();
@@ -591,6 +593,93 @@ OF.exercise = (function () {
     renderList();
     OF.dashboard && OF.dashboard.refresh();
     if (OF.trainer && OF.trainer.refresh) OF.trainer.refresh();
+    showRecap(rec, prs, planResult);
+  }
+
+  /* ---- post-session recap + PR celebration ---- */
+  function prMeta() { try { return JSON.parse(localStorage.getItem("optimalfit.prMeta") || "{}") || {}; } catch (e) { return {}; } }
+  function detectPRs(loggedExercises) {
+    var meta = prMeta(), prs = [], changed = false;
+    (loggedExercises || []).forEach(function (ex) {
+      if (!ex || !ex.name || !Array.isArray(ex.sets)) return;
+      var best = null;
+      ex.sets.forEach(function (s) {
+        var w = Number(s.weightKg), r = Number(s.reps);
+        if (isFinite(w) && w > 0 && isFinite(r) && r >= 1 && r <= 12) {
+          var eOne = w * (1 + r / 30);
+          if (best == null || eOne > best) best = eOne;
+        }
+      });
+      if (best == null) return;
+      var key = ex.name.trim().toLowerCase(), prev = meta[key];
+      if (prev == null || best > prev * 1.001) {
+        if (prev != null) prs.push({ name: ex.name, e1RMkg: Math.round(best * 10) / 10, prev: Math.round(prev * 10) / 10 });
+        meta[key] = Math.round(best * 100) / 100; changed = true;
+      }
+    });
+    if (changed) { try { localStorage.setItem("optimalfit.prMeta", JSON.stringify(meta)); } catch (e) {} }
+    return prs;
+  }
+
+  function confettiBurst() {
+    var host = document.createElement("div");
+    host.className = "confetti-host";
+    var colors = ["#8b5cf6", "#22d3ee", "#ff8a3d", "#4ade80", "#f472b6"];
+    for (var i = 0; i < 36; i++) {
+      var c = document.createElement("span");
+      c.className = "confetti-bit";
+      c.style.left = (Math.round(Math.random() * 100)) + "%";
+      c.style.background = colors[i % colors.length];
+      c.style.animationDelay = (Math.round(Math.random() * 300)) + "ms";
+      c.style.transform = "rotate(" + (Math.round(Math.random() * 360)) + "deg)";
+      host.appendChild(c);
+    }
+    document.body.appendChild(host);
+    setTimeout(function () { host.remove(); }, 2600);
+  }
+
+  function showRecap(rec, prs, planResult) {
+    var hasPR = prs && prs.length;
+    var hasChange = planResult && planResult.changes &&
+      planResult.changes.some(function (c) { return c.kind === "added" || c.kind === "deloaded" || c.kind === "seeded"; });
+    if (!hasPR && !hasChange) return;   // nothing notable — don't interrupt with a modal
+    var wTxtFn = function (kg) { return U.fmtWeight(kg, 1); };
+    var body = "";
+    if (prs && prs.length) {
+      body += '<div class="recap-pr">🎉 ' + (prs.length === 1 ? "New personal record!" : prs.length + " new personal records!") + '</div>';
+      body += '<ul class="recap-pr-list">' + prs.map(function (p) {
+        return '<li><strong>' + U.esc(p.name) + '</strong> — est. 1RM ' + U.esc(wTxtFn(p.e1RMkg)) +
+          ' <span class="muted">(was ' + U.esc(wTxtFn(p.prev)) + ')</span></li>';
+      }).join("") + '</ul>';
+    }
+    if (planResult && planResult.changes && planResult.changes.length) {
+      var adds = planResult.changes.filter(function (c) { return c.kind === "added"; });
+      var dels = planResult.changes.filter(function (c) { return c.kind === "deloaded"; });
+      if (adds.length) {
+        body += '<div class="recap-sec"><div class="recap-sec-h">Next time — weight going up 💪</div><ul class="recap-list">' +
+          adds.map(function (c) { return '<li>' + U.esc(c.name) + ': ' + U.esc(wTxtFn(c.from)) + ' → <strong>' + U.esc(wTxtFn(c.to)) + '</strong></li>'; }).join("") + '</ul></div>';
+      }
+      if (dels.length) {
+        body += '<div class="recap-sec"><div class="recap-sec-h">Backing off to rebuild</div><ul class="recap-list">' +
+          dels.map(function (c) { return '<li>' + U.esc(c.name) + ': → <strong>' + U.esc(wTxtFn(c.to)) + '</strong> (let\'s nail the reps)</li>'; }).join("") + '</ul></div>';
+      }
+      if (planResult.nextName) body += '<p class="recap-next">Up next: <strong>' + U.esc(planResult.nextName) + '</strong></p>';
+    }
+    if (!body) body = '<p class="recap-generic">Logged. Every session counts — see you next time.</p>';
+
+    var m = document.getElementById("recap-modal");
+    if (!m) { m = document.createElement("div"); m.id = "recap-modal"; m.className = "metric-modal"; document.body.appendChild(m); }
+    m.hidden = false;
+    document.body.classList.add("metric-modal-open");
+    m.innerHTML = '<div class="metric-modal-backdrop" data-recap-close></div>' +
+      '<div class="metric-modal-panel recap-panel" role="dialog" aria-modal="true">' +
+      '<div class="recap-head">💪 Workout complete</div>' +
+      '<div class="recap-body">' + body + '</div>' +
+      '<button type="button" class="btn primary recap-done" data-recap-close>Done</button></div>';
+    m.querySelectorAll("[data-recap-close]").forEach(function (b) {
+      b.addEventListener("click", function () { m.hidden = true; document.body.classList.remove("metric-modal-open"); });
+    });
+    if (prs && prs.length) confettiBurst();
   }
 
   /* ============================================================

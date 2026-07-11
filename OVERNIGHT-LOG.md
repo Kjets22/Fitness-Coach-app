@@ -51,3 +51,8 @@ Top picks (impact/effort/category), in priority order — see roadmap.json for f
 ## BUILT #4 Daily streak engine (streak.js) + #7 Daily brief — verified
 - streak.js: consecutive-log streak computed from the data (robust to edits), with a ~weekly FREEZE that bridges a single missed day so one slip doesn't wipe momentum. Flame chip (🔥 37 days) in the dashboard hero + milestone toasts at 3/7/14/30/50/100/200/365.
 - Daily brief one-liner in the hero: composed from today's session + readiness + biggest nutrition/step gap + streak nudge (e.g. "Full Body A day · readiness 70 · 71g short on protein"). Verified: freeze correctly bridged a missed day; brief renders.
+
+## BUILT #1 Post-session recap + PR celebration (highest-ROI pick) — verified
+- trainer.completeSession() now RETURNS { changes:[{name,kind:added|held|deloaded|seeded,from,to}], nextName } (was void).
+- exercise.js showRecap(): after saving a workout, a recap sheet shows what changed ("Bench 132→138 lb next time"), celebrates new PRs (est-1RM vs a persisted per-lift high-water in optimalfit.prMeta) with a 🎉 banner + confetti burst, and previews the next session. Only appears when something notable happened (PR or weight change) — not after every log.
+- Verified: completeSession returns the deltas (Bench +weight, Squat held, next=Full Body B); PR math correct (80x5 → e1RM 93.3 beats prior 75); recap sheet + confetti render cleanly (screenshot).

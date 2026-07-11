@@ -720,6 +720,36 @@ body.metric-modal-open { overflow: hidden; }
 .tr-progday.tr-next { border-color: color-mix(in srgb, var(--g1) 45%, transparent); background: color-mix(in srgb, var(--g1) 6%, transparent); }
 .tr-progday-head { font-weight: 750; margin-bottom: 6px; display: flex; align-items: center; gap: 8px; }
 .tr-nextchip { font-size: 0.62rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em; color: #fff; background: var(--grad); border-radius: var(--r-full); padding: 2px 8px; }
+
+/* ---------- Post-session recap + confetti ---------- */
+.recap-panel { text-align: center; }
+.recap-head { font-size: 1.3rem; font-weight: 850; letter-spacing: -0.02em; margin-bottom: var(--sp-3); }
+.recap-body { text-align: left; }
+.recap-pr {
+  font-size: 1.05rem; font-weight: 800; text-align: center; margin-bottom: 8px;
+  background: var(--grad); -webkit-background-clip: text; background-clip: text; color: transparent;
+}
+.recap-pr-list { list-style: none; margin: 0 0 var(--sp-3); padding: 0; display: flex; flex-direction: column; gap: 4px; }
+.recap-pr-list li { background: color-mix(in srgb, var(--g1) 10%, transparent); border: 1px solid color-mix(in srgb, var(--g1) 30%, transparent); border-radius: var(--r-sm); padding: 8px 12px; font-size: 0.9rem; }
+.recap-sec { margin-bottom: var(--sp-3); }
+.recap-sec-h { font-size: 0.72rem; font-weight: 800; letter-spacing: 0.04em; text-transform: uppercase; color: var(--text-dim); margin-bottom: 4px; }
+.recap-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; font-size: 0.92rem; }
+.recap-list li { padding: 4px 0; border-bottom: 1px solid var(--card-edge); }
+.recap-list li:last-child { border-bottom: none; }
+.recap-next { margin: var(--sp-2) 0 0; color: var(--text-dim); }
+.recap-generic { text-align: center; color: var(--text-dim); }
+.recap-done { width: 100%; min-height: 48px; margin-top: var(--sp-4); }
+
+.confetti-host { position: fixed; inset: 0; pointer-events: none; z-index: 400; overflow: hidden; }
+.confetti-bit {
+  position: absolute; top: -12px; width: 9px; height: 14px; border-radius: 2px; opacity: 0.9;
+  animation: confetti-fall 2.3s cubic-bezier(0.2, 0.6, 0.4, 1) forwards;
+}
+@keyframes confetti-fall {
+  0% { transform: translateY(-10px) rotate(0deg); opacity: 1; }
+  100% { transform: translateY(105vh) rotate(540deg); opacity: 0; }
+}
+@media (prefers-reduced-motion: reduce) { .confetti-bit { display: none; } }
 .stat-spark { margin-top: 8px; }
 .stat-spark svg { display: block; width: 100%; height: 30px; }
 

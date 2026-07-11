@@ -290,6 +290,7 @@ OF.trainer = (function () {
     // TOL covers the lb display round-trip (kg→0.1 lb→kg loses up to ~0.023 kg),
     // so a set logged at the prescribed weight isn't wrongly seen as lighter.
     var TOL = 0.05;
+    var changes = [];   // per-lift outcome, for the post-session recap
     p.days[dayIndex].slots.forEach(function (ex) {
       if (ex.incKg <= 0 || ex.weightKg == null) return;   // bodyweight / no baseline: nothing to bump
       var logged = byName[ex.name.toLowerCase()];
@@ -306,15 +307,20 @@ OF.trainer = (function () {
       function over(s) { return Number(s.weightKg) > ex.weightKg + TOL; }
       var allHitTop = byReps.every(function (s) { return over(s) || Number(s.reps) >= ex.repHigh; });
       var hitFloor = byReps.every(function (s) { return over(s) || Number(s.reps) >= ex.repLow; });
+      var from = ex.weightKg;
       if (allHitTop) {                                    // smashed it → add weight (double progression)
         var maxKg = byReps.reduce(function (m, s) { return Math.max(m, Number(s.weightKg)); }, ex.weightKg);
         ex.weightKg = Math.round((maxKg + ex.incKg) * 100) / 100; ex.fails = 0;
+        changes.push({ name: ex.name, kind: "added", from: from, to: ex.weightKg });
       } else if (!hitFloor) {                             // hit the weight but missed the minimum reps
         ex.fails = (ex.fails || 0) + 1;
         if (ex.fails >= 2) {                              // stalled twice → deload ~10% and rebuild
           ex.weightKg = Math.round(ex.weightKg * 0.9 * 100) / 100; ex.fails = 0;
+          changes.push({ name: ex.name, kind: "deloaded", from: from, to: ex.weightKg });
+        } else {
+          changes.push({ name: ex.name, kind: "held", to: ex.weightKg });
         }
-      } else { ex.fails = 0; }                            // in range → hold, chase more reps next time
+      } else { ex.fails = 0; changes.push({ name: ex.name, kind: "held", to: ex.weightKg }); }
     });
     // if the exercise had no baseline weight, seed it from what was just logged
     p.days[dayIndex].slots.forEach(function (ex) {
@@ -323,12 +329,14 @@ OF.trainer = (function () {
       if (!logged) return;
       var w = null;
       logged.forEach(function (s) { var v = Number(s.weightKg); if (isFinite(v) && v > 0 && (w == null || v > w)) w = v; });
-      if (w != null) ex.weightKg = w;
+      if (w != null) { ex.weightKg = w; changes.push({ name: ex.name, kind: "seeded", to: w }); }
     });
     // advance from the day just trained (not a possibly-skipped pointer)
     p.pointer = (dayIndex + 1) % p.days.length;
     p.updatedAt = new Date().toISOString();
     save(p);
+    var ns = nextSession();
+    return { changes: changes, nextName: ns ? ns.name : null };
   }
 
   /** Advance the split without progressing (e.g. a freeform/rest choice). */

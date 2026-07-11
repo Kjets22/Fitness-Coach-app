@@ -148,6 +148,15 @@ OF.storage = (function () {
   }
 
   /** Export everything as a pretty JSON string. */
+  /* App state that lives OUTSIDE the record store but is part of the user's
+     progress: the training program (incl. every progressed weight), trainer
+     value stats, PR high-water marks, and streak history. Without these a
+     backup restore silently loses the whole training state. Deliberately NOT
+     included: social (server-backed auth/profile cache), pairKey (a device
+     secret has no business inside a shareable backup file), activeWorkout
+     (transient in-flight session). */
+  var APPSTATE_KEYS = ["trainerProgram", "trainerStats", "prMeta", "streakMeta"];
+
   function exportAll() {
     var out = {
       app: "OptimalFit",
@@ -160,6 +169,13 @@ OF.storage = (function () {
       var rawPrefs = localStorage.getItem(PREFIX + "prefs");
       if (rawPrefs) out.prefs = JSON.parse(rawPrefs);
     } catch (e) { /* prefs are optional in a backup */ }
+    out.appState = {};
+    APPSTATE_KEYS.forEach(function (k) {
+      try {
+        var raw = localStorage.getItem(PREFIX + k);
+        if (raw) out.appState[k] = JSON.parse(raw);
+      } catch (e) { /* an unparsable key is skipped, never breaks the export */ }
+    });
     return JSON.stringify(out, null, 2);
   }
 
@@ -447,6 +463,23 @@ OF.storage = (function () {
     if (replace && parsed.prefs && typeof parsed.prefs === "object" &&
         !Array.isArray(parsed.prefs) && OF.units) {
       OF.units.setPrefs(parsed.prefs);
+    }
+
+    // Restore app state (training program, trainer stats, PR marks, streak
+    // history). Replace restores everything from the backup; merge only fills
+    // keys that don't exist locally — an older backup must never clobber an
+    // actively-progressing program.
+    var appState = parsed.appState;
+    if (appState && typeof appState === "object" && !Array.isArray(appState)) {
+      APPSTATE_KEYS.forEach(function (k) {
+        var v = appState[k];
+        if (v == null || typeof v !== "object") return;
+        var existing = null;
+        try { existing = localStorage.getItem(PREFIX + k); } catch (e) {}
+        if (!replace && existing) return;
+        try { localStorage.setItem(PREFIX + k, JSON.stringify(v)); }
+        catch (e) { /* quota — records were already saved; app state is best-effort */ }
+      });
     }
     return { imported: imported, skipped: skipped };
   }

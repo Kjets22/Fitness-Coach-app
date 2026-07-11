@@ -5,7 +5,8 @@
   "private": true,
   "scripts": {
     "copy-web": "node scripts/copy-web.js",
-    "sync": "npm run copy-web && npx cap sync"
+    "sync": "npm run copy-web && npx cap sync",
+    "postinstall": "rm -rf node_modules/@flomentumsolutions/capacitor-health-extended/android && node scripts/ios-only-health.js"
   },
   "keywords": [],
   "author": "",
@@ -15,6 +16,7 @@
     "@capacitor/android": "^8.4.1",
     "@capacitor/cli": "^8.4.1",
     "@capacitor/core": "^8.4.1",
-    "@capacitor/ios": "^8.4.1"
+    "@capacitor/ios": "^8.4.1",
+    "@flomentumsolutions/capacitor-health-extended": "^0.8.3"
   }
 }

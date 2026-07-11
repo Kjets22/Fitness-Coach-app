@@ -53,5 +53,7 @@
 	</array>
 	<key>UIViewControllerBasedStatusBarAppearance</key>
 	<true/>
+	<key>NSHealthShareUsageDescription</key>
+	<string>OptimalFit reads your steps, weight, sleep and active energy from Apple Health so you don’t have to log them by hand. This data stays on your device.</string>
 </dict>
 </plist>

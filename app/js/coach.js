@@ -538,15 +538,16 @@ OF.coach = (function () {
     try { ns = OF.trainer && OF.trainer.nextSession ? OF.trainer.nextSession() : null; } catch (e) {}
     try { t = OF.goals && OF.goals.currentTargets ? OF.goals.currentTargets() : null; } catch (e) {}
     function list() { return ns ? ns.exercises.map(function (ex) { return "• " + ex.name + " — " + OF.trainer.prescription(ex); }).join("\n") : ""; }
-    if (/readiness|recovery|recovered|rested|how ready|am i ready/.test(q)) {
+    if (/\breadiness\b|\brecover(y|ed)\b|\brested\b|how ready|am i ready|ready to train/.test(q)) {
       var r = null;
       try { if (OF.engine && OF.engine.analyzeAll) r = OF.engine.analyzeAll({ sleep: S.getAll("sleep"), food: S.getAll("food"), exercise: S.getAll("exercise"), body: S.getAll("body") }).readiness; } catch (e) {}
       if (r && r.status === "ok") return "Your readiness is " + r.score + "/100 (" + r.level + "). " + (r.verdict || "") +
         (r.level === "low" ? " Sleep and back-to-back training days are the usual culprits — a lighter session or a rest day is smart." : "");
       return "Log a few nights of sleep and some workouts and I'll score your daily readiness (recovery) so we train hard when you're fresh and back off when you're not.";
     }
-    // check recovery/back-off BEFORE 'push harder' so "give me more rest" isn't hijacked
-    if (/sore|tired|low energy|rest day|adjust|easier|lighter|light day|short on time|busy|travel/.test(q) && ns) {
+    // check recovery/back-off BEFORE 'push harder' so "give me more rest" isn't hijacked.
+    // word boundaries keep bare "rest"/"light" from firing on "restaurant"/"delight".
+    if (/sore|tired|low energy|\brest\b|adjust|easier|\blight(er)?\b|short on time|busy|travel/.test(q) && ns) {
       return "Back off but don't skip — do today's " + ns.name + " lighter: drop each working set ~10% and cut one set per exercise. Hit the first two compound lifts for sure; drop the last accessory if you're gassed. A lighter session still counts.";
     }
     if (/harder|heavier|tough|intens|add weight|push me/.test(q) && ns) {

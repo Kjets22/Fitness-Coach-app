@@ -653,6 +653,53 @@ input[type="checkbox"], input[type="radio"] { -webkit-appearance: auto; appearan
 .metric-chart { margin: var(--sp-2) 0 var(--sp-3); }
 .metric-modal-link { width: 100%; min-height: 44px; }
 body.metric-modal-open { overflow: hidden; }
+
+/* ---------- Personal trainer: today's session + intake ---------- */
+#dash-trainer:empty { display: none; }
+.trainer-cta { display: flex; gap: var(--sp-3); align-items: flex-start; }
+.trainer-cta-badge {
+  flex: 0 0 auto; width: 46px; height: 46px; border-radius: var(--r-md);
+  display: flex; align-items: center; justify-content: center;
+  background: var(--grad); color: #fff;
+}
+.trainer-cta-badge .ico { width: 24px; height: 24px; }
+.trainer-cta-main h2 { margin: 0 0 4px; font-size: 1.1rem; }
+.trainer-cta-main .btn { margin-top: var(--sp-3); }
+
+.trainer-today {
+  border: 1px solid color-mix(in srgb, var(--g1) 30%, var(--card-edge));
+  box-shadow: var(--e2), 0 8px 22px color-mix(in srgb, var(--g1) 16%, transparent);
+}
+.tr-head { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--sp-3); margin-bottom: var(--sp-3); }
+.tr-kicker { font-size: 0.68rem; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; color: var(--accent); }
+.tr-title { margin: 2px 0 0; font-size: 1.25rem; }
+.tr-daychip { flex: 0 0 auto; font-size: 0.7rem; font-weight: 700; color: var(--text-dim); background: var(--bg-2); border: 1px solid var(--card-edge); border-radius: var(--r-full); padding: 4px 10px; }
+.tr-exlist { display: flex; flex-direction: column; gap: 6px; margin-bottom: var(--sp-3); }
+.tr-ex { display: flex; align-items: baseline; justify-content: space-between; gap: var(--sp-3); padding: 7px 0; border-bottom: 1px solid var(--card-edge); }
+.tr-ex:last-child { border-bottom: none; }
+.tr-ex-name { font-weight: 650; overflow-wrap: anywhere; }
+.tr-ex-rx { flex: 0 0 auto; color: var(--text-dim); font-size: 0.85rem; font-variant-numeric: tabular-nums; }
+.tr-actions { display: flex; gap: var(--sp-2); align-items: center; flex-wrap: wrap; }
+.tr-start { flex: 1; min-height: 48px; font-weight: 700; }
+.tr-actions .btn.mini { min-height: 40px; }
+
+.tr-note { color: var(--text-dim); font-size: 0.85rem; margin: 0 0 var(--sp-3); }
+.tr-q { margin-bottom: var(--sp-4); }
+.tr-q-label { font-weight: 650; font-size: 0.92rem; margin-bottom: 8px; }
+.tr-q-pills { display: flex; flex-wrap: wrap; gap: 8px; }
+.tr-pill {
+  min-height: 42px; padding: 0 16px; cursor: pointer;
+  border: 1px solid var(--card-edge); border-radius: var(--r-full);
+  background: var(--bg-2); color: var(--text); font-weight: 600; font-size: 0.9rem;
+}
+.tr-pill.on { border-color: transparent; color: #fff; background: var(--grad); }
+.tr-modal-foot { margin-top: var(--sp-3); }
+.tr-modal-foot .btn { width: 100%; min-height: 46px; }
+
+.tr-progday { border: 1px solid var(--card-edge); border-radius: var(--r-md); padding: var(--sp-3); margin-bottom: var(--sp-3); }
+.tr-progday.tr-next { border-color: color-mix(in srgb, var(--g1) 45%, transparent); background: color-mix(in srgb, var(--g1) 6%, transparent); }
+.tr-progday-head { font-weight: 750; margin-bottom: 6px; display: flex; align-items: center; gap: 8px; }
+.tr-nextchip { font-size: 0.62rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em; color: #fff; background: var(--grad); border-radius: var(--r-full); padding: 2px 8px; }
 .stat-spark { margin-top: 8px; }
 .stat-spark svg { display: block; width: 100%; height: 30px; }
 

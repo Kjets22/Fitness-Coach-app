@@ -84,8 +84,10 @@ OF.exerciseLibrary = (function () {
       "hanging", "ab wheel", "rollout", "dead bug", "mountain climber", "oblique", "bicycle crunch"]],
     ["Triceps", ["tricep", "pushdown", "skull", "close-grip", "close grip", "kickback"]],
     ["Legs", ["squat", "lunge", "leg press", "leg curl", "leg extension", "calf",
-      "hip thrust", "glute", "hamstring", "quad", "step-up", "step up", "romanian", "bulgarian"]],
+      "hip thrust", "glute", "hamstring", "quad", "step-up", "step up", "romanian", "bulgarian", "sumo"]],
     ["Biceps", ["bicep", "curl", "preacher", "concentration", "chin-up", "chin up"]],
+    // rear-delt work must win over the generic Chest "fly" keyword below
+    ["Shoulders", ["rear delt", "rear-delt", "reverse fly", "reverse pec"]],
     ["Chest", ["bench", "chest", "fly", "pec", "push-up", "push up", "dip"]],
     ["Shoulders", ["shoulder", "overhead press", "lateral raise", "front raise",
       "arnold", "military", "delt", "upright row", "face pull"]],

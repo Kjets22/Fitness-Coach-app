@@ -95,11 +95,32 @@ OF.exercise = (function () {
       exList = a.exList || [];
       sessType = a.type || "strength";
       activeStartedAt = a.startedAt;
+      activeProgramDay = a.programDay;
       mode = "active";
       renderActive();
     } else {
       showHub();
     }
+  }
+
+  /* Start a live session pre-loaded with the trainer's prescribed exercises
+     (called by trainer.js "Start this workout"). programDay ties the session
+     back to the plan so completion auto-progresses the right day. */
+  function startPrescribed(prescribed, programDay, dayName) {
+    activeStartedAt = Date.now();
+    sessType = "strength";
+    activeProgramDay = (typeof programDay === "number") ? programDay : null;
+    finish = { open: false, intensity: 3, performance: 3 };
+    exList = (Array.isArray(prescribed) ? prescribed : []).map(function (ex) {
+      return {
+        name: typeof ex.name === "string" ? ex.name : "",
+        prefilled: true,
+        sets: (Array.isArray(ex.sets) ? ex.sets : []).map(seedSet)
+      };
+    }).filter(function (ex) { return ex.name; });
+    mode = "active";
+    saveActive();
+    renderActive();
   }
 
   function showError(msg) {
@@ -112,6 +133,7 @@ OF.exercise = (function () {
      Active-session persistence
      ============================================================ */
   var activeStartedAt = 0;
+  var activeProgramDay = null;   // set when the session was started from the trainer plan
 
   function loadActive() {
     try {
@@ -127,7 +149,8 @@ OF.exercise = (function () {
           sets: (Array.isArray(ex.sets) ? ex.sets : []).map(reviveSet)
         };
       }).filter(function (ex) { return ex.name; });
-      return { startedAt: o.startedAt, type: o.type || "strength", exList: list };
+      return { startedAt: o.startedAt, type: o.type || "strength", exList: list,
+        programDay: (typeof o.programDay === "number") ? o.programDay : null };
     } catch (e) { return null; }
   }
 
@@ -135,7 +158,7 @@ OF.exercise = (function () {
     if (mode !== "active") return;
     try {
       localStorage.setItem(ACTIVE_KEY, JSON.stringify({
-        startedAt: activeStartedAt, type: sessType, exList: exList
+        startedAt: activeStartedAt, type: sessType, exList: exList, programDay: activeProgramDay
       }));
     } catch (e) { /* storage full/blocked: session stays in memory */ }
   }
@@ -465,6 +488,7 @@ OF.exercise = (function () {
     activeStartedAt = Date.now();
     sessType = "strength";
     exList = [];
+    activeProgramDay = null;
     finish = { open: false, intensity: 3, performance: 3 };
     mode = "active";
     saveActive();
@@ -476,6 +500,7 @@ OF.exercise = (function () {
     stopTick();
     clearActive();
     exList = [];
+    activeProgramDay = null;
     finish.open = false;
     showHub();
   }
@@ -551,6 +576,11 @@ OF.exercise = (function () {
       showError("Could not save — browser storage is full or blocked. Your workout was NOT saved.");
       return;
     }
+    // If this session came from the trainer plan, auto-progress that day.
+    if (activeProgramDay != null && OF.trainer && OF.trainer.completeSession) {
+      try { OF.trainer.completeSession(activeProgramDay, rec.exercises || []); } catch (e) {}
+    }
+    activeProgramDay = null;
     stopTick();
     clearActive();
     exList = [];
@@ -558,6 +588,7 @@ OF.exercise = (function () {
     showHub();
     renderList();
     OF.dashboard && OF.dashboard.refresh();
+    if (OF.trainer && OF.trainer.refresh) OF.trainer.refresh();
   }
 
   /* ============================================================
@@ -1060,5 +1091,5 @@ OF.exercise = (function () {
     renderTimer(host); updateDisplay();
   }
 
-  return { init: init, renderList: renderList };
+  return { init: init, renderList: renderList, startPrescribed: startPrescribed };
 })();

@@ -396,7 +396,7 @@ OF.dashboard = (function () {
     if (!counts.some(function (c) { return c > 0; })) return { title: "Workout frequency", tab: "exercise", statsHtml: "", chartHtml: OF.charts.empty("No workouts logged yet — start one on the Workout tab.") };
     var totalMin = 0, totalW = 0;
     exercise.forEach(function (r) { var dn = dayNum(r.date); if (dn != null && todayN - dn <= 55 && todayN - dn >= 0) { totalW++; totalMin += Number(r.durationMin) || 0; } });
-    var statsW = statPill("This week", String(counts[counts.length - 1])) +
+    var statsW = statPill("Last 7 days", String(counts[counts.length - 1])) +
       statPill("Avg / week", fmt1(counts.reduce(function (a, b) { return a + b; }, 0) / counts.length) + "") +
       statPill("8-wk total", String(counts.reduce(function (a, b) { return a + b; }, 0))) +
       statPill("Total minutes", String(totalMin));
@@ -715,6 +715,7 @@ OF.dashboard = (function () {
 
     renderHero(readiness);
     renderStats();
+    if (OF.trainer && OF.trainer.refresh) { try { OF.trainer.refresh(); } catch (e) {} }
     renderTargets();
     renderCharts(sleep, food, exercise, body);
 

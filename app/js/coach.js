@@ -257,6 +257,11 @@ OF.coach = (function () {
       strength = { error: "strength engine failed: " + e.message };
     }
 
+    // Training program + today's prescribed session (the trainer plan).
+    var trainingPlan = null;
+    try { trainingPlan = OF.trainer ? OF.trainer.coachContext() : null; }
+    catch (e) { trainingPlan = null; }
+
     // Community benchmarks (P3-6): compact, clearly-labeled anonymized
     // aggregates from the in-memory cache only (never a network wait here;
     // ≤600 bytes, top-2 lifts). The on-device engine stays source of truth.
@@ -276,6 +281,7 @@ OF.coach = (function () {
       },
       goalCoaching: goalCoaching,
       adherence14d: adherence,
+      trainingPlan: trainingPlan,
       strengthTraining: strength,
       communityBenchmarks: communityBenchmarks,
       insights: insights,

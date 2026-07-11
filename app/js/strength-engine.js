@@ -548,12 +548,15 @@ OF.strength = (function () {
       var g = lib.muscleGroupFor(name);
       return groups[g] || (groups[g] = { group: g, volumeKg: 0, sets: 0, exLower: {}, trendSum: 0, trendW: 0 });
     }
-    // recent volume + set counts per group
+    // recent volume + set counts per group — only create a group from sessions
+    // INSIDE the 28-day window, so a body part you stopped training weeks ago
+    // doesn't leak a stale "0/wk (+x%/wk)" row or skew improving-elsewhere.
     Object.keys(col.byName).forEach(function (k) {
-      var e = col.byName[k], gg = bucket(e.name);
+      var e = col.byName[k];
       Object.keys(e.days).forEach(function (dn) {
         var s = e.days[dn];
         if (todayNum - s.day > BALANCE_WINDOW) return;
+        var gg = bucket(e.name);
         gg.volumeKg += s.volumeKg || 0;
         gg.sets += s.sets.length;
         gg.exLower[e.name.toLowerCase()] = true;

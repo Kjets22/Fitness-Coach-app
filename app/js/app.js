@@ -145,6 +145,7 @@ OF.app = (function () {
     OF.goals.init();
     OF.daily.init();
     OF.dashboard.init();
+    if (OF.trainer) OF.trainer.init(); // renders the "Today's session" card into the dashboard
     OF.insights.init();
     OF.coach.init();
     OF.settings.init();

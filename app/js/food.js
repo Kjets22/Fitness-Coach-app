@@ -170,12 +170,14 @@ OF.food = (function () {
     }
     var id = btn.getAttribute("data-id");
     if (btn.getAttribute("data-act") === "del") {
-      if (confirm("Delete this meal?")) {
-        S.remove("food", id);
-        if (els.editId.value === id) exitEditMode();
-        renderList();
-        OF.dashboard && OF.dashboard.refresh();
-      }
+      var doomed = S.get("food", id);
+      S.remove("food", id);
+      if (els.editId.value === id) exitEditMode();
+      renderList();
+      OF.dashboard && OF.dashboard.refresh();
+      if (doomed) U.undoDelete("food", doomed, "Meal", function () {
+        renderList(); OF.dashboard && OF.dashboard.refresh();
+      });
     } else {
       var rec = S.get("food", id);
       if (rec) enterEditMode(rec);

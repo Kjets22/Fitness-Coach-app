@@ -58,6 +58,8 @@ OF.exercise = (function () {
     els.hub = document.getElementById("workout-hub");
     els.active = document.getElementById("workout-active");
     els.list = document.getElementById("exercise-list");
+    // the in-progress pill + rest bar depend on which tab is visible
+    window.addEventListener("hashchange", function () { updateLivePill(); renderRestBar(); });
 
     // manual / edit form elements
     els.form = document.getElementById("exercise-form");
@@ -96,11 +98,13 @@ OF.exercise = (function () {
       sessType = a.type || "strength";
       activeStartedAt = a.startedAt;
       activeProgramDay = a.programDay;
+      restStart = a.restStart || null;
       mode = "active";
       renderActive();
     } else {
       showHub();
     }
+    updateLivePill();
   }
 
   /* Start a live session pre-loaded with the trainer's prescribed exercises
@@ -137,6 +141,7 @@ OF.exercise = (function () {
      ============================================================ */
   var activeStartedAt = 0;
   var activeProgramDay = null;   // set when the session was started from the trainer plan
+  var restStart = null;          // ms timestamp of the last set marked done -> rest timer
 
   function loadActive() {
     try {
@@ -149,11 +154,13 @@ OF.exercise = (function () {
         return {
           name: typeof ex.name === "string" ? ex.name : "",
           prefilled: !!ex.prefilled,
+          rx: typeof ex.rx === "string" ? ex.rx : null,   // keep the prescription across app restarts
           sets: (Array.isArray(ex.sets) ? ex.sets : []).map(reviveSet)
         };
       }).filter(function (ex) { return ex.name; });
       return { startedAt: o.startedAt, type: o.type || "strength", exList: list,
-        programDay: (typeof o.programDay === "number") ? o.programDay : null };
+        programDay: (typeof o.programDay === "number") ? o.programDay : null,
+        restStart: (typeof o.restStart === "number" && isFinite(o.restStart)) ? o.restStart : null };
     } catch (e) { return null; }
   }
 
@@ -161,7 +168,8 @@ OF.exercise = (function () {
     if (mode !== "active") return;
     try {
       localStorage.setItem(ACTIVE_KEY, JSON.stringify({
-        startedAt: activeStartedAt, type: sessType, exList: exList, programDay: activeProgramDay
+        startedAt: activeStartedAt, type: sessType, exList: exList, programDay: activeProgramDay,
+        restStart: restStart
       }));
     } catch (e) { /* storage full/blocked: session stays in memory */ }
   }
@@ -179,7 +187,7 @@ OF.exercise = (function () {
     var kg = v === null ? null : (isNaN(v) ? NaN : U.fromDisplayWeight(v));
     var r = U.numOrNull(rRaw);
     var reps = r === null ? null : (isNaN(r) ? NaN : Math.round(r));
-    return { kg: kg, reps: reps, wRaw: wRaw, rRaw: rRaw };
+    return { kg: kg, reps: reps, wRaw: wRaw, rRaw: rRaw, done: !!(s && s.done) };
   }
 
   /* ============================================================
@@ -286,7 +294,7 @@ OF.exercise = (function () {
   }
 
   function setRowHtml(i, j, s, unit) {
-    return '<div class="set-row">' +
+    return '<div class="set-row' + (s.done ? ' set-done-row' : '') + '">' +
       '<span class="set-num" aria-hidden="true">' + (j + 1) + '</span>' +
       '<input type="number" inputmode="decimal" step="0.5" min="0" ' +
         'value="' + U.esc(s.wRaw) + '" data-ex="' + i + '" data-set="' + j + '" data-field="w" ' +
@@ -295,6 +303,9 @@ OF.exercise = (function () {
       '<input type="number" inputmode="numeric" step="1" min="1" max="100" ' +
         'value="' + U.esc(s.rRaw) + '" data-ex="' + i + '" data-set="' + j + '" data-field="r" ' +
         'placeholder="reps" aria-label="Set ' + (j + 1) + ' reps">' +
+      '<button type="button" class="btn set-done' + (s.done ? ' on' : '') + '" data-act="done-set" data-ex="' + i +
+        '" data-set="' + j + '" aria-label="Mark set ' + (j + 1) + (s.done ? ' not done' : ' done') +
+        '" aria-pressed="' + (s.done ? 'true' : 'false') + '">✓</button>' +
       '<button type="button" class="btn set-del" data-act="del-set" data-ex="' + i +
         '" data-set="' + j + '" aria-label="Remove set ' + (j + 1) + '">&times;</button>' +
       '</div>';
@@ -319,7 +330,7 @@ OF.exercise = (function () {
         (ex.prefilled ? '<div class="ex-prefill-hint">' +
           (ex.rx ? 'From your plan — log what you actually do.'   // plan session: don't claim a "last session" that may never have happened
                  : 'Prefilled from your last session — tap to adjust.') + '</div>' : '') +
-        '<div class="set-head" aria-hidden="true"><span></span><span>' + U.esc(unit) + '</span><span>reps</span><span></span></div>' +
+        '<div class="set-head" aria-hidden="true"><span></span><span>' + U.esc(unit) + '</span><span></span><span>reps</span><span>done</span><span></span></div>' +
         rows +
         '<button type="button" class="btn set-add" data-act="add-set" data-ex="' + i + '">+ Add set</button>' +
         '</div>';
@@ -329,10 +340,21 @@ OF.exercise = (function () {
   /* Builder click actions (delegated). Returns true if handled. */
   function builderClick(btn) {
     var act = btn.getAttribute("data-act");
-    if (act !== "add-set" && act !== "del-set" && act !== "del-ex") return false;
+    if (act !== "add-set" && act !== "del-set" && act !== "del-ex" && act !== "done-set") return false;
     var i = parseInt(btn.getAttribute("data-ex"), 10);
     var ex = exList[i];
     if (!ex) return true;
+    if (act === "done-set") {
+      var dj = parseInt(btn.getAttribute("data-set"), 10);
+      var st = ex.sets[dj];
+      if (!st) return true;
+      st.done = !st.done;
+      restStart = st.done ? Date.now() : restStart;   // marking done starts the rest clock
+      saveActive();
+      renderBuilder();
+      renderRestBar();
+      return true;
+    }
     if (act === "add-set") {
       if (ex.sets.length >= MAX_SETS) { showError("Maximum " + MAX_SETS + " sets per exercise."); return true; }
       ex.sets.push(newSetFrom(ex.sets[ex.sets.length - 1]));
@@ -484,10 +506,59 @@ OF.exercise = (function () {
   }
 
   function startTick() { stopTick(); sessIntId = setInterval(tickElapsed, 1000); }
-  function stopTick() { if (sessIntId) { clearInterval(sessIntId); sessIntId = null; } }
+  function stopTick() { if (sessIntId) { clearInterval(sessIntId); sessIntId = null; } renderRestBar(); updateLivePill(); }
   function tickElapsed() {
     var el = document.getElementById("wo-elapsed");
     if (el) el.textContent = fmtElapsed(Date.now() - activeStartedAt);
+    renderRestBar();
+    updateLivePill();
+  }
+
+  /* ---------------- rest timer (counts UP from the last set marked done) ---------------- */
+
+  function renderRestBar() {
+    var bar = document.getElementById("rest-bar");
+    var onExerciseTab = !document.getElementById("tab-exercise").classList.contains("hidden");
+    var resting = mode === "active" && restStart != null && (Date.now() - restStart) < 10 * 60 * 1000;
+    if (!resting || !onExerciseTab || finish.open) { if (bar) bar.hidden = true; return; }
+    if (!bar) {
+      bar = document.createElement("button");
+      bar.id = "rest-bar"; bar.type = "button";
+      bar.setAttribute("aria-label", "Rest timer — tap to dismiss");
+      bar.addEventListener("click", function () {
+        restStart = null; saveActive(); renderRestBar();
+      });
+      document.body.appendChild(bar);
+    }
+    var sec = Math.floor((Date.now() - restStart) / 1000);
+    bar.innerHTML = '<span class="rest-lbl">Resting</span> <strong>' +
+      Math.floor(sec / 60) + ":" + String(sec % 60).padStart(2, "0") +
+      '</strong> <span class="rest-dismiss">· tap when you\'re back</span>';
+    bar.hidden = false;
+  }
+
+  /* ---------------- global "workout in progress" pill ---------------- */
+
+  function updateLivePill() {
+    var pill = document.getElementById("live-pill");
+    var live = mode === "active" && activeStartedAt > 0;
+    var onExerciseTab = !document.getElementById("tab-exercise").classList.contains("hidden");
+    if (!live || onExerciseTab) { if (pill) pill.hidden = true; return; }
+    if (!pill) {
+      pill = document.createElement("button");
+      pill.id = "live-pill"; pill.type = "button";
+      pill.setAttribute("aria-label", "Workout in progress — tap to return");
+      pill.addEventListener("click", function () {
+        if (location.hash === "#exercise") { if (OF.app) OF.app.showTab("exercise"); }
+        else location.hash = "#exercise";
+        updateLivePill();   // same-hash path fires no hashchange — hide immediately
+        renderRestBar();
+      });
+      document.body.appendChild(pill);
+    }
+    pill.innerHTML = '<span class="live-pill-dot" aria-hidden="true"></span>Workout in progress · ' +
+      fmtElapsed(Date.now() - activeStartedAt) + ' ▸';
+    pill.hidden = false;
   }
 
   function startSession() {
@@ -512,8 +583,10 @@ OF.exercise = (function () {
     clearActive();
     exList = [];
     activeProgramDay = null;
+    restStart = null;
     finish.open = false;
     showHub();
+    updateLivePill();
   }
 
   /* ---- finish step (ratings live HERE, at the end) ---- */
@@ -597,6 +670,7 @@ OF.exercise = (function () {
     }
     var prs = detectPRs(rec.exercises || []);
     activeProgramDay = null;
+    restStart = null;
     stopTick();
     clearActive();
     exList = [];
@@ -1023,13 +1097,16 @@ OF.exercise = (function () {
   function onHistoryClick(btn) {
     var id = btn.getAttribute("data-id");
     if (btn.getAttribute("data-act") === "del") {
-      if (confirm("Delete this workout?")) {
-        S.remove("exercise", id);
-        rebuildPrMeta();   // deleting (e.g. a typo'd entry) must free up its PR high-water mark
-        if (els.editId && els.editId.value === id) closeManual();
-        renderList();
-        OF.dashboard && OF.dashboard.refresh();
-      }
+      var doomed = S.get("exercise", id);
+      S.remove("exercise", id);
+      rebuildPrMeta();   // deleting (e.g. a typo'd entry) must free up its PR high-water mark
+      if (els.editId && els.editId.value === id) closeManual();
+      renderList();
+      OF.dashboard && OF.dashboard.refresh();
+      if (doomed) U.undoDelete("exercise", doomed, "Workout", function () {
+        rebuildPrMeta();
+        renderList(); OF.dashboard && OF.dashboard.refresh();
+      });
     } else {
       // The manual editor shares its exercise-builder state with the live
       // logger — opening it mid-session would clobber the running workout.

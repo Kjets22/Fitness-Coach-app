@@ -498,6 +498,12 @@ input[type="checkbox"], input[type="radio"] { -webkit-appearance: auto; appearan
 .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
 .toast-warn { border-color: var(--warn); }
 .toast-ok { border-color: var(--accent-2); }  /* success must not wear the danger border */
+.toast-action {
+  margin-left: 12px; padding: 6px 14px; min-height: 34px;
+  background: var(--card); border: 1px solid var(--card-edge);
+  border-radius: var(--r-sm); color: var(--accent);
+  font: inherit; font-weight: 700; cursor: pointer;
+}
 
 /* ---------- 8. History lists ---------- */
 .list-heading { margin: var(--sp-5) 0 var(--sp-3); font-size: 0.82rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-dim); }
@@ -1657,11 +1663,50 @@ body.metric-modal-open { overflow: hidden; }
 .ex-item-name { font-weight: 650; font-size: 0.95rem; overflow-wrap: anywhere; }
 .set-row {
   display: grid;
-  grid-template-columns: 20px minmax(90px, 1fr) auto minmax(70px, 1fr) 44px;
-  gap: 8px;
+  grid-template-columns: 20px minmax(80px, 1fr) auto minmax(64px, 1fr) 44px 44px;
+  gap: 6px;
   align-items: center;
   margin-bottom: 6px;
 }
+.set-row.set-done-row input { opacity: 0.55; }
+.set-done {
+  min-height: 44px; border-radius: var(--r-sm);
+  background: var(--card-2); border: 1px solid var(--card-edge);
+  color: var(--text-dim); font-weight: 800;
+}
+.set-done.on { background: var(--accent-2); border-color: var(--accent-2); color: #fff; }
+
+/* Rest timer strip — counts up from the last completed set */
+#rest-bar {
+  position: fixed; left: 50%; transform: translateX(-50%);
+  bottom: calc(84px + env(safe-area-inset-bottom, 0px));
+  z-index: 240; min-height: 44px; padding: 10px 18px;
+  background: var(--card-2); border: 1px solid var(--accent-2);
+  border-radius: 999px; color: var(--text); font-size: 0.88rem;
+  cursor: pointer; -webkit-tap-highlight-color: transparent;
+  font-variant-numeric: tabular-nums;
+}
+#rest-bar[hidden] { display: none; }
+#rest-bar .rest-dismiss { color: var(--text-dim); font-size: 0.78rem; }
+
+/* Global "workout in progress" pill (all tabs except the logger) */
+#live-pill {
+  position: fixed; left: 50%; transform: translateX(-50%);
+  bottom: calc(84px + env(safe-area-inset-bottom, 0px));
+  z-index: 240; display: flex; align-items: center; gap: 8px;
+  min-height: 44px; padding: 10px 18px;
+  background: var(--card-2); border: 1px solid var(--accent);
+  border-radius: 999px; color: var(--text); font-weight: 700; font-size: 0.85rem;
+  cursor: pointer; -webkit-tap-highlight-color: transparent;
+  font-variant-numeric: tabular-nums;
+}
+#live-pill[hidden] { display: none; }
+.live-pill-dot {
+  width: 8px; height: 8px; border-radius: 50%; background: var(--accent-2);
+  animation: livepulse 1.4s ease-in-out infinite;
+}
+@keyframes livepulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.35; } }
+@media (prefers-reduced-motion: reduce) { .live-pill-dot { animation: none; } }
 .set-num { color: var(--text-dim); font-size: 0.78rem; font-weight: 600; text-align: right; }
 .set-x { color: var(--text-dim); font-size: 0.82rem; white-space: nowrap; }
 .set-del {
@@ -1736,8 +1781,8 @@ body.metric-modal-open { overflow: hidden; }
 }
 .set-head {
   display: grid;
-  grid-template-columns: 20px minmax(90px, 1fr) auto minmax(70px, 1fr) 44px;
-  gap: 8px; margin-bottom: 4px;
+  grid-template-columns: 20px minmax(80px, 1fr) auto minmax(64px, 1fr) 44px 44px;  /* keep in sync with .set-row */
+  gap: 6px; margin-bottom: 4px;
   font-size: 0.68rem; font-weight: 700; letter-spacing: 0.04em;
   text-transform: uppercase; color: var(--text-dim);
 }

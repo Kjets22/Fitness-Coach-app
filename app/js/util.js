@@ -82,7 +82,7 @@ OF.util = (function () {
    * Uses textContent, so the message is never interpreted as HTML.
    */
   var toastTimer = null;
-  function toast(message, kind) {
+  function toast(message, kind, action) {
     var el = document.getElementById("of-toast");
     if (!el) {
       el = document.createElement("div");
@@ -91,10 +91,41 @@ OF.util = (function () {
     }
     el.className = "toast " + (kind === "warn" ? "toast-warn" : kind === "ok" ? "toast-ok" : "toast-error");
     el.textContent = message;
+    // Optional action button (e.g. Undo after a delete): {label, fn}.
+    if (action && action.label && typeof action.fn === "function") {
+      var btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "toast-action";
+      btn.textContent = action.label;
+      btn.addEventListener("click", function () {
+        el.classList.remove("show");
+        if (toastTimer) clearTimeout(toastTimer);
+        try { action.fn(); } catch (e) { /* the restore itself must never throw into the toast */ }
+      });
+      el.appendChild(btn);
+    }
     // Force a restyle so back-to-back toasts still animate.
     el.classList.add("show");
     if (toastTimer) clearTimeout(toastTimer);
-    toastTimer = setTimeout(function () { el.classList.remove("show"); }, 6000);
+    toastTimer = setTimeout(function () { el.classList.remove("show"); }, action ? 8000 : 6000);
+  }
+
+  /** Delete-with-undo: show "<what> deleted" with an 8s Undo that restores the
+      record (as a fresh copy) and re-renders via onRestore. */
+  function undoDelete(type, rec, what, onRestore) {
+    toast(what + " deleted", "warn", {
+      label: "Undo",
+      fn: function () {
+        var copy = Object.assign({}, rec);
+        delete copy.id; delete copy.createdAt; delete copy.updatedAt;
+        if (OF.storage.add(type, copy)) {
+          toast(what + " restored", "ok");
+          if (onRestore) onRestore();
+        } else {
+          toast("Could not restore — storage is full or blocked.");
+        }
+      }
+    });
   }
 
   /**
@@ -210,6 +241,7 @@ OF.util = (function () {
     progressRing: progressRing,
     numOrNull: numOrNull,
     byNewest: byNewest,
-    muscleKg: muscleKg
+    muscleKg: muscleKg,
+    undoDelete: undoDelete
   };
 })();

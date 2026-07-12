@@ -167,12 +167,15 @@ OF.sleep = (function () {
     }
     var id = btn.getAttribute("data-id");
     if (btn.getAttribute("data-act") === "del") {
-      if (confirm("Delete this sleep entry?")) {
-        S.remove("sleep", id);
-        if (els.editId.value === id) exitEditMode();
-        renderList();
-        OF.dashboard && OF.dashboard.refresh();
-      }
+      var doomed = S.get("sleep", id);
+      S.remove("sleep", id);
+      if (els.editId.value === id) exitEditMode();
+      renderList();
+      OF.dashboard && OF.dashboard.refresh();
+      // no scary confirm — delete immediately, offer Undo instead
+      if (doomed) U.undoDelete("sleep", doomed, "Sleep entry", function () {
+        renderList(); OF.dashboard && OF.dashboard.refresh();
+      });
     } else {
       var rec = S.get("sleep", id);
       if (rec) enterEditMode(rec);

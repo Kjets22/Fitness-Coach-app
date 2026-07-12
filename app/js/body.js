@@ -186,12 +186,14 @@ OF.body = (function () {
     }
     var id = btn.getAttribute("data-id");
     if (btn.getAttribute("data-act") === "del") {
-      if (confirm("Delete this measurement?")) {
-        S.remove("body", id);
-        if (els.editId.value === id) exitEditMode();
-        renderList();
-        OF.dashboard && OF.dashboard.refresh();
-      }
+      var doomed = S.get("body", id);
+      S.remove("body", id);
+      if (els.editId.value === id) exitEditMode();
+      renderList();
+      OF.dashboard && OF.dashboard.refresh();
+      if (doomed) U.undoDelete("body", doomed, "Measurement", function () {
+        renderList(); OF.dashboard && OF.dashboard.refresh();
+      });
     } else {
       var rec = S.get("body", id);
       if (rec) enterEditMode(rec);

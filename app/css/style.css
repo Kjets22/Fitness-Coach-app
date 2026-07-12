@@ -439,7 +439,20 @@ input[type="checkbox"], input[type="radio"] { -webkit-appearance: auto; appearan
 .btn.danger:hover { filter: brightness(1.08); }
 .btn.ghost { background: transparent; border-color: transparent; color: var(--text-dim); }
 .btn.ghost:hover { color: var(--text); background: var(--bg-2); }
-.btn.mini { padding: 6px 12px; min-height: 36px; font-size: 0.8rem; border-radius: var(--r-sm); }
+.btn.mini { padding: 10px 13px; min-height: 44px; font-size: 0.8rem; border-radius: var(--r-sm); }  /* 44px = comfortable thumb target on iPhone */
+
+/* ---- tappable info elements (hero ring, streak chip, brief, value strip,
+   trainer exercise rows, history rows, summary strips): show a press state
+   so tappable things FEEL tappable on a touch screen ---- */
+[data-nav], .tr-ex, .entry[data-id], #sleep-summary, #food-summary, #body-summary {
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+[data-nav]:active, .tr-ex:active, .entry[data-id]:active,
+#sleep-summary:active, #food-summary:active, #body-summary:active {
+  opacity: 0.65;
+}
+.tr-ex:active { background: var(--card-2); }
 .btn.big { padding: 13px 24px; font-size: 1rem; }
 .btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
 .btn .ico { width: 18px; height: 18px; }

@@ -883,6 +883,17 @@ OF.exercise = (function () {
     // history list edit/delete
     var histBtn = t.closest && t.closest("#exercise-list button[data-act]");
     if (histBtn) { onHistoryClick(histBtn); return; }
+    // whole history row is tappable -> edit (same live-session guard as the button)
+    var histRow = t.closest && t.closest("#exercise-list .entry[data-id]");
+    if (histRow) {
+      if (mode === "active") {
+        U.toast("Finish or discard your live workout first, then edit past workouts.", "warn");
+        return;
+      }
+      var hrec = S.get("exercise", histRow.getAttribute("data-id"));
+      if (hrec) enterEditMode(hrec);
+      return;
+    }
 
     // clicking away closes the menu
     if (!(t.closest && t.closest(".ex-add"))) hideMenu();
@@ -1028,7 +1039,7 @@ OF.exercise = (function () {
       var sub = U.fmtDate(r.date) + " " + r.startTime +
         " · intensity " + r.intensity + "/5" + (r.notes ? " · " + r.notes : "");
       var perf = "perf " + r.performance + "/5";
-      return '<div class="entry">' +
+      return '<div class="entry" data-id="' + U.esc(r.id) + '" role="button" tabindex="0" title="Tap to edit">' +
         '<span class="entry-ico">' + OF.icons.get("dumbbell") + '</span>' +
         '<div class="entry-main">' +
           '<div class="entry-title">' + U.esc(title) + '</div>' +

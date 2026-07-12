@@ -107,12 +107,13 @@ OF.streak = (function () {
     return 0;
   }
 
-  /** Small flame chip for the dashboard hero. */
+  /** Small flame chip for the dashboard hero. Tappable — shows streak details. */
   function chipHtml() {
     var s = compute();
     if (s.current < 1) return "";
-    var frozen = s.loggedToday ? "" : ' title="Log today to extend your streak"';
-    return '<span class="streak-chip"' + frozen + '><span class="streak-flame" aria-hidden="true">🔥</span>' +
+    var title = s.loggedToday ? "Streak details" : "Log today to extend your streak";
+    return '<span class="streak-chip" data-nav="streak" role="button" tabindex="0" title="' + title + '">' +
+      '<span class="streak-flame" aria-hidden="true">🔥</span>' +
       '<span class="streak-num">' + s.current + '</span>' +
       '<span class="streak-lbl">day' + (s.current === 1 ? "" : "s") + '</span></span>';
   }

@@ -33,7 +33,7 @@ OF.dashboard = (function () {
     if (streakN >= 3) bits.push("kept a <strong>" + streakN + "-day</strong> streak");
     if (trialDays != null) {
       var val = bits.length ? "So far I've " + bits.slice(0, 2).join(" and ") + "." : "Your AI trainer, coach and photo tools are unlocked.";
-      el.innerHTML = '<div class="card value-strip">' +
+      el.innerHTML = '<div class="card value-strip" data-nav="insights" role="button" tabindex="0" title="See everything your trainer is tracking">' +
         '<div class="value-strip-head">✨ Premium trial — ' + trialDays + ' day' + (trialDays === 1 ? "" : "s") + ' left</div>' +
         '<p class="value-strip-body">' + val + ' Keep your always-on trainer, the AI coach and photo tools — for less than one session with a human PT a month.</p></div>';
       el.hidden = false;
@@ -56,7 +56,38 @@ OF.dashboard = (function () {
         }
       });
     }
+    // hero + value strip are informative AND tappable (ring -> insights,
+    // streak chip -> details, brief -> today's session)
+    if (heroEl) heroEl.addEventListener("click", onHeroNav);
+    var valueEl = document.getElementById("dash-value");
+    if (valueEl) valueEl.addEventListener("click", onHeroNav);
     refresh();
+  }
+
+  /** Delegated navigation for [data-nav] elements in the hero/value strip. */
+  function onHeroNav(e) {
+    var el = e.target.closest("[data-nav]");
+    if (!el) return;
+    var nav = el.getAttribute("data-nav");
+    if (nav === "streak") {
+      try {
+        var s = OF.streak.compute();
+        // freezesLeft accumulates internally on long streaks — surface it only
+        // as the simple promise it represents: one missed day can be covered
+        U.toast(s.current
+          ? "🔥 " + s.current + "-day streak · longest " + s.longest +
+            (s.loggedToday ? " · today ✓" : " — log anything today to keep it alive") +
+            (s.freezesLeft > 0 ? " · a freeze covers one missed day" : "")
+          : "Log anything today to start a streak — one entry a day keeps it alive.");
+      } catch (err) {}
+      return;
+    }
+    if (nav === "trainer") {
+      var tc = document.getElementById("dash-trainer");
+      if (tc) tc.scrollIntoView({ behavior: "smooth", block: "start" });
+      return;
+    }
+    OF.app.showTab(nav);
   }
 
   /* ---------------- date helpers ---------------- */
@@ -162,9 +193,9 @@ OF.dashboard = (function () {
       '<header class="hero">' +
       '<div class="hero-main"><div class="hero-greet-row"><h1 class="hero-greet">' + U.esc(greeting()) + '</h1>' + streakChip + '</div>' +
       '<p class="hero-date">' + U.esc(dateTxt) + '</p>' +
-      (brief ? '<p class="hero-brief">' + U.esc(brief) + '</p>' : '') + '</div>' +
-      '<div class="hero-ring" title="' +
-      U.esc(readiness && readiness.status === "ok" ? readiness.verdict : "Log a few nights of sleep to unlock your readiness score") +
+      (brief ? '<p class="hero-brief" data-nav="trainer" role="button" tabindex="0" title="Jump to today\'s session">' + U.esc(brief) + '</p>' : '') + '</div>' +
+      '<div class="hero-ring" data-nav="insights" role="button" tabindex="0" title="' +
+      U.esc((readiness && readiness.status === "ok" ? readiness.verdict : "Log a few nights of sleep to unlock your readiness score") + " — tap for insights") +
       '">' + ringHtml + '<span class="hero-ring-label">Readiness</span></div>' +
       '</header>';
     // celebrate a new streak milestone (once)

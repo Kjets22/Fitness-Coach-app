@@ -34,6 +34,13 @@ OF.body = (function () {
     els.form.addEventListener("submit", onSubmit);
     els.cancel.addEventListener("click", exitEditMode);
     els.list.addEventListener("click", onListClick);
+    if (els.summary) {
+      els.summary.setAttribute("title", "Tap to edit your latest measurement");
+      els.summary.addEventListener("click", function () {
+        var latest = S.getAll("body").slice().sort(U.byNewest)[0];
+        if (latest) enterEditMode(latest);
+      });
+    }
     renderList();
   }
 
@@ -156,7 +163,12 @@ OF.body = (function () {
 
   function onListClick(e) {
     var btn = e.target.closest("button[data-act]");
-    if (!btn) return;
+    if (!btn) {
+      // the whole row is tappable — tap anywhere on an entry to edit it
+      var row = e.target.closest(".entry[data-id]");
+      if (row) { var rrec = S.get("body", row.getAttribute("data-id")); if (rrec) enterEditMode(rrec); }
+      return;
+    }
     var id = btn.getAttribute("data-id");
     if (btn.getAttribute("data-act") === "del") {
       if (confirm("Delete this measurement?")) {
@@ -216,7 +228,7 @@ OF.body = (function () {
       var rMuscle = U.muscleKg(r);
       if (rMuscle != null) parts.push(U.fmtWeight(rMuscle) + " muscle");
       if (r.notes) parts.push(r.notes);
-      return '<div class="entry">' +
+      return '<div class="entry" data-id="' + U.esc(r.id) + '" role="button" tabindex="0" title="Tap to edit">' +
         '<span class="entry-ico">' + OF.icons.get("scale") + '</span>' +
         '<div class="entry-main">' +
           '<div class="entry-title">' + U.esc(U.fmtWeight(r.weightKg)) + '</div>' +

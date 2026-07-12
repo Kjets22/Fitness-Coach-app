@@ -483,7 +483,9 @@ OF.trainer = (function () {
     }
     var ns = nextSession();
     var rows = ns.exercises.map(function (ex) {
-      return '<div class="tr-ex"><span class="tr-ex-name">' + e(ex.name) + '</span>' +
+      return '<div class="tr-ex" data-tr="ask" data-exname="' + e(ex.name) + '" role="button" tabindex="0"' +
+        ' title="Ask your coach about ' + e(ex.name) + '">' +
+        '<span class="tr-ex-name">' + e(ex.name) + '</span>' +
         '<span class="tr-ex-rx">' + e(prescription(ex)) + '</span></div>';
     }).join("");
     var p = ns.program;
@@ -607,6 +609,18 @@ OF.trainer = (function () {
       var act = b.getAttribute("data-tr");
       if (act === "setup") { openIntake(); return; }
       if (act === "program") { openProgram(); return; }
+      if (act === "ask") {
+        // tap an exercise row -> coach tab with the question pre-typed (the
+        // user reviews and hits Send — never auto-fire an AI request)
+        if (OF.app) OF.app.showTab("coach");
+        var ci = document.getElementById("coach-input");
+        if (ci) {
+          ci.value = "Walk me through " + (b.getAttribute("data-exname") || "this exercise") +
+            " — form cues, and check my working weight for today.";
+          ci.focus();
+        }
+        return;
+      }
       if (act === "start") { closeModal(); startToday(); return; }
       if (act === "adapt") { closeModal(); startToday(b.getAttribute("data-mode")); return; }
       if (act === "skip") { skipDay(); renderCard(); return; }

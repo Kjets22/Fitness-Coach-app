@@ -35,6 +35,13 @@ OF.sleep = (function () {
     els.wake.addEventListener("input", updatePreview);
     // Event delegation for edit/delete buttons in the history list.
     els.list.addEventListener("click", onListClick);
+    if (els.summary) {
+      els.summary.setAttribute("title", "Tap to edit your latest entry");
+      els.summary.addEventListener("click", function () {
+        var latest = S.getAll("sleep").slice().sort(U.byNewest)[0];
+        if (latest) enterEditMode(latest);
+      });
+    }
     renderList();
   }
 
@@ -145,7 +152,12 @@ OF.sleep = (function () {
 
   function onListClick(e) {
     var btn = e.target.closest("button[data-act]");
-    if (!btn) return;
+    if (!btn) {
+      // the whole row is tappable — tap anywhere on an entry to edit it
+      var row = e.target.closest(".entry[data-id]");
+      if (row) { var rrec = S.get("sleep", row.getAttribute("data-id")); if (rrec) enterEditMode(rrec); }
+      return;
+    }
     var id = btn.getAttribute("data-id");
     if (btn.getAttribute("data-act") === "del") {
       if (confirm("Delete this sleep entry?")) {
@@ -189,7 +201,7 @@ OF.sleep = (function () {
     }
     els.list.innerHTML = arr.map(function (r) {
       var stars = "★".repeat(r.quality || 0) + "☆".repeat(Math.max(0, 5 - (r.quality || 0)));
-      return '<div class="entry">' +
+      return '<div class="entry" data-id="' + U.esc(r.id) + '" role="button" tabindex="0" title="Tap to edit">' +
         '<span class="entry-ico">' + OF.icons.get("moon") + '</span>' +
         '<div class="entry-main">' +
           '<div class="entry-title">' + U.esc(U.fmtDate(r.date)) + ' &mdash; ' +

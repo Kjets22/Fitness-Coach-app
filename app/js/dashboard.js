@@ -61,6 +61,7 @@ OF.dashboard = (function () {
     if (heroEl) heroEl.addEventListener("click", onHeroNav);
     var valueEl = document.getElementById("dash-value");
     if (valueEl) valueEl.addEventListener("click", onHeroNav);
+    if (targetsEl) targetsEl.addEventListener("click", onHeroNav);   // target rings navigate to the tab that closes the gap
     refresh();
   }
 
@@ -78,7 +79,7 @@ OF.dashboard = (function () {
           ? "🔥 " + s.current + "-day streak · longest " + s.longest +
             (s.loggedToday ? " · today ✓" : " — log anything today to keep it alive") +
             (s.freezesLeft > 0 ? " · a freeze covers one missed day" : "")
-          : "Log anything today to start a streak — one entry a day keeps it alive.");
+          : "Log anything today to start a streak — one entry a day keeps it alive.", "ok");
       } catch (err) {}
       return;
     }
@@ -201,7 +202,7 @@ OF.dashboard = (function () {
     // celebrate a new streak milestone (once)
     try {
       var ms = OF.streak && OF.streak.newMilestone ? OF.streak.newMilestone() : 0;
-      if (ms && U.toast) U.toast("🔥 " + ms + "-day streak! Keep it going.");
+      if (ms && U.toast) U.toast("🔥 " + ms + "-day streak! Keep it going.", "ok");
     } catch (e) {}
   }
 
@@ -270,7 +271,7 @@ OF.dashboard = (function () {
       '<div class="stat-value">' + valueHtml + '</div>' +
       (sub ? '<div class="stat-sub">' + U.esc(sub) + '</div>' : '') +
       (extras.spark || "") +
-      (extras.metric ? '<span class="stat-tap-hint" aria-hidden="true">View trend ›</span>' : '') +
+      (extras.metric ? '<span class="stat-tap-hint" aria-hidden="true">' + U.esc(extras.hint || "View trend ›") + '</span>' : '') +
     '</div>';
   }
 
@@ -407,7 +408,7 @@ OF.dashboard = (function () {
       card("Calories today",
         kcal ? String(Math.round(kcal)) + ' <span class="unit">kcal</span>' : '<span class="unit">&mdash;</span>',
         kcalSub, { chip: kChip, spark: kSpark, metric: "calories" }) +
-      card("Goal progress", goalHtml, goalSub);
+      card("Goal progress", goalHtml, goalSub, { metric: "goal", hint: "View goal ›" });   // the one dead tile in a tappable grid — now it opens the goal card
   }
 
   /* ---------------- tap-a-tile → trend detail modal ---------------- */
@@ -546,14 +547,18 @@ OF.dashboard = (function () {
 
   function onStatClick(e) {
     var t = e.target.closest("[data-metric]");
-    if (t) openMetricDetail(t.getAttribute("data-metric"));
+    if (!t) return;
+    var m = t.getAttribute("data-metric");
+    if (m === "goal") { OF.app.showTab("insights"); return; }   // the goal lives on Insights
+    openMetricDetail(m);
   }
 
   /* ---------------- "today vs targets" ring strip ---------------- */
 
-  function targetCell(label, valueTxt, frac, color) {
+  function targetCell(label, valueTxt, frac, color, tab) {
     var pct = Math.round(Math.max(0, Math.min(1.5, isFinite(frac) ? frac : 0)) * 100);
-    return '<div class="target-cell">' +
+    // each ring is tappable and takes you to the tab where you close the gap
+    return '<div class="target-cell"' + (tab ? ' data-nav="' + tab + '" role="button" tabindex="0" title="Log ' + U.esc(label.toLowerCase()) + '"' : '') + '>' +
       U.progressRing(frac, { size: 68, color: color, value: pct + "%" }) +
       '<div class="target-cell-label">' + U.esc(label) + '</div>' +
       '<div class="target-cell-val">' + U.esc(valueTxt) + '</div>' +
@@ -573,9 +578,12 @@ OF.dashboard = (function () {
     }
     var t = gi.targets;
     if (!t || t.status !== "ok") {
+      // never a dead end: the usual reason is "no weight yet" — give the
+      // button that fixes it right here
       targetsEl.innerHTML =
         '<div class="card placeholder-card"><h2>Today vs targets</h2>' +
-        '<p class="muted">' + U.esc(t && t.message ? t.message : "Targets unavailable.") + '</p></div>';
+        '<p class="muted">' + U.esc(t && t.message ? t.message : "Targets unavailable.") + '</p>' +
+        '<a class="btn primary" href="#body">Log your weight</a></div>';
       return;
     }
 
@@ -600,13 +608,13 @@ OF.dashboard = (function () {
 
     targetsEl.innerHTML =
       '<div class="card"><h2>Today vs targets</h2><div class="target-grid">' +
-      targetCell("Calories", Math.round(kcal) + " / " + t.calories + " kcal", kcalFrac, kcalColor) +
+      targetCell("Calories", Math.round(kcal) + " / " + t.calories + " kcal", kcalFrac, kcalColor, "food") +
       targetCell("Protein", Math.round(prot) + " / " + t.proteinG + " g",
-        prot / t.proteinG, prot >= t.proteinG ? "var(--accent-2)" : "var(--accent)") +
+        prot / t.proteinG, prot >= t.proteinG ? "var(--accent-2)" : "var(--accent)", "food") +
       targetCell("Water", U.toDisplayWater(waterMl) + " / " + U.fmtWater(t.waterMl),
-        waterMl / t.waterMl, waterMl >= t.waterMl ? "var(--accent-2)" : "var(--accent)") +
+        waterMl / t.waterMl, waterMl >= t.waterMl ? "var(--accent-2)" : "var(--accent)", "daily") +
       targetCell("Steps", steps.toLocaleString() + " / " + t.steps.toLocaleString(),
-        steps / t.steps, steps >= t.steps ? "var(--accent-2)" : "var(--accent)") +
+        steps / t.steps, steps >= t.steps ? "var(--accent-2)" : "var(--accent)", "daily") +
       '</div></div>';
   }
 

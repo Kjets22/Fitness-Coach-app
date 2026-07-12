@@ -89,7 +89,7 @@ OF.util = (function () {
       el.id = "of-toast";
       (document.body || document.documentElement).appendChild(el);
     }
-    el.className = "toast " + (kind === "warn" ? "toast-warn" : "toast-error");
+    el.className = "toast " + (kind === "warn" ? "toast-warn" : kind === "ok" ? "toast-ok" : "toast-error");
     el.textContent = message;
     // Force a restyle so back-to-back toasts still animate.
     el.classList.add("show");

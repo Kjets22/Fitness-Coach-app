@@ -78,6 +78,7 @@ OF.body = (function () {
 
   function readForm() {
     if (!els.date.value) return { err: "Please pick a date." };
+    if (els.date.value > U.todayISO()) return { err: "That date is in the future — measurements can only be logged for today or earlier." };
     var wDisp = U.numOrNull(els.weight.value);
     var lo = U.weightUnit() === "lb" ? 44 : 20;
     var hi = U.weightUnit() === "lb" ? 880 : 400;
@@ -96,11 +97,22 @@ OF.body = (function () {
       return { err: "Muscle mass must be between " + mLo + " and " + mHi + " " + U.weightUnit() + "." };
     }
     var mmKg = mmDisp !== null ? U.fromDisplayWeight(mmDisp) : null;
-    // Non-blocking sanity warning: muscle mass can't exceed body weight.
-    var warn = (mmKg !== null && mmKg > w)
-      ? "Heads up: muscle mass (" + U.fmtWeight(mmKg) + ") is more than your body weight (" +
-        U.fmtWeight(w) + ") — double-check the values."
-      : "";
+    // Non-blocking sanity warnings: muscle mass can't exceed body weight, and
+    // a weight that jumps >8% since the last entry is usually a typo (57 for
+    // 75) — it would silently rewrite calorie/water targets.
+    var warn = "";
+    if (mmKg !== null && mmKg > w) {
+      warn = "Heads up: muscle mass (" + U.fmtWeight(mmKg) + ") is more than your body weight (" +
+        U.fmtWeight(w) + ") — double-check the values.";
+    } else {
+      var prevRec = S.getAll("body").slice().sort(U.byNewest).filter(function (r) {
+        return r.id !== els.editId.value && isFinite(Number(r.weightKg));
+      })[0];
+      if (prevRec && Math.abs(w - prevRec.weightKg) / prevRec.weightKg > 0.08) {
+        warn = "Heads up: that's " + U.fmtWeight(w) + " vs " + U.fmtWeight(prevRec.weightKg) +
+          " last time — double-check for a typo (saved anyway).";
+      }
+    }
     return {
       warn: warn,
       rec: {
@@ -114,11 +126,14 @@ OF.body = (function () {
     };
   }
 
+  var lastSaveAt = 0;   // double-tap guard (same as sleep.js)
   function onSubmit(e) {
     e.preventDefault();
+    if (Date.now() - lastSaveAt < 800) return;
     var r = readForm();
     if (r.err) { showError(r.err); return; }
     showError("");
+    lastSaveAt = Date.now();
     var editId = els.editId.value;
     if (editId) {
       if (!S.update("body", editId, r.rec)) {

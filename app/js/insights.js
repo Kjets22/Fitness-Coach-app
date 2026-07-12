@@ -619,7 +619,7 @@ OF.insights = (function () {
         '<div class="empty-state">' + OF.icons.badge("sparkles") +
         '<p>Log sleep, meals, workouts and body metrics — or load demo data — and this tab ' +
         'tells you when to train, when to rest, what to eat and how much to sleep.</p>' +
-        '<a class="btn primary" href="#settings">Load demo data</a></div></div>';
+        '<button type="button" class="btn primary" data-load-demo>Load demo data</button></div></div>';
       return;
     }
 

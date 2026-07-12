@@ -194,7 +194,7 @@ OF.onboarding = (function () {
       hide();
       if (OF.settings) OF.settings.refreshAll();
       U.toast("Demo data loaded: " + (c.sleep + c.food + c.exercise + c.body + c.water + c.steps) +
-        " records across ~60 days. Clear it any time in Settings.", "warn");
+        " records across ~60 days. Clear it any time in Settings.", "ok");
       if (OF.app) OF.app.showTab("dashboard");
       location.hash = "dashboard";
       return;

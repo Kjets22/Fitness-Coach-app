@@ -35,6 +35,8 @@ OF.food = (function () {
     els.form.addEventListener("submit", onSubmit);
     els.cancel.addEventListener("click", exitEditMode);
     els.list.addEventListener("click", onListClick);
+    var recentHost = document.getElementById("food-recent");
+    if (recentHost) recentHost.addEventListener("click", onRecentClick);
     if (els.summary) {
       els.summary.setAttribute("title", "Tap to edit your latest meal");
       els.summary.addEventListener("click", function () {
@@ -74,6 +76,7 @@ OF.food = (function () {
 
   function readForm() {
     if (!els.date.value) return { err: "Please pick a date." };
+    if (els.date.value > U.todayISO()) return { err: "That date is in the future — meals can only be logged for today or earlier." };
     if (!els.time.value) return { err: "Please enter a time." };
     var name = els.name.value.trim();
     if (!name) return { err: "Please enter a food or meal name." };
@@ -106,9 +109,11 @@ OF.food = (function () {
 
   function onSubmit(e) {
     e.preventDefault();
+    if (Date.now() - lastSaveAt < 800) return;   // double-tap saves the meal twice
     var r = readForm();
     if (r.err) { showError(r.err); return; }
     showError("");
+    lastSaveAt = Date.now();
     var editId = els.editId.value;
     if (editId) {
       if (!S.update("food", editId, r.rec)) {
@@ -152,6 +157,8 @@ OF.food = (function () {
     showError("");
     setDefaults();
   }
+
+  var lastSaveAt = 0;   // double-tap guard (same as sleep.js)
 
   function onListClick(e) {
     var btn = e.target.closest("button[data-act]");
@@ -203,7 +210,46 @@ OF.food = (function () {
       ' logged</span>';
   }
 
+  /** "Log again" chips: the user's recent distinct meals — most meals repeat,
+      so one tap prefills the whole form instead of retyping name + 4 macros. */
+  function renderRecent() {
+    var host = document.getElementById("food-recent");
+    if (!host) return;
+    var seen = Object.create(null), chips = [];
+    var arr = S.getAll("food").slice().sort(U.byNewest);
+    for (var i = 0; i < arr.length && chips.length < 6; i++) {
+      var r = arr[i];
+      var k = (r.foodName || "").trim().toLowerCase();
+      if (!k || seen[k]) continue;
+      seen[k] = true;
+      chips.push(r);
+    }
+    host.innerHTML = chips.length
+      ? '<div class="recent-chips"><span class="recent-lbl">Log again:</span>' +
+        chips.map(function (r) {
+          return '<button type="button" class="btn mini" data-recent="' + U.esc(r.id) + '">' +
+            U.esc((r.foodName || "").slice(0, 24)) + '</button>';
+        }).join("") + '</div>'
+      : "";
+  }
+
+  function onRecentClick(e) {
+    var b = e.target.closest("[data-recent]");
+    if (!b) return;
+    var r = S.get("food", b.getAttribute("data-recent"));
+    if (!r) return;
+    // prefill everything except date/time (those default to now)
+    els.name.value = r.foodName || "";
+    els.calories.value = r.calories != null ? r.calories : "";
+    els.protein.value = r.protein != null ? r.protein : "";
+    els.carbs.value = r.carbs != null ? r.carbs : "";
+    els.fat.value = r.fat != null ? r.fat : "";
+    if (r.mealType) els.mealType.value = r.mealType;
+    els.form.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+
   function renderList() {
+    renderRecent();
     renderSummary();
     var arr = S.getAll("food").slice().sort(U.byNewest);
     if (!arr.length) {

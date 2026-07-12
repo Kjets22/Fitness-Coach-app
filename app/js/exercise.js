@@ -117,6 +117,7 @@ OF.exercise = (function () {
       return {
         name: typeof ex.name === "string" ? ex.name : "",
         prefilled: true,
+        rx: typeof ex.rx === "string" ? ex.rx : null,   // prescription stays visible while logging
         sets: (Array.isArray(ex.sets) ? ex.sets : []).map(seedSet)
       };
     }).filter(function (ex) { return ex.name; });
@@ -314,7 +315,10 @@ OF.exercise = (function () {
           '<button type="button" class="btn set-del" data-act="del-ex" data-ex="' + i +
             '" aria-label="Remove ' + U.esc(ex.name) + '">Remove</button>' +
         '</div>' +
-        (ex.prefilled ? '<div class="ex-prefill-hint">Prefilled from your last session — tap to adjust.</div>' : '') +
+        (ex.rx ? '<div class="ex-rx">Target: ' + U.esc(ex.rx) + '</div>' : '') +
+        (ex.prefilled ? '<div class="ex-prefill-hint">' +
+          (ex.rx ? 'From your plan — log what you actually do.'   // plan session: don't claim a "last session" that may never have happened
+                 : 'Prefilled from your last session — tap to adjust.') + '</div>' : '') +
         '<div class="set-head" aria-hidden="true"><span></span><span>' + U.esc(unit) + '</span><span>reps</span><span></span></div>' +
         rows +
         '<button type="button" class="btn set-add" data-act="add-set" data-ex="' + i + '">+ Add set</button>' +
@@ -500,7 +504,10 @@ OF.exercise = (function () {
   }
 
   function discardSession() {
-    if (!confirm("Discard this workout? Nothing will be saved.")) return;
+    // say exactly what's being destroyed so a blind OK can't surprise anyone
+    var nSets = exList.reduce(function (n, ex) { return n + (ex.sets ? ex.sets.length : 0); }, 0);
+    var what = nSets > 0 ? "this workout and its " + nSets + " logged set" + (nSets === 1 ? "" : "s") : "this workout";
+    if (!confirm("Discard " + what + "? Nothing will be saved.")) return;
     stopTick();
     clearActive();
     exList = [];
@@ -678,7 +685,10 @@ OF.exercise = (function () {
     var hasPR = prs && prs.length;
     var hasChange = planResult && planResult.changes &&
       planResult.changes.some(function (c) { return c.kind === "added" || c.kind === "deloaded" || c.kind === "seeded"; });
-    if (!hasPR && !hasChange) return;   // nothing notable — don't interrupt with a modal
+    // The FIRST-EVER saved workout always gets a recap — a beginner's first
+    // session ending in silence is a churn moment, not a non-event.
+    var firstEver = S.getAll("exercise").length === 1;
+    if (!hasPR && !hasChange && !firstEver) return;   // nothing notable — don't interrupt with a modal
     var wTxtFn = function (kg) { return U.fmtWeight(kg, 1); };
     var body = "";
     if (prs && prs.length) {
@@ -701,6 +711,13 @@ OF.exercise = (function () {
       }
       if (planResult.nextName) body += '<p class="recap-next">Up next: <strong>' + U.esc(planResult.nextName) + '</strong></p>';
     }
+    if (!body && firstEver) {
+      var nSets2 = (rec.exercises || []).reduce(function (n, ex) { return n + (ex.sets ? ex.sets.length : 0); }, 0);
+      body = '<div class="recap-pr">🎉 First workout logged!</div>' +
+        '<p class="recap-generic">' + (rec.durationMin || 0) + ' min · ' + (rec.exercises || []).length +
+        ' exercise' + ((rec.exercises || []).length === 1 ? '' : 's') + (nSets2 ? ' · ' + nSets2 + ' sets' : '') +
+        '. Every session from here teaches the app what works for you.</p>';
+    }
     if (!body) body = '<p class="recap-generic">Logged. Every session counts — see you next time.</p>';
 
     var m = document.getElementById("recap-modal");
@@ -715,7 +732,7 @@ OF.exercise = (function () {
     m.querySelectorAll("[data-recap-close]").forEach(function (b) {
       b.addEventListener("click", function () { m.hidden = true; document.body.classList.remove("metric-modal-open"); });
     });
-    if (prs && prs.length) confettiBurst();
+    if ((prs && prs.length) || firstEver) confettiBurst();
   }
 
   /* ============================================================

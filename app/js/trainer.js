@@ -296,7 +296,9 @@ OF.trainer = (function () {
           reps: ex.repLow
         });
       }
-      return { name: ex.name, sets: sets };
+      // rx = the prescription line, shown inside the live logger so the
+      // target (sets x reps @ weight) stays visible while training
+      return { name: ex.name, sets: sets, rx: prescription(ex) };
     });
   }
 
@@ -416,6 +418,12 @@ OF.trainer = (function () {
     p.pointer = (p.pointer + 1) % p.days.length; save(p);
   }
 
+  /** Is a live logging session in progress? (Owned by exercise.js.) */
+  function hasLiveSession() {
+    try { return !!JSON.parse(localStorage.getItem("optimalfit.activeWorkout") || "null"); }
+    catch (e) { return false; }
+  }
+
   /* ---------------- compact block for the AI coach ---------------- */
   function coachContext() {
     var p = load();
@@ -495,14 +503,16 @@ OF.trainer = (function () {
         '<div class="tr-head">' +
           '<div><div class="tr-kicker">Today’s session</div>' +
           '<h2 class="tr-title">' + e(ns.name) + '</h2></div>' +
-          '<span class="tr-daychip">Day ' + (ns.dayIndex + 1) + '/' + p.days.length + '</span>' +
+          '<span class="tr-daychip" data-tr="program" role="button" tabindex="0" title="View the full program">Day ' + (ns.dayIndex + 1) + '/' + p.days.length + '</span>' +
         '</div>' +
         (note ? '<p class="tr-recovery ' + note.cls + '">' + e(note.text) + '</p>' : '') +
         '<div class="tr-exlist">' + rows + '</div>' +
         '<div class="tr-actions">' +
-          '<button type="button" class="btn primary tr-start" data-tr="start">Start this workout</button>' +
+          (hasLiveSession()
+            ? '<button type="button" class="btn primary tr-start" data-tr="resume">Resume workout ▸</button>'
+            : '<button type="button" class="btn primary tr-start" data-tr="start">Start this workout</button>') +
           '<button type="button" class="btn ghost" data-tr="program">Program</button>' +
-          '<button type="button" class="btn ghost mini" data-tr="skip" title="Skip to the next day">Skip</button>' +
+          '<button type="button" class="btn ghost mini" data-tr="skip" title="Skip to the next day">Skip day</button>' +
         '</div>' +
         '<div class="tr-adapt"><span class="tr-adapt-lbl">Adjust for today:</span>' +
           '<button type="button" class="btn mini" data-tr="adapt" data-mode="time">Short on time</button>' +
@@ -622,8 +632,45 @@ OF.trainer = (function () {
         return;
       }
       if (act === "start") { closeModal(); startToday(); return; }
-      if (act === "adapt") { closeModal(); startToday(b.getAttribute("data-mode")); return; }
-      if (act === "skip") { skipDay(); renderCard(); return; }
+      if (act === "resume") {
+        // jump back into the live session — setting an identical hash fires no
+        // hashchange, so switch the tab explicitly too
+        if (location.hash === "#exercise") { if (OF.app) OF.app.showTab("exercise"); }
+        else location.hash = "#exercise";
+        return;
+      }
+      if (act === "adapt") {
+        // PREVIEW the adapted session first — a curious tap must not
+        // instantly start a live, wall-clock workout
+        var mode = b.getAttribute("data-mode");
+        var ns2 = nextSession();
+        if (!ns2) return;
+        var adapted = adaptSession(ns2.dayIndex, mode);
+        var blurb = mode === "time" ? "Short on time: compounds first, at most 4 exercises, 3 sets each."
+          : mode === "travel" ? "Traveling: gym lifts swapped to dumbbell/bodyweight alternatives."
+          : "Sore / low energy: ~10% lighter and one fewer set per exercise.";
+        var list = adapted.map(function (ex2) {
+          return '<div class="tr-ex"><span class="tr-ex-name">' + e(ex2.name) + '</span>' +
+            '<span class="tr-ex-rx">' + ex2.sets.length + ' set' + (ex2.sets.length === 1 ? '' : 's') + '</span></div>';
+        }).join("");
+        modal("Adjusted: " + ns2.name,
+          '<p class="muted">' + e(blurb) + '</p><div class="tr-exlist">' + list + '</div>',
+          '<button type="button" class="btn primary" data-tr="start-adapted" data-mode="' + e(mode) + '">Start this version</button>' +
+          '<button type="button" class="btn ghost" data-tr-close>Cancel</button>');
+        return;
+      }
+      if (act === "start-adapted") { closeModal(); startToday(b.getAttribute("data-mode")); return; }
+      if (act === "skip") {
+        var before = nextSession();
+        skipDay();
+        var after = nextSession();
+        if (OF.util && before && after) {
+          OF.util.toast("Skipped " + before.name + " — next up: " + after.name +
+            ". Keep tapping Skip to cycle through the week.", "ok");
+        }
+        renderCard();
+        return;
+      }
       if (act === "generate") {
         createProgram(intake); closeModal(); renderCard();
         return;

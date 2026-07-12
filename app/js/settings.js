@@ -41,7 +41,8 @@ OF.settings = (function () {
         if (j && j.ok && j.phoneMode && Array.isArray(j.lanUrls) && j.lanUrls.length) {
           box.innerHTML = '<p class="muted small">Phone mode is ON. Open this on your phone:</p>' +
             j.lanUrls.map(function (u) {
-              return '<span class="phone-url">' + OF.util.esc(u) + '</span>';
+              // pill-shaped = looks tappable, so make it tappable: tap copies the URL
+              return '<button type="button" class="phone-url" data-copy-url="' + OF.util.esc(u) + '">' + OF.util.esc(u) + '</button>';
             }).join("") +
             '<p class="muted small">The AI coach pairing code is in the server window on the PC.</p>';
         } else if (j && j.ok) {
@@ -200,5 +201,18 @@ OF.settings = (function () {
   }
 
   // refreshAll: used by health-import after merging records.
-  return { init: init, refreshAll: refreshAllViews };
+  // Any "[data-load-demo]" button anywhere in the app (e.g. the Insights
+  // empty state) loads demo data DIRECTLY instead of dumping the user on the
+  // Settings tab to hunt for the same button again.
+  document.addEventListener("click", function (e) {
+    if (e.target.closest && e.target.closest("[data-load-demo]")) loadDemo();
+    var cp = e.target.closest && e.target.closest("[data-copy-url]");
+    if (cp && navigator.clipboard) {
+      navigator.clipboard.writeText(cp.getAttribute("data-copy-url"))
+        .then(function () { OF.util.toast("Address copied", "ok"); })
+        .catch(function () { /* clipboard unavailable — the URL is still visible */ });
+    }
+  });
+
+  return { init: init, refreshAll: refreshAllViews, loadDemo: loadDemo };
 })();

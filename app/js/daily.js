@@ -80,7 +80,7 @@ OF.daily = (function () {
     els.waterProgress.innerHTML =
       '<p class="daily-progress-line"><strong>' + U.esc(U.fmtWater(total)) + '</strong> of ' +
       U.esc(U.fmtWater(t.waterMl)) + ' today (' + Math.round(frac * 100) + '%)' +
-      (t.fromGoal ? '' : ' <span class="muted small">&mdash; default target; set a goal on Insights for a personal one</span>') +
+      (t.fromGoal ? '' : ' <span class="muted small">&mdash; default target; <a href="#insights">set a goal on Insights</a> for a personal one</span>') +
       '</p>' +
       U.progressBar(frac, frac >= 1 ? "var(--accent-2)" : "var(--accent)");
 
@@ -257,5 +257,13 @@ OF.daily = (function () {
     renderAll();
   }
 
-  return { init: init, renderAll: renderAll, refresh: renderAll, waterTodayMl: waterTodayMl, stepsRecordFor: stepsRecordFor };
+  /** One-tap glass from anywhere (the "+" sheet): first quick preset, unit-aware. */
+  function addQuickGlass() {
+    var q = (QUICK[U.waterUnit()] || QUICK.oz)[0];
+    addWater(q.ml);
+    return q.label.replace(/^\+/, "");
+  }
+
+  return { init: init, renderAll: renderAll, refresh: renderAll, waterTodayMl: waterTodayMl,
+           stepsRecordFor: stepsRecordFor, addWater: addWater, addQuickGlass: addQuickGlass };
 })();

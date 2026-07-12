@@ -47,8 +47,11 @@ OF.sleep = (function () {
 
   function setDefaults() {
     els.date.value = U.todayISO();
-    els.bed.value = "23:00";
-    els.wake.value = "07:00";
+    // default to the user's OWN usual times (last logged night), not a
+    // hardcoded 23:00/07:00 they have to correct every day
+    var last = S.getAll("sleep").slice().sort(U.byNewest)[0];
+    els.bed.value = (last && /^\d{1,2}:\d{2}$/.test(last.bedTime || "")) ? last.bedTime : "23:00";
+    els.wake.value = (last && /^\d{1,2}:\d{2}$/.test(last.wakeTime || "")) ? last.wakeTime : "07:00";
     els.quality.value = "3";
     els.notes.value = "";
     if (OF.ui) OF.ui.syncSegs(); // reflect onto the rating pills
@@ -70,6 +73,7 @@ OF.sleep = (function () {
     var bed = els.bed.value;
     var wake = els.wake.value;
     if (!date) return { err: "Please pick the wake-up date." };
+    if (date > U.todayISO()) return { err: "That date is in the future — sleep can only be logged for today or earlier." };
     if (!bed || U.timeToMinutes(bed) === null) return { err: "Please enter a valid bed time." };
     if (!wake || U.timeToMinutes(wake) === null) return { err: "Please enter a valid wake time." };
     var dur = U.sleepDurationMin(bed, wake);
@@ -118,6 +122,9 @@ OF.sleep = (function () {
       if (!S.add("sleep", r.rec)) {
         showError("Could not save — browser storage is full or blocked. Your entry was NOT saved.");
         return;
+      }
+      if (S.getAll("sleep").length === 1) {
+        U.toast("First night logged 🎉 — a few more and your readiness score unlocks.", "ok");
       }
       setDefaults();
     }

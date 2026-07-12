@@ -68,6 +68,14 @@ OF.app = (function () {
     sheet.addEventListener("click", function (e) {
       // backdrop / Cancel close it; tracker links route via their hash
       if (e.target.closest("[data-close-sheet]")) { closeSheet(); return; }
+      if (e.target.closest("#log-quick-water")) {
+        // one-tap glass, no tab switch — the single most frequent log
+        var label = OF.daily && OF.daily.addQuickGlass ? OF.daily.addQuickGlass() : null;
+        if (label && OF.util) OF.util.toast("💧 " + label + " logged", "ok");
+        if (OF.dashboard) OF.dashboard.refresh();
+        closeSheet();
+        return;
+      }
       if (e.target.closest(".sheet-item")) closeSheet();
     });
     document.addEventListener("keydown", function (e) {

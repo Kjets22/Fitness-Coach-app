@@ -11,6 +11,7 @@ OF.sleep = (function () {
   "use strict";
   var U = OF.util, S = OF.storage;
   var els = {};
+  var listLimit = 50;   // windowed history: render newest 50, expand on demand
 
   function init() {
     els.form = document.getElementById("sleep-form");
@@ -165,6 +166,7 @@ OF.sleep = (function () {
       if (row) { var rrec = S.get("sleep", row.getAttribute("data-id")); if (rrec) enterEditMode(rrec); }
       return;
     }
+    if (btn.getAttribute("data-act") === "show-more") { listLimit += 50; renderList(); return; }
     var id = btn.getAttribute("data-id");
     if (btn.getAttribute("data-act") === "del") {
       var doomed = S.get("sleep", id);
@@ -209,7 +211,8 @@ OF.sleep = (function () {
         '<p>No sleep logged yet — add last night above and your nights show up here.</p></div>';
       return;
     }
-    els.list.innerHTML = arr.map(function (r) {
+    var shown = arr.slice(0, listLimit);
+    els.list.innerHTML = shown.map(function (r) {
       var stars = "★".repeat(r.quality || 0) + "☆".repeat(Math.max(0, 5 - (r.quality || 0)));
       return '<div class="entry" data-id="' + U.esc(r.id) + '" role="button" tabindex="0" title="Tap to edit">' +
         '<span class="entry-ico">' + OF.icons.get("moon") + '</span>' +
@@ -225,7 +228,9 @@ OF.sleep = (function () {
           '<button class="btn mini danger" data-act="del" data-id="' + U.esc(r.id) + '">Delete</button>' +
         '</div>' +
       '</div>';
-    }).join("");
+    }).join("") + (arr.length > listLimit
+      ? '<button type="button" class="btn list-more" data-act="show-more">Show ' + Math.min(50, arr.length - listLimit) + ' more (' + (arr.length - listLimit) + ' older)</button>'
+      : "");
   }
 
   return { init: init, renderList: renderList };

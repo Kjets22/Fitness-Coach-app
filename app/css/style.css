@@ -1689,6 +1689,23 @@ body.metric-modal-open { overflow: hidden; }
 #rest-bar[hidden] { display: none; }
 #rest-bar .rest-dismiss { color: var(--text-dim); font-size: 0.78rem; }
 
+/* Stepper strip — keyboard accessory for set weight/reps inputs */
+#stepper-strip {
+  position: fixed; left: 50%; transform: translateX(-50%);
+  bottom: calc(84px + env(safe-area-inset-bottom, 0px));
+  z-index: 245; display: flex; align-items: center; gap: 14px;
+  padding: 6px 10px;
+  background: var(--card-2); border: 1px solid var(--card-edge);
+  border-radius: 999px;
+}
+#stepper-strip[hidden] { display: none; }
+#stepper-strip button {
+  width: 52px; height: 44px; font-size: 1.3rem; font-weight: 800;
+  background: var(--card); border: 1px solid var(--card-edge);
+  border-radius: var(--r-sm); color: var(--accent); cursor: pointer;
+}
+#stepper-strip .stepper-lbl { font-size: 0.78rem; color: var(--text-dim); min-width: 64px; text-align: center; }
+
 /* Global "workout in progress" pill (all tabs except the logger) */
 #live-pill {
   position: fixed; left: 50%; transform: translateX(-50%);
@@ -2510,3 +2527,8 @@ body.metric-modal-open { overflow: hidden; }
 .value-strip-body { margin: 0; font-size: 0.85rem; line-height: 1.45; color: var(--text); }
 .value-strip-soft { border-color: var(--card-edge); background: var(--bg-2); }
 .value-strip-soft .value-strip-body { color: var(--text-dim); }
+
+/* "Show more" at the bottom of windowed history lists */
+.list-more { display: block; width: 100%; min-height: 44px; margin-top: 8px;
+  background: var(--card); border: 1px dashed var(--card-edge);
+  border-radius: var(--r-sm); color: var(--accent); font-weight: 600; }

@@ -14,6 +14,7 @@ OF.body = (function () {
   "use strict";
   var U = OF.util, S = OF.storage;
   var els = {};
+  var listLimit = 50;   // windowed history: render newest 50, expand on demand
 
   function init() {
     els.form = document.getElementById("body-form");
@@ -184,6 +185,7 @@ OF.body = (function () {
       if (row) { var rrec = S.get("body", row.getAttribute("data-id")); if (rrec) enterEditMode(rrec); }
       return;
     }
+    if (btn.getAttribute("data-act") === "show-more") { listLimit += 50; renderList(); return; }
     var id = btn.getAttribute("data-id");
     if (btn.getAttribute("data-act") === "del") {
       var doomed = S.get("body", id);
@@ -239,7 +241,8 @@ OF.body = (function () {
         '<p>No measurements logged yet — a couple of weigh-ins per week is plenty.</p></div>';
       return;
     }
-    els.list.innerHTML = arr.map(function (r) {
+    var shown = arr.slice(0, listLimit);
+    els.list.innerHTML = shown.map(function (r) {
       var parts = [];
       if (r.bodyFatPct != null) parts.push(r.bodyFatPct + "% fat");
       var rMuscle = U.muscleKg(r);
@@ -257,7 +260,9 @@ OF.body = (function () {
           '<button class="btn mini danger" data-act="del" data-id="' + U.esc(r.id) + '">Delete</button>' +
         '</div>' +
       '</div>';
-    }).join("");
+    }).join("") + (arr.length > listLimit
+      ? '<button type="button" class="btn list-more" data-act="show-more">Show ' + Math.min(50, arr.length - listLimit) + ' more (' + (arr.length - listLimit) + ' older)</button>'
+      : "");
   }
 
   return { init: init, renderList: renderList };

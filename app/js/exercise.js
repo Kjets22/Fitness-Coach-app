@@ -31,6 +31,7 @@ OF.exercise = (function () {
   "use strict";
   var U = OF.util, S = OF.storage;
   var els = {};
+  var listLimit = 50;   // windowed history: render newest 50, expand on demand
 
   var MAX_EXERCISES = 30, MAX_SETS = 30;
   var ACTIVE_KEY = "optimalfit.activeWorkout";
@@ -60,6 +61,20 @@ OF.exercise = (function () {
     els.list = document.getElementById("exercise-list");
     // the in-progress pill + rest bar depend on which tab is visible
     window.addEventListener("hashchange", function () { updateLivePill(); renderRestBar(); });
+    // stepper strip follows focus between set weight/reps inputs
+    document.addEventListener("focusin", function (ev) {
+      var t = ev.target;
+      if (t && t.hasAttribute && t.hasAttribute("data-field") && mode === "active") updateStepper(t);
+      else updateStepper(null);
+    });
+    document.addEventListener("focusout", function (ev) {
+      // hide only when focus truly left a set input (mousedown on the strip
+      // itself is prevented, so it never steals focus)
+      setTimeout(function () {
+        var a = document.activeElement;
+        if (!a || !a.hasAttribute || !a.hasAttribute("data-field")) updateStepper(null);
+      }, 50);
+    });
 
     // manual / edit form elements
     els.form = document.getElementById("exercise-form");
@@ -540,6 +555,60 @@ OF.exercise = (function () {
     if (el) el.textContent = fmtElapsed(Date.now() - activeStartedAt);
     renderRestBar();
     updateLivePill();
+  }
+
+  /* ---------------- stepper strip (keyboard accessory for set inputs) ----------------
+     Flanking +/- buttons don't fit the 375px set grid; instead, focusing any
+     weight/reps input shows a slim strip with unit-aware -/+ buttons so a
+     lifter can bump 60 -> 62.5 without a keyboard round-trip. */
+  var stepperTarget = null;
+
+  function stepperStrip() {
+    var el = document.getElementById("stepper-strip");
+    if (!el) {
+      el = document.createElement("div");
+      el.id = "stepper-strip";
+      el.innerHTML = '<button type="button" data-step="-1" aria-label="Decrease">−</button>' +
+        '<span class="stepper-lbl"></span>' +
+        '<button type="button" data-step="1" aria-label="Increase">+</button>';
+      // mousedown (not click) + preventDefault so the input keeps focus
+      el.addEventListener("mousedown", function (ev) {
+        var b = ev.target.closest("[data-step]");
+        if (!b) return;
+        ev.preventDefault();
+        applyStep(parseInt(b.getAttribute("data-step"), 10));
+      });
+      document.body.appendChild(el);
+    }
+    return el;
+  }
+
+  function stepSizeFor(inp) {
+    if (inp.getAttribute("data-field") === "r") return 1;
+    return U.weightUnit() === "lb" ? 5 : 2.5;   // one small plate pair
+  }
+
+  function applyStep(dir) {
+    // prefer the ACTUALLY-focused set input; fall back to the last-known one
+    var a = document.activeElement;
+    var inp = (a && a.hasAttribute && a.hasAttribute("data-field")) ? a : stepperTarget;
+    if (!inp || !document.body.contains(inp)) return;
+    var step = stepSizeFor(inp);
+    var v = U.numOrNull(inp.value);
+    var cur = (v == null || isNaN(v)) ? 0 : v;
+    var next = Math.max(0, Math.round((cur + dir * step) * 100) / 100);
+    if (inp.getAttribute("data-field") === "r") next = Math.max(1, Math.round(next));
+    inp.value = String(next);
+    builderInput(inp);   // sync exList state + saveActive
+  }
+
+  function updateStepper(inp) {
+    var el = stepperStrip();
+    if (!inp) { el.hidden = true; stepperTarget = null; return; }
+    stepperTarget = inp;
+    el.querySelector(".stepper-lbl").textContent =
+      inp.getAttribute("data-field") === "r" ? "± 1 rep" : "± " + stepSizeFor(inp) + " " + U.weightUnit();
+    el.hidden = false;
   }
 
   /* ---------------- rest timer (counts UP from the last set marked done) ---------------- */
@@ -1128,6 +1197,7 @@ OF.exercise = (function () {
   }
 
   function onHistoryClick(btn) {
+    if (btn.getAttribute("data-act") === "show-more") { listLimit += 50; renderList(); return; }
     var id = btn.getAttribute("data-id");
     if (btn.getAttribute("data-act") === "del") {
       var doomed = S.get("exercise", id);
@@ -1160,7 +1230,8 @@ OF.exercise = (function () {
         '<p>No workouts logged yet — start one above and your training history shows up here.</p></div>';
       return;
     }
-    els.list.innerHTML = arr.map(function (r) {
+    var shown = arr.slice(0, listLimit);
+    els.list.innerHTML = shown.map(function (r) {
       var t0 = r.type || "other";
       var title = t0.charAt(0).toUpperCase() + t0.slice(1) + " · " + r.durationMin + " min";
       var sub = U.fmtDate(r.date) + " " + r.startTime +
@@ -1179,7 +1250,9 @@ OF.exercise = (function () {
           '<button class="btn mini danger" data-act="del" data-id="' + U.esc(r.id) + '">Delete</button>' +
         '</div>' +
       '</div>';
-    }).join("");
+    }).join("") + (arr.length > listLimit
+      ? '<button type="button" class="btn list-more" data-act="show-more">Show ' + Math.min(50, arr.length - listLimit) + ' more (' + (arr.length - listLimit) + ' older)</button>'
+      : "");
   }
 
   /* ============================================================

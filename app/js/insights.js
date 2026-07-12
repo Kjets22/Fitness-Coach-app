@@ -55,9 +55,12 @@ OF.insights = (function () {
     var hasTargets = gi && gi.targets && gi.targets.status === "ok";
     if (hasTargets) {
       var t = gi.targets;
+      // sleep is deliberately NOT listed here — the plan text above gives the
+      // personal sleep target, and two different sleep numbers on one card
+      // read as a contradiction
       targetsLine = "<br>" + e("Daily targets for your goal (" + t.label.toLowerCase() + "): " +
         t.calories + " kcal · " + t.proteinG + "g protein · " + U.fmtWater(t.waterMl) +
-        " water · " + t.steps.toLocaleString() + " steps · " + t.sleepH + "h sleep.");
+        " water · " + t.steps.toLocaleString() + " steps.");
     }
     if (r.plan.status !== "ok") {
       return card("Weekly plan", needTag(), e(r.plan.message),

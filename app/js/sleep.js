@@ -73,7 +73,7 @@ OF.sleep = (function () {
     var bed = els.bed.value;
     var wake = els.wake.value;
     if (!date) return { err: "Please pick the wake-up date." };
-    if (date > U.todayISO()) return { err: "That date is in the future — sleep can only be logged for today or earlier." };
+    if (date > U.maxLogDateISO()) return { err: "That date is too far in the future — sleep can only be logged for today or earlier." };
     if (!bed || U.timeToMinutes(bed) === null) return { err: "Please enter a valid bed time." };
     if (!wake || U.timeToMinutes(wake) === null) return { err: "Please enter a valid wake time." };
     var dur = U.sleepDurationMin(bed, wake);

@@ -29,6 +29,13 @@ OF.settings = (function () {
   function initPhoneInfo() {
     var box = document.getElementById("phone-info");
     if (!box) return;
+    // Inside the native iPhone app these desktop instructions are noise —
+    // the user IS on their phone.
+    if (window.Capacitor && Capacitor.isNativePlatform && Capacitor.isNativePlatform()) {
+      var card = box.closest(".card");
+      if (card) card.hidden = true; else box.innerHTML = "";
+      return;
+    }
     if (location.protocol !== "http:" && location.protocol !== "https:") {
       // file:// — no server to ask; the static instructions above suffice.
       box.innerHTML = '<p class="muted small"><em>No server detected (you opened the app ' +

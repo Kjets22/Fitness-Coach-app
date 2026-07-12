@@ -199,6 +199,17 @@ OF.storage = (function () {
   var PHYS_CONFIDENCE = ["low", "medium", "high"];
   var PHYS_REGIONS = ["shoulders", "chest", "arms", "back", "core", "legs"];
 
+  /** A REAL calendar date within sane bounds — "2026-02-30", "9999-12-31"
+      and month 13 all poisoned charts/aggregations when imported. */
+  function isRealDate(str) {
+    var m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(str);
+    if (!m) return false;
+    var y = +m[1], mo = +m[2], d = +m[3];
+    if (y < 2000 || y > new Date().getFullYear() + 1) return false;
+    var dt = new Date(Date.UTC(y, mo - 1, d));
+    return dt.getUTCFullYear() === y && dt.getUTCMonth() === mo - 1 && dt.getUTCDate() === d;
+  }
+
   /** Lenient numeric coercion for imported fields: number, or null. */
   function coerceNum(v) {
     if (v === "" || v == null) return null;
@@ -354,7 +365,7 @@ OF.storage = (function () {
    */
   function normalizeRecord(type, r) {
     if (!r || typeof r !== "object" || Array.isArray(r)) return null;
-    if (typeof r.date !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(r.date)) return null;
+    if (typeof r.date !== "string" || !isRealDate(r.date)) return null;
     var rec = Object.assign({}, r);
     if (rec.id != null && typeof rec.id !== "string") rec.id = String(rec.id);
     (NUM_FIELDS[type] || []).forEach(function (f) { rec[f] = clampNum(type, f, coerceNum(rec[f])); });   // guard: a type without a field list must never crash the whole import
@@ -466,7 +477,7 @@ OF.storage = (function () {
             else localStorage.setItem(key(t), snapshot[t]);
           } catch (e) { /* best-effort rollback */ }
         });
-        throw new Error("Browser storage is full or blocked — the imported data was NOT saved. Your existing data was left unchanged.");
+        throw new Error("Browser storage is full or blocked — the imported data was NOT saved. Your previous data was restored where possible; check your lists before trusting counts.");
       }
     } else {
       var writeFailed = false;
@@ -493,6 +504,13 @@ OF.storage = (function () {
       APPSTATE_KEYS.forEach(function (k) {
         var v = appState[k];
         if (v == null || typeof v !== "object") return;
+        // a malformed trainerProgram would crash every render that touches it
+        if (k === "trainerProgram") {
+          var okShape = !Array.isArray(v) && Array.isArray(v.days) && v.days.length > 0 &&
+            typeof v.pointer === "number" &&
+            v.days.every(function (d) { return d && Array.isArray(d.slots); });
+          if (!okShape) return;
+        }
         var existing = null;
         try { existing = localStorage.getItem(PREFIX + k); } catch (e) {}
         if (!replace && existing) return;

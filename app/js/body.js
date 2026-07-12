@@ -78,7 +78,7 @@ OF.body = (function () {
 
   function readForm() {
     if (!els.date.value) return { err: "Please pick a date." };
-    if (els.date.value > U.todayISO()) return { err: "That date is in the future — measurements can only be logged for today or earlier." };
+    if (els.date.value > U.maxLogDateISO()) return { err: "That date is too far in the future — measurements can only be logged for today or earlier." };
     var wDisp = U.numOrNull(els.weight.value);
     var lo = U.weightUnit() === "lb" ? 44 : 20;
     var hi = U.weightUnit() === "lb" ? 880 : 400;

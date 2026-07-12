@@ -93,6 +93,17 @@ OF.exercise = (function () {
   /* On load: resume a live session if one was in progress, else show the hub. */
   function restoreOrHub() {
     var a = loadActive();
+    // A live session >20h old is almost never something the user means to
+    // continue — after 3 weeks away, resuming it would merge today's lifting
+    // into a record dated weeks in the past.
+    if (a && (Date.now() - a.startedAt) > 20 * 3600 * 1000) {
+      var when = new Date(a.startedAt);
+      if (!confirm("Found an unfinished workout from " + when.toLocaleDateString() +
+          ". Keep it? (It saves with that original date.) Cancel discards it.")) {
+        clearActive();
+        a = null;
+      }
+    }
     if (a) {
       exList = a.exList || [];
       sessType = a.type || "strength";
@@ -155,6 +166,7 @@ OF.exercise = (function () {
           name: typeof ex.name === "string" ? ex.name : "",
           prefilled: !!ex.prefilled,
           rx: typeof ex.rx === "string" ? ex.rx : null,   // keep the prescription across app restarts
+          touched: !!ex.touched,                          // "actually worked on" survives restarts too
           sets: (Array.isArray(ex.sets) ? ex.sets : []).map(reviveSet)
         };
       }).filter(function (ex) { return ex.name; });
@@ -349,6 +361,7 @@ OF.exercise = (function () {
       var st = ex.sets[dj];
       if (!st) return true;
       st.done = !st.done;
+      ex.touched = true;
       restStart = st.done ? Date.now() : restStart;   // marking done starts the rest clock
       saveActive();
       renderBuilder();
@@ -363,12 +376,22 @@ OF.exercise = (function () {
       if (ins.length) ins[ins.length - 1].focus();
     } else if (act === "del-set") {
       var j = parseInt(btn.getAttribute("data-set"), 10);
-      ex.sets.splice(j, 1);
-      if (!ex.sets.length) exList.splice(i, 1);
+      var removedSet = ex.sets.splice(j, 1)[0];
+      var exGone = !ex.sets.length;
+      if (exGone) exList.splice(i, 1);
       saveActive(); renderBuilder();
+      U.toast("Set removed", "warn", { label: "Undo", fn: function () {
+        if (exGone) { exList.splice(i, 0, ex); ex.sets = [removedSet]; }
+        else ex.sets.splice(j, 0, removedSet);
+        saveActive(); renderBuilder();
+      } });
     } else if (act === "del-ex") {
-      exList.splice(i, 1);
+      var removedEx = exList.splice(i, 1)[0];
       saveActive(); renderBuilder();
+      U.toast(removedEx.name + " removed", "warn", { label: "Undo", fn: function () {
+        exList.splice(i, 0, removedEx);
+        saveActive(); renderBuilder();
+      } });
     }
     return true;
   }
@@ -379,6 +402,7 @@ OF.exercise = (function () {
     var ex = exList[parseInt(inp.getAttribute("data-ex"), 10)];
     var s = ex && ex.sets[parseInt(inp.getAttribute("data-set"), 10)];
     if (!s) return true;
+    ex.touched = true;   // any edit marks the exercise as actually worked on
     if (inp.getAttribute("data-field") === "w") {
       s.wRaw = inp.value;
       var v = U.numOrNull(inp.value);
@@ -395,9 +419,13 @@ OF.exercise = (function () {
   /** Builder state -> storable exercises array (or {err}). */
   function readExercises() {
     if (!exList.length) return { list: null };
-    var out = [];
+    var out = [], skippedPrescribed = 0;
     for (var i = 0; i < exList.length && i < MAX_EXERCISES; i++) {
       var ex = exList[i], sets = [];
+      // A PRESCRIBED card the user never touched (no edits, no ✓, injured or
+      // skipped it) must not save as performed sets — phantom history was
+      // masking real stalls and even minting fake PRs from seeded weights.
+      if (ex.prefilled && ex.rx && !ex.touched) { skippedPrescribed++; continue; }
       for (var j = 0; j < ex.sets.length && j < MAX_SETS; j++) {
         var s = ex.sets[j];
         var wEmpty = !(s.wRaw && String(s.wRaw).trim() !== "");
@@ -420,7 +448,7 @@ OF.exercise = (function () {
       }
       if (sets.length) out.push({ name: ex.name.trim().slice(0, 80), sets: sets });
     }
-    return { list: out.length ? out : null };
+    return { list: out.length ? out : null, skippedPrescribed: skippedPrescribed };
   }
 
   /* ============================================================
@@ -446,7 +474,7 @@ OF.exercise = (function () {
   }
 
   function hideMenu() {
-    if (!builderHost) return;
+    if (!builderHost || !builderHost.parentNode) return;   // finish screen detaches the builder — a blank tap must not throw
     var menu = builderHost.parentNode.querySelector(".ex-add-menu");
     if (menu) menu.classList.add("hidden");
   }
@@ -642,6 +670,10 @@ OF.exercise = (function () {
   function saveSession() {
     var exs = readExercises();
     if (exs.err) { showError(exs.err); return; }
+    if (exs.skippedPrescribed) {
+      U.toast(exs.skippedPrescribed + " untouched exercise" + (exs.skippedPrescribed === 1 ? "" : "s") +
+        " left out (nothing was logged for " + (exs.skippedPrescribed === 1 ? "it" : "them") + ")", "warn");
+    }
     var durEl = document.getElementById("wo-duration");
     var dur = U.numOrNull(durEl ? durEl.value : "");
     if (dur === null || isNaN(dur) || dur <= 0 || dur > 600) {
@@ -861,6 +893,7 @@ OF.exercise = (function () {
 
   function readManual() {
     if (!els.date.value) return { err: "Please pick a date." };
+    if (els.date.value > U.maxLogDateISO()) return { err: "That date is too far in the future." };
     if (!els.start.value) return { err: "Please enter a start time." };
     var dur = U.numOrNull(els.duration.value);
     if (dur === null || isNaN(dur) || dur <= 0 || dur > 600) {

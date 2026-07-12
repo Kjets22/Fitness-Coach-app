@@ -360,7 +360,7 @@ OF.dashboard = (function () {
     var exThis = exSeries.slice(7).reduce(function (n, v) { return n + (v || 0); }, 0);
     var exLast = exSeries.slice(0, 7).reduce(function (n, v) { return n + (v || 0); }, 0);
     var exChip = exercise.length
-      ? deltaChip(exThis - exLast, (exThis - exLast > 0 ? "+" : "") + (exThis - exLast), true)
+      ? deltaChip(exThis - exLast, (exThis - exLast > 0 ? "+" : "") + (exThis - exLast), true, "vs previous 7 days")
       : "";
 
     // ---- Calories today + 7d spark + Δ vs 7-day average
@@ -379,7 +379,7 @@ OF.dashboard = (function () {
     var kSpark = sparkline(kSeries, "var(--warn)");
     var kAvg = avgNums(kSeries.slice(7, 13)); // this week excl. today
     var kChip = kcal && kAvg
-      ? deltaChip(kcal - kAvg, (kcal - kAvg > 0 ? "+" : "") + Math.round(kcal - kAvg), null)
+      ? deltaChip(kcal - kAvg, (kcal - kAvg > 0 ? "+" : "") + Math.round(kcal - kAvg), null, "vs your recent daily average")
       : "";
 
     // ---- Goal progress mini-card
@@ -698,7 +698,8 @@ OF.dashboard = (function () {
       if (!r) { bars.push({ label: label, value: null }); continue; }
       hasAny = true;
       var q = Number(r.quality);
-      var color = q >= 4 ? "var(--accent-2)" : q === 3 ? "var(--warn)" : "var(--danger)";
+      // no quality recorded (imports/auto-sync) = neutral, NOT "terrible night" red
+      var color = !isFinite(q) ? "var(--accent)" : q >= 4 ? "var(--accent-2)" : q === 3 ? "var(--warn)" : "var(--danger)";
       var hours = Math.round((r.durationMin / 60) * 10) / 10;
       bars.push({ label: label, value: hours, color: color, valueLabel: String(hours) });
     }

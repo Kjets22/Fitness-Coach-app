@@ -142,23 +142,46 @@ OF.app = (function () {
     initSheet();
     initKeyboardScroll();
 
+    // Day rollover while backgrounded (overnight, long flights): re-stamp the
+    // stale "today" defaults and recompute every today-based view on return.
+    var lastDay = OF.util.todayISO();
+    document.addEventListener("visibilitychange", function () {
+      if (document.hidden) return;
+      var now = OF.util.todayISO();
+      if (now === lastDay) return;
+      var prev = lastDay;
+      lastDay = now;
+      ["sleep-date", "food-date", "body-date", "exercise-date", "steps-date"].forEach(function (id) {
+        var el = document.getElementById(id);
+        if (el && el.value === prev) el.value = now;   // only bump stale DEFAULTS, never a user-chosen date
+      });
+      try { if (OF.daily) OF.daily.refresh(); } catch (e) {}
+      try { OF.dashboard.refresh(); } catch (e) {}
+      try { if (OF.trainer) OF.trainer.renderCard(); } catch (e) {}
+    });
+
     // Init modules. goals.init runs the adaptive catch-up loop, so it goes
     // before dashboard/insights read the calorie targets.
-    OF.sleep.init();
-    OF.food.init();
-    if (OF.foodPhoto) OF.foodPhoto.init();
-    OF.exercise.init();
-    OF.body.init();
-    if (OF.physique) OF.physique.init();
-    OF.goals.init();
-    OF.daily.init();
-    OF.dashboard.init();
-    if (OF.trainer) OF.trainer.init(); // renders the "Today's session" card into the dashboard
-    OF.insights.init();
-    OF.coach.init();
-    OF.settings.init();
-    if (OF.healthSync) OF.healthSync.init(); // Health card lives in the Settings tab
-    if (OF.social) OF.social.init(); // after settings (renders its Community card)
+    // Fault isolation: one module choking on a corrupt record must not take
+    // the whole app down with it — every other tab keeps working.
+    function safeInit(name, fn) {
+      try { fn(); } catch (e) { try { console.error("init failed:", name, e); } catch (e2) {} }
+    }
+    safeInit("sleep", function () { OF.sleep.init(); });
+    safeInit("food", function () { OF.food.init(); });
+    if (OF.foodPhoto) safeInit("foodPhoto", function () { OF.foodPhoto.init(); });
+    safeInit("exercise", function () { OF.exercise.init(); });
+    safeInit("body", function () { OF.body.init(); });
+    if (OF.physique) safeInit("physique", function () { OF.physique.init(); });
+    safeInit("goals", function () { OF.goals.init(); });
+    safeInit("daily", function () { OF.daily.init(); });
+    safeInit("dashboard", function () { OF.dashboard.init(); });
+    if (OF.trainer) safeInit("trainer", function () { OF.trainer.init(); }); // renders the "Today's session" card
+    safeInit("insights", function () { OF.insights.init(); });
+    safeInit("coach", function () { OF.coach.init(); });
+    safeInit("settings", function () { OF.settings.init(); });
+    if (OF.healthSync) safeInit("healthSync", function () { OF.healthSync.init(); });
+    if (OF.social) safeInit("social", function () { OF.social.init(); });
 
     showTab(currentTabFromHash());
 

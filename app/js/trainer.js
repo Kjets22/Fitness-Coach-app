@@ -225,6 +225,11 @@ OF.trainer = (function () {
         if (!ex) continue;
         used[ex.name.toLowerCase()] = true;
         var sc = scheme(gt, ex.compound);
+        // beginners: one fewer set, slightly higher reps — lighter loads with
+        // more practice volume per set (the intake answer now DOES something)
+        if (profile.experience === "beginner" && !ex.hold) {
+          sc = { sets: Math.max(2, sc.sets - 1), lo: sc.lo + 2, hi: sc.hi + 2 };
+        }
         var isHold = !!ex.hold;
         var w = isHold ? null : historyWeight(ex.name);
         exercises.push({
@@ -336,7 +341,9 @@ OF.trainer = (function () {
       }
       var arr = [];
       for (var i = 0; i < sets; i++) arr.push({ weightKg: weightKg != null ? weightKg : null, reps: ex.repLow });
-      return { name: name, sets: arr };
+      var rxNote = mode === "sore" ? " · ~10% lighter today" : mode === "time" ? " · trimmed for time" : "";
+      return { name: name, sets: arr,
+        rx: (name === ex.name ? prescription(ex) + rxNote : sets + " sets — set your own weight") };
     });
   }
 
@@ -407,7 +414,11 @@ OF.trainer = (function () {
     // advance from the day just trained (not a possibly-skipped pointer)
     p.pointer = (dayIndex + 1) % p.days.length;
     p.updatedAt = new Date().toISOString();
-    save(p);
+    if (!save(p)) {
+      // storage full: nothing persisted — celebrating "weight added" would be a lie
+      if (OF.util) OF.util.toast("Couldn't save your progression — storage is full or blocked.", "warn");
+      return { changes: [], nextName: null };
+    }
     var ns = nextSession();
     return { changes: changes, nextName: ns ? ns.name : null };
   }

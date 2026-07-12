@@ -34,7 +34,7 @@ OF.streak = (function () {
       String(d.getDate()).padStart(2, "0");
   }
   function meta() {
-    try { return JSON.parse(localStorage.getItem(KEY) || "{}") || {}; } catch (e) { return {}; }
+    try { var m = JSON.parse(localStorage.getItem(KEY) || "{}"); return (m && typeof m === "object" && !Array.isArray(m)) ? m : {}; } catch (e) { return {}; }
   }
   function setMeta(patch) {
     var m = meta();
@@ -112,7 +112,7 @@ OF.streak = (function () {
     var s = compute();
     if (s.current < 1) return "";
     var title = s.loggedToday ? "Streak details" : "Log today to extend your streak";
-    return '<span class="streak-chip" data-nav="streak" role="button" tabindex="0" title="' + title + '">' +
+    return '<span class="streak-chip' + (s.loggedToday ? '' : ' at-risk') + '" data-nav="streak" role="button" tabindex="0" title="' + title + '">' +
       '<span class="streak-flame" aria-hidden="true">🔥</span>' +
       '<span class="streak-num">' + s.current + '</span>' +
       '<span class="streak-lbl">day' + (s.current === 1 ? "" : "s") + '</span></span>';

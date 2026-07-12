@@ -209,6 +209,16 @@ OF.util = (function () {
     return cb < ca ? -1 : cb > ca ? 1 : 0;
   }
 
+  /** Latest date the log forms accept: tomorrow, not today — after flying
+      west the phone's calendar can sit a day BEHIND records already logged,
+      and a strict "today" guard made those records look like future entries. */
+  function maxLogDateISO() {
+    var d = new Date();
+    d.setDate(d.getDate() + 1);
+    return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" +
+      String(d.getDate()).padStart(2, "0");
+  }
+
   /** Canonical muscle mass in KG for a body record. New records store
       muscleMassKg (scales report muscle as a weight); legacy records stored
       muscleMassPct — convert via that day's body weight so old data keeps
@@ -242,6 +252,7 @@ OF.util = (function () {
     numOrNull: numOrNull,
     byNewest: byNewest,
     muscleKg: muscleKg,
-    undoDelete: undoDelete
+    undoDelete: undoDelete,
+    maxLogDateISO: maxLogDateISO
   };
 })();

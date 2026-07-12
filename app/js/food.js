@@ -76,7 +76,7 @@ OF.food = (function () {
 
   function readForm() {
     if (!els.date.value) return { err: "Please pick a date." };
-    if (els.date.value > U.todayISO()) return { err: "That date is in the future — meals can only be logged for today or earlier." };
+    if (els.date.value > U.maxLogDateISO()) return { err: "That date is too far in the future — meals can only be logged for today or earlier." };
     if (!els.time.value) return { err: "Please enter a time." };
     var name = els.name.value.trim();
     if (!name) return { err: "Please enter a food or meal name." };

@@ -186,7 +186,7 @@ OF.physique = (function () {
   var PRIVACY_LINE =
     '<p class="muted small phys-privacy">' + OF.icons.get("check") +
     ' Your photo is analyzed on your own computer and deleted right after — ' +
-    'it never leaves your machine and is not saved. Only the written analysis ' +
+    'it is sent only to your own OptimalFit computer for the analysis and is deleted right after — never stored, never sent anywhere else. Only the written analysis ' +
     'can be saved.</p>';
 
   function pickHtml() {

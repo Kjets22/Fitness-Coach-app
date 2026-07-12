@@ -112,7 +112,7 @@ OF.engine = (function () {
     });
     var pts = [];
     (exercise || []).forEach(function (r) {
-      var p = perfOf(r), h = byDate[r.date];
+      var p = perfOf(r), h = sleepPoweringActivity(byDate, r.date, r.startTime);
       if (p == null || h == null) return;
       pts.push({ x: h, y: p });
     });
@@ -128,7 +128,7 @@ OF.engine = (function () {
         var p = perfOf(r);
         if (p == null) return null;
         if (!active) return p;
-        var h = byDate[r.date];
+        var h = sleepPoweringActivity(byDate, r.date, r.startTime);
         return h == null ? p : p - sl * (h - mx);
       }
     };
@@ -146,7 +146,10 @@ OF.engine = (function () {
     { key: "morning", label: "Morning", range: "05–11", from: 5, to: 11 },
     { key: "midday", label: "Midday", range: "11–15", from: 11, to: 15 },
     { key: "afternoon", label: "Afternoon", range: "15–19", from: 15, to: 19 },
-    { key: "evening", label: "Evening", range: "19–24", from: 19, to: 24 }
+    { key: "evening", label: "Evening", range: "19–24", from: 19, to: 24 },
+    // real bucket for night owls / shift workers — folding 2am sessions into
+    // "Evening (19–24)" told them their best time was a range they never train in
+    { key: "night", label: "Night", range: "00–05", from: 0, to: 5 }
   ];
   var MIN_BUCKET = 3;
 
@@ -154,11 +157,32 @@ OF.engine = (function () {
     var min = U.timeToMinutes(startTime);
     if (min == null) return null;
     var h = min / 60;
-    if (h < 5) return 3; // small hours count as (late) evening
+    if (h < 5) return 4; // the Night bucket
     for (var i = 0; i < BUCKETS.length; i++) {
       if (h >= BUCKETS[i].from && h < BUCKETS[i].to) return i;
     }
     return 3;
+  }
+
+  function isoFromDayNum(dn) {
+    var d = new Date((dn + 0.5) * 86400000);
+    return d.getUTCFullYear() + "-" +
+      String(d.getUTCMonth() + 1).padStart(2, "0") + "-" +
+      String(d.getUTCDate()).padStart(2, "0");
+  }
+
+  /** The sleep entry that POWERED activity on `date` at `startTime`: normally
+      the sleep woken from that day, but a post-midnight session (start < 05:00)
+      happened BEFORE that calendar day's sleep — pair it with the previous
+      day's sleep instead. Pairing a 2am workout with sleep taken 7h AFTER it
+      reversed causality for every night-owl session. */
+  function sleepPoweringActivity(byDate, date, startTime) {
+    var min = U.timeToMinutes(startTime);
+    if (min != null && min < 5 * 60) {
+      var dn = dayNum(date);
+      return dn == null ? null : byDate[isoFromDayNum(dn - 1)];
+    }
+    return byDate[date];
   }
 
   function timeOfDay(exercise, adj) {
@@ -282,7 +306,7 @@ OF.engine = (function () {
     var pairs = [];
     (exercise || []).forEach(function (r) {
       var p = perfOf(r);
-      var s = p != null && byDate[r.date];
+      var s = p != null && sleepPoweringActivity(byDate, r.date, r.startTime);
       if (!s) return;
       pairs.push({ dur: num(s.durationMin), quality: num(s.quality), perf: p });
     });
@@ -436,6 +460,14 @@ OF.engine = (function () {
     (sleep || []).forEach(function (s) {
       if (s.date === today && num(s.durationMin) != null) lastNight = s;
     });
+    // Post-midnight / pre-noon check: today's sleep record can't exist yet
+    // (records are keyed by WAKE date) — yesterday's sleep IS "last night".
+    if (!lastNight && new Date().getHours() < 12) {
+      var yISO = isoFromDayNum(todayNum - 1);
+      (sleep || []).forEach(function (s) {
+        if (s.date === yISO && num(s.durationMin) != null) lastNight = s;
+      });
+    }
     if (lastNight && avgDur != null && durations.length >= 3) {
       var diff = num(lastNight.durationMin) - avgDur;
       if (diff >= 20) { score += 10; factors.push({ good: true, text: "Slept " + U.fmtDuration(num(lastNight.durationMin)) + " — above your " + U.fmtDuration(Math.round(avgDur)) + " average" }); }
@@ -486,6 +518,12 @@ OF.engine = (function () {
       if (hoursSince >= 0 && hoursSince < 8) {
         score -= 15;
         factors.push({ good: false, text: "Last workout ended only " + Math.max(0, Math.round(hoursSince)) + "h ago" });
+      } else if (hoursSince >= 240) {
+        // LONG layoff (10+ days): fresh is not the same as ready to max out —
+        // scoring a 3-week absence 85/100 "train hard" invites an injury
+        score = Math.min(score, 65);
+        factors.push({ good: null, text: "First session back after " + Math.round(hoursSince / 24) +
+          " days — ease in ~20% lighter and leave reps in reserve" });
       } else if (hoursSince >= 48) {
         score += 5;
         factors.push({ good: true, text: Math.round(hoursSince / 24) + "+ days since your last workout" });

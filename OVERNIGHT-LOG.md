@@ -144,3 +144,10 @@ Wrote a 19-case node routing test. It caught that my recovery regex ("rest day"/
 - Consensus changes shipped per your rule (2-5 voices each): app-wide UNDO after every delete (incl. in-logger sets/exercises), per-set ✓ done-state + count-up rest timer strip, global 'Workout in progress' pill, streak chip at-risk state, beginner-shaped programs, adapted-session target lines, native app hides desktop setup card.
 - Deferred with specs recorded (bigger builds): per-exercise swap + avoid list, shared lift-detail chart modal, +/- steppers, compact trainer card, engine memoization for 2-year datasets, windowed history lists, rollover-hour setting for night-shift workers, two-tab write locking.
 - Verified: 14 files syntax-clean, node regression suite green, browser tab sweep 0 errors, simulator BUILD SUCCEEDED + 0 crashes.
+
+## Consensus build-out continued (Jul 12 morning)
+- Shipped 3 more multi-voice items, all browser-verified + simulator-clean (commits v54/v55):
+  1. +/- stepper strip for set inputs (keyboard accessory; ±5 lb / ±2.5 kg / ±1 rep on the focused input).
+  2. Windowed history lists: newest 50 + "Show 50 more (N older)" across sleep/food/body/workouts.
+  3. Per-exercise Swap + persistent avoid list in the program view; regeneration respects it.
+- Remaining consensus item queued next: shared lift-detail modal (tap a lift anywhere -> e1RM chart + history). Also queued: compact trainer card after training, engine memoization.

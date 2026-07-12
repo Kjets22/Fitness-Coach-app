@@ -186,11 +186,13 @@ OF.trainer = (function () {
 
     // per-group rotating index so repeated days pick DIFFERENT exercises
     var rot = {};
+    var avoided = avoidList().map(function (n) { return n.toLowerCase(); });
     function pick(group, compound, usedLower) {
       var cands = POOL.filter(function (p) {
         return p.group === group && (compound ? p.compound : true) &&
           p.equip.some(function (t) { return allow.indexOf(t) !== -1; }) &&
-          !usedLower[p.name.toLowerCase()];
+          !usedLower[p.name.toLowerCase()] &&
+          avoided.indexOf(p.name.toLowerCase()) === -1;   // injured/hated lifts stay out
       });
       // accessory slots: prefer ISOLATION moves — otherwise leftover heavy
       // compounds fill them and a "full gym" day stacks 5-6 compounds
@@ -596,19 +598,67 @@ OF.trainer = (function () {
     var p = load();
     if (!p) { openIntake(); return; }
     var daysHtml = p.days.map(function (d, i) {
-      var rows = d.slots.map(function (ex) {
+      var rows = d.slots.map(function (ex, si) {
         return '<div class="tr-ex"><span class="tr-ex-name">' + e(ex.name) + '</span>' +
-          '<span class="tr-ex-rx">' + e(prescription(ex)) + '</span></div>';
+          '<span class="tr-ex-rx">' + e(prescription(ex)) + '</span>' +
+          '<button type="button" class="btn mini tr-swap" data-tr="swap" data-day="' + i +
+            '" data-slot="' + si + '" title="Swap ' + e(ex.name) + ' for an alternative">Swap</button>' +
+          '</div>';
       }).join("");
       var isNext = (p.pointer % p.days.length) === i;
       return '<div class="tr-progday' + (isNext ? " tr-next" : "") + '">' +
         '<div class="tr-progday-head">' + e(d.name) + (isNext ? ' <span class="tr-nextchip">next</span>' : '') + '</div>' +
         rows + '</div>';
     }).join("");
+    var avoid = avoidList();
     var meta = '<p class="muted small">' + e(p.split) + ' · ' + p.daysPerWeek + ' days/wk · ' +
-      e(p.equipment.replace("-", " ")) + (p.goalType ? ' · goal: ' + e(p.goalType) : '') + '</p>';
+      e(p.equipment.replace("-", " ")) + (p.goalType ? ' · goal: ' + e(p.goalType) : '') + '</p>' +
+      (avoid.length ? '<p class="muted small">Avoiding: ' + avoid.map(e).join(", ") +
+        ' <button type="button" class="btn mini" data-tr="clear-avoid">Clear</button></p>' : '');
     modal("Your program", meta + daysHtml,
       '<button type="button" class="btn" data-tr="setup">Adjust / rebuild</button>');
+  }
+
+  /* ---- per-exercise swap + persistent avoid list (injured/hated lifts) ---- */
+
+  var AVOID_KEY = "optimalfit.avoidExercises";
+  function avoidList() {
+    try { var a = JSON.parse(localStorage.getItem(AVOID_KEY) || "[]"); return Array.isArray(a) ? a : []; }
+    catch (e2) { return []; }
+  }
+  function setAvoid(list) {
+    try { localStorage.setItem(AVOID_KEY, JSON.stringify(list.slice(0, 40))); } catch (e2) {}
+  }
+
+  /** Replace one slot with a same-group alternative (respecting equipment +
+      the avoid list + no duplicates in the day), keeping the set scheme.
+      The old exercise is added to the avoid list so regeneration and future
+      swaps never bring it back — the "my shoulder can't do this" story. */
+  function swapSlot(dayIdx, slotIdx) {
+    var p = load();
+    if (!p || !p.days[dayIdx] || !p.days[dayIdx].slots[slotIdx]) return null;
+    var cur = p.days[dayIdx].slots[slotIdx];
+    var allow = EQUIP_ALLOW[p.equipment] || EQUIP_ALLOW["full-gym"];
+    var used = {};
+    p.days[dayIdx].slots.forEach(function (s) { used[s.name.toLowerCase()] = true; });
+    var avoid = avoidList().map(function (n) { return n.toLowerCase(); });
+    var cand = POOL.filter(function (pp) {
+      return pp.group === cur.group && pp.name !== cur.name && !pp.hold === !cur.hold &&
+        (!cur.compound || pp.compound) &&
+        pp.equip.some(function (t) { return allow.indexOf(t) !== -1; }) &&
+        !used[pp.name.toLowerCase()] && avoid.indexOf(pp.name.toLowerCase()) === -1;
+    })[0];
+    if (!cand) return null;
+    var a2 = avoidList();
+    if (a2.indexOf(cur.name) === -1) { a2.push(cur.name); setAvoid(a2); }
+    p.days[dayIdx].slots[slotIdx] = {
+      name: cand.name, group: cand.group, compound: cand.compound, hold: !!cand.hold,
+      sets: cur.sets, repLow: cur.repLow, repHigh: cur.repHigh,
+      weightKg: null, incKg: cand.incKg   // new lift: no baseline; seeds from history/first session
+    };
+    p.updatedAt = new Date().toISOString();
+    save(p);
+    return { from: cur.name, to: cand.name };
   }
 
   /* ---- start today's workout (hand off to the live logger) ---- */
@@ -630,6 +680,23 @@ OF.trainer = (function () {
       var act = b.getAttribute("data-tr");
       if (act === "setup") { openIntake(); return; }
       if (act === "program") { openProgram(); return; }
+      if (act === "swap") {
+        var res = swapSlot(parseInt(b.getAttribute("data-day"), 10), parseInt(b.getAttribute("data-slot"), 10));
+        if (res) {
+          if (OF.util) OF.util.toast("Swapped " + res.from + " → " + res.to +
+            ". " + res.from + " goes on your avoid list (clear it in the program view).", "ok");
+          openProgram(); renderCard();
+        } else if (OF.util) {
+          OF.util.toast("No alternative available for that slot with your equipment.", "warn");
+        }
+        return;
+      }
+      if (act === "clear-avoid") {
+        setAvoid([]);
+        if (OF.util) OF.util.toast("Avoid list cleared.", "ok");
+        openProgram();
+        return;
+      }
       if (act === "ask") {
         // tap an exercise row -> coach tab with the question pre-typed (the
         // user reviews and hits Send — never auto-fire an AI request)

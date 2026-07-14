@@ -125,6 +125,10 @@ OF.exercise = (function () {
       activeStartedAt = a.startedAt;
       activeProgramDay = a.programDay;
       restStart = a.restStart || null;
+      restDur = a.restDur || null;
+      // a rest that already elapsed while the app was closed must not beep on relaunch
+      restCued = restStart != null && restDur != null &&
+        (Date.now() - restStart) >= restDur * 1000;
       mode = "active";
       renderActive();
     } else {
@@ -168,6 +172,8 @@ OF.exercise = (function () {
   var activeStartedAt = 0;
   var activeProgramDay = null;   // set when the session was started from the trainer plan
   var restStart = null;          // ms timestamp of the last set marked done -> rest timer
+  var restDur = null;            // seconds for the current rest countdown (from the timer card's preset)
+  var restCued = false;          // beep/vibrate fired for the current rest (never re-fire)
 
   function loadActive() {
     try {
@@ -187,7 +193,8 @@ OF.exercise = (function () {
       }).filter(function (ex) { return ex.name; });
       return { startedAt: o.startedAt, type: o.type || "strength", exList: list,
         programDay: (typeof o.programDay === "number") ? o.programDay : null,
-        restStart: (typeof o.restStart === "number" && isFinite(o.restStart)) ? o.restStart : null };
+        restStart: (typeof o.restStart === "number" && isFinite(o.restStart)) ? o.restStart : null,
+        restDur: (typeof o.restDur === "number" && isFinite(o.restDur)) ? o.restDur : null };
     } catch (e) { return null; }
   }
 
@@ -196,7 +203,7 @@ OF.exercise = (function () {
     try {
       localStorage.setItem(ACTIVE_KEY, JSON.stringify({
         startedAt: activeStartedAt, type: sessType, exList: exList, programDay: activeProgramDay,
-        restStart: restStart
+        restStart: restStart, restDur: restDur
       }));
     } catch (e) { /* storage full/blocked: session stays in memory */ }
   }
@@ -377,7 +384,7 @@ OF.exercise = (function () {
       if (!st) return true;
       st.done = !st.done;
       ex.touched = true;
-      restStart = st.done ? Date.now() : restStart;   // marking done starts the rest clock
+      if (st.done) startRest();   // marking done auto-starts the rest countdown
       saveActive();
       renderBuilder();
       renderRestBar();
@@ -611,26 +618,46 @@ OF.exercise = (function () {
     el.hidden = false;
   }
 
-  /* ---------------- rest timer (counts UP from the last set marked done) ---------------- */
+  /* ---------------- rest countdown (auto-starts when a set is marked done) ----------------
+     Duration = the preset chosen on the Rest-timer card (same page, persisted).
+     Counts DOWN in a floating pill; beeps + vibrates at zero, then lingers a
+     minute as a "go" nudge. Tap = skip/dismiss. */
+
+  function startRest() {
+    ensureAudio();                       // we're inside a tap/keypress — unlock the beep for later
+    restStart = Date.now();
+    restDur = (T && T.presetSec) || 90;  // rest length picked on the timer card below
+    restCued = false;
+  }
 
   function renderRestBar() {
     var bar = document.getElementById("rest-bar");
     var onExerciseTab = !document.getElementById("tab-exercise").classList.contains("hidden");
-    var resting = mode === "active" && restStart != null && (Date.now() - restStart) < 10 * 60 * 1000;
-    if (!resting || !onExerciseTab || finish.open) { if (bar) bar.hidden = true; return; }
+    var durMs = (restDur || 90) * 1000;
+    var since = restStart != null ? Date.now() - restStart : Infinity;
+    var showing = mode === "active" && restStart != null && since < durMs + 60 * 1000;
+    if (!showing || !onExerciseTab || finish.open) { if (bar) bar.hidden = true; return; }
     if (!bar) {
       bar = document.createElement("button");
       bar.id = "rest-bar"; bar.type = "button";
-      bar.setAttribute("aria-label", "Rest timer — tap to dismiss");
+      bar.setAttribute("aria-label", "Rest countdown — tap to skip");
       bar.addEventListener("click", function () {
         restStart = null; saveActive(); renderRestBar();
       });
       document.body.appendChild(bar);
     }
-    var sec = Math.floor((Date.now() - restStart) / 1000);
-    bar.innerHTML = '<span class="rest-lbl">Resting</span> <strong>' +
-      Math.floor(sec / 60) + ":" + String(sec % 60).padStart(2, "0") +
-      '</strong> <span class="rest-dismiss">· tap when you\'re back</span>';
+    var remain = Math.ceil((durMs - since) / 1000);
+    if (remain > 0) {
+      bar.classList.remove("rest-done");
+      bar.innerHTML = '<span class="rest-lbl">Rest</span> <strong>' +
+        Math.floor(remain / 60) + ":" + String(remain % 60).padStart(2, "0") +
+        '</strong> <span class="rest-dismiss">· tap to skip</span>';
+    } else {
+      if (!restCued) { restCued = true; beep(); try { if (navigator.vibrate) navigator.vibrate([120, 80, 120]); } catch (e) { /* iOS ignores */ } }
+      bar.classList.add("rest-done");
+      bar.innerHTML = '<span class="rest-lbl">Rest done</span> <strong>— go!</strong>' +
+        ' <span class="rest-dismiss">· tap to hide</span>';
+    }
     bar.hidden = false;
   }
 
@@ -1116,9 +1143,31 @@ OF.exercise = (function () {
       addExercise(t.value);
     }
     // Enter/Go inside a set's weight/reps input must not submit the manual
-    // form — it would save a half-entered workout.
+    // form — it would save a half-entered workout. Instead it advances the
+    // flow: weight -> reps, reps -> set done (which starts the rest countdown).
     if (e.key === "Enter" && t.hasAttribute && t.hasAttribute("data-field")) {
       e.preventDefault();
+      var row = t.closest && t.closest(".set-row");
+      if (t.getAttribute("data-field") === "w") {
+        var rIn = row && row.querySelector('[data-field="r"]');
+        if (rIn) { rIn.focus(); if (rIn.select) rIn.select(); }
+        return;
+      }
+      // reps field: done only in the live session, and only with reps entered
+      t.blur();   // dismiss the keyboard first — renderBuilder replaces this node
+      if (mode !== "active") return;
+      var ei = parseInt(t.getAttribute("data-ex"), 10);
+      var sj = parseInt(t.getAttribute("data-set"), 10);
+      var ex = exList[ei], st = ex && ex.sets[sj];
+      if (!st || st.done) return;
+      var reps = U.numOrNull(t.value);
+      if (reps == null || isNaN(reps) || reps < 1) return;   // nothing entered — just close the keyboard
+      st.done = true;
+      ex.touched = true;
+      startRest();
+      saveActive();
+      renderBuilder();
+      renderRestBar();
     }
   }
 
@@ -1419,6 +1468,7 @@ OF.exercise = (function () {
             return '<button type="button" class="btn rt-preset" data-rt="preset" data-sec="' + sec + '" aria-label="Set rest to ' + lbl + '">' + lbl + '</button>';
           }).join("") +
         '</div>' +
+        '<p class="rt-hint" data-cd>During a workout this starts by itself each time you check off a set (or hit Enter after your reps).</p>' +
         '<div class="rt-controls">' +
           '<button type="button" class="btn primary rt-start" data-rt="start" aria-label="Start rest countdown">Start</button>' +
           '<button type="button" class="btn rt-reset" data-rt="reset" aria-label="Reset timer">Reset</button>' +

@@ -1693,6 +1693,15 @@ body.metric-modal-open { overflow: hidden; }
 }
 #rest-bar[hidden] { display: none; }
 #rest-bar .rest-dismiss { color: var(--text-dim); font-size: 0.78rem; }
+#rest-bar.rest-done {
+  border-color: var(--accent-2);
+  background: var(--accent-2-soft);
+  color: var(--accent-2);
+  font-weight: 700;
+}
+@media (prefers-reduced-motion: no-preference) {
+  #rest-bar.rest-done { animation: rt-pulse 0.9s ease-in-out 3; }
+}
 
 /* Stepper strip — keyboard accessory for set weight/reps inputs */
 #stepper-strip {
@@ -1934,6 +1943,7 @@ body.metric-modal-open { overflow: hidden; }
   color: var(--text-dim);
 }
 .rt-presets { display: flex; gap: var(--sp-2); flex-wrap: wrap; margin-bottom: var(--sp-3); }
+.rt-hint { color: var(--text-dim); font-size: 0.8rem; margin: calc(-1 * var(--sp-2)) 0 var(--sp-3); }
 .rt-preset { flex: 1 1 auto; min-width: 64px; min-height: 44px; }
 .rt-preset.active { border-color: var(--accent); color: var(--accent); background: var(--accent-soft); }
 .rt-controls { display: flex; gap: var(--sp-2); align-items: center; flex-wrap: wrap; }

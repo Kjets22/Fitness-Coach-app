@@ -766,14 +766,24 @@ OF.evidence = (function () {
       : get("nutrition-protein-gain").numbers.proteinGkgGain.slice();
   }
 
+  /* Symptoms that are ALWAYS a stop-and-see-a-professional, beyond the
+     orthopedic red flags in the KB (a hypertensive/older user testing the
+     app found the list was joint-only). */
+  var MEDICAL_FLAGS = [
+    "chest pain, pressure or tightness",
+    "dizziness, fainting or unusual shortness of breath",
+    "an irregular or racing heartbeat"
+  ];
+
   /* ---------- safety layer ---------- */
   function safety() {
     var flags = get("safety-injury-red-flags").numbers;
     var floor = get("safety-calorie-floor").numbers;
     var rates = get("safety-max-rates").numbers;
     return {
-      seeProfessionalIf: flags.seeProfessionalIf.slice(),
+      seeProfessionalIf: flags.seeProfessionalIf.slice().concat(MEDICAL_FLAGS),
       emergency: flags.emergency.slice(),
+      medicalFlags: MEDICAL_FLAGS.slice(),
       calorieFloor: { women: floor.practicalFloorWomenKcal, men: floor.practicalFloorMenKcal },
       maxWeeklyLossPctBW: rates.maxWeeklyLossPctBW,
       maxWeeklyGainPctBW: rates.maxLeanWeeklyGainPctBW,
@@ -781,6 +791,43 @@ OF.evidence = (function () {
         "please have it looked at by a physio or doctor before we load it. I can work around " +
         "it in the meantime."
     };
+  }
+
+  /**
+   * Screen a coaching profile for conditions that need a professional's
+   * sign-off before we prescribe load. Returns [] when nothing applies.
+   * THIS is the safety layer's call site — it was previously dead code.
+   */
+  function screenProfile(profile) {
+    var out = [];
+    if (!profile) return out;
+    var age = profile.experience && profile.experience.age;
+    var conds = (profile.constraints && profile.constraints.conditions) || [];
+    var s = safety();
+    if (isFinite(age) && age < 18) {
+      out.push({
+        kind: "minor",
+        text: "You're under 18 — you can absolutely train, and lifting is safe and great for you. " +
+          "But I won't put you on a calorie deficit: at your age, food fuels growth and sport. " +
+          "Talk to a parent or your doctor before any diet change."
+      });
+    }
+    if (isFinite(age) && age >= 60) {
+      out.push({
+        kind: "older-adult",
+        text: "Because you're 60+, I'll bias your plan toward stable, well-supported movements and steady progression. " +
+          "If you have a bone-density, joint or heart condition, get your doctor's OK first — then we train hard and smart."
+      });
+    }
+    if (conds.length) {
+      out.push({
+        kind: "condition",
+        text: "You mentioned: " + conds.join(", ") + ". I coach training, not medicine — please clear heavy lifting with your doctor. " +
+          "Bring me their guidance and I'll program inside it. Stop and seek help immediately for " +
+          s.medicalFlags.join(", ") + "."
+      });
+    }
+    return out;
   }
 
   /* ---------- "why?" surfaces ---------- */
@@ -811,7 +858,10 @@ OF.evidence = (function () {
     "progression-deload", "exercise-lengthened-position",
     "recovery-sleep-hypertrophy-strength", "recovery-rest-intervals-strength",
     "nutrition-protein-gain", "nutrition-deficit-rate-of-loss",
-    "individual-response-variability"
+    "individual-response-variability",
+    // safety entries ALWAYS travel with the context — the coach must know its
+    // limits (red flags, calorie floors, max rates) on every single answer
+    "safety-injury-red-flags", "safety-calorie-floor", "safety-max-rates"
   ];
   function coachContext(ids) {
     var list = (Array.isArray(ids) && ids.length ? ids : CORE_IDS);
@@ -842,6 +892,7 @@ OF.evidence = (function () {
     restMinutes: restMinutes,
     proteinBand: proteinBand,
     safety: safety,
+    screenProfile: screenProfile,
     why: why,
     whyHonest: whyHonest,
     coachContext: coachContext

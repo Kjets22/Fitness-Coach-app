@@ -2583,3 +2583,5 @@ body.metric-modal-open { overflow: hidden; }
 .coach-fb { display: flex; gap: 8px; margin: -2px 0 4px 30px; }
 .coach-cta { padding: var(--sp-4); margin-bottom: var(--sp-3); }
 .coach-cta h3 { margin: 0 0 6px; }
+.macro-row { display: flex; flex-wrap: wrap; gap: 10px; }
+.macro-part { white-space: nowrap; font-size: 0.86rem; }

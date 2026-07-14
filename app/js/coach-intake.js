@@ -75,6 +75,32 @@ OF.intake = (function () {
       save: function (st, v) { st.timelineWeeks = v; }
     },
     {
+      id: "age",
+      say: function () { return "How old are you? This changes how I program your recovery — and it's how I keep you safe."; },
+      input: { kind: "chips", options: [
+        { label: "Under 18", value: 16 }, { label: "18–29", value: 25 },
+        { label: "30–44", value: 37 }, { label: "45–59", value: 52 },
+        { label: "60+", value: 65 }
+      ] },
+      save: function (st, v) { st.age = v; }
+    },
+    {
+      id: "conditions",
+      say: function () {
+        return "Any health conditions I should know about? I'm a training coach, not a doctor — if you pick any of these I'll tell you to get your doctor's OK before we load you up, and then I'll program inside their guidance.";
+      },
+      input: { kind: "multi", options: [
+        { label: "None", value: null },
+        { label: "High blood pressure", value: "high blood pressure" },
+        { label: "Heart condition", value: "a heart condition" },
+        { label: "Diabetes", value: "diabetes" },
+        { label: "Osteoporosis / low bone density", value: "low bone density" },
+        { label: "Pregnant / postpartum", value: "pregnancy or postpartum recovery" },
+        { label: "Other (I'll tell my coach)", value: "another condition" }
+      ], done: "That's everything" },
+      save: function (st, v) { st.conditions = (Array.isArray(v) ? v : []).filter(Boolean); }
+    },
+    {
       id: "training-age",
       say: function () { return "How long have you been lifting consistently? Be honest — the right starting point matters more than a flattering one."; },
       input: { kind: "chips", options: [
@@ -88,6 +114,22 @@ OF.intake = (function () {
         if (v === "returning") { st.trainingAge = 1.5; st.returning = true; }
         else st.trainingAge = v;
       }
+    },
+    {
+      id: "safety-brief",
+      when: function (st) {
+        return (st.age != null && (st.age < 18 || st.age >= 60)) ||
+          (st.conditions && st.conditions.length > 0);
+      },
+      say: function (st) {
+        var notes = OF.evidence.screenProfile({
+          experience: { age: st.age },
+          constraints: { conditions: st.conditions || [] }
+        });
+        return notes.map(function (n) { return n.text; }).join(" ");
+      },
+      input: { kind: "chips", options: [{ label: "Understood", value: true }] },
+      save: function () {}
     },
     {
       id: "beginner-pep",
@@ -224,26 +266,36 @@ OF.intake = (function () {
     },
     {
       id: "injury-area",
-      say: function () { return "Any injuries or pain points I should program around? (If anything is sharp, worsening, or tingling/numb — please see a professional first; I coach training, not rehab.)"; },
-      input: { kind: "chips", options: [
+      say: function () { return "Any injuries or pain points I should program around? Pick ALL that apply. (If anything is sharp, worsening, or tingling/numb — please see a professional first; I coach training, not rehab.)"; },
+      input: { kind: "multi", options: [
         { label: "All good", value: null },
         { label: "Knee", value: "knee" }, { label: "Shoulder", value: "shoulder" },
         { label: "Lower back", value: "lower back" }, { label: "Elbow/wrist", value: "elbow" },
-        { label: "Hip", value: "hip" }
-      ] },
-      save: function (st, v) { st.injuryArea = v; }
+        { label: "Hip", value: "hip" }, { label: "Neck", value: "neck" },
+        { label: "Core / abdomen (incl. postpartum)", value: "core" },
+        { label: "Something else", value: "other" }
+      ], done: "That's all of them" },
+      save: function (st, v) { st.injuryAreas = (Array.isArray(v) ? v : []).filter(Boolean); }
     },
     {
       id: "injury-patterns",
-      when: function (st) { return !!st.injuryArea; },
-      say: function (st) { return "Which movements aggravate the " + st.injuryArea + "? I'll keep those patterns out entirely and we'll train around it."; },
+      when: function (st) { return !!(st.injuryAreas && st.injuryAreas.length); },
+      say: function (st) {
+        return "Which movements aggravate your " + st.injuryAreas.join(" / ") +
+          "? Pick everything that hurts — I keep those patterns out entirely and we train around them. If you're not sure, pick the ones you'd rather avoid for now; you can never be too careful here.";
+      },
       input: { kind: "multi", options: [
         { label: "Squatting", value: "squat" }, { label: "Lunges/split squats", value: "lunge" },
         { label: "Deadlifts/hinging", value: "hinge" }, { label: "Overhead pressing", value: "overhead" },
-        { label: "Bench/push-ups/dips", value: "bench" }, { label: "Rows/pull-ups", value: "row" }
+        { label: "Bench/push-ups/dips", value: "bench" }, { label: "Rows/pull-ups", value: "row" },
+        { label: "Hard core work (crunches, leg raises)", value: "core" }
       ], done: "That covers it" },
       save: function (st, v) {
-        st.injuries = [{ area: st.injuryArea, aggravates: v || [] }];
+        var pats = v || [];
+        // core/abdomen injuries imply the core pattern even if not ticked —
+        // a postpartum tester found Core slots were literally unexcludable
+        if (st.injuryAreas.indexOf("core") !== -1 && pats.indexOf("core") === -1) pats = pats.concat(["core"]);
+        st.injuries = st.injuryAreas.map(function (a) { return { area: a, aggravates: pats }; });
       }
     },
     {
@@ -306,13 +358,17 @@ OF.intake = (function () {
   function toProfilePatch(st) {
     var goalMap = { muscle: "lean-bulk", "fat-loss": "cut", strength: "performance",
       recomp: "recomp", endurance: "maintain", health: "maintain" };
+    var appGoal = goalMap[st.goal] || "maintain";
+    // SAFETY (evidence.js safety layer): never put an under-18 into a calorie
+    // deficit — at that age food fuels growth. Training is still encouraged.
+    if (st.age != null && st.age < 18 && appGoal === "cut") appGoal = "maintain";
     return {
       patch: {
         goals: {
           primary: st.goal,
           milestones: st.milestone ? [st.milestone] : [],
           timelineWeeks: st.timelineWeeks || null,
-          appGoalType: goalMap[st.goal] || "maintain"
+          appGoalType: appGoal
         },
         prefs: {
           split: st.split || null,
@@ -326,11 +382,13 @@ OF.intake = (function () {
         experience: {
           trainingAgeYears: st.trainingAge,
           level: lvl(st),
+          age: st.age != null ? st.age : null,
           weakPoints: st.weakPoints && st.weakPoints.length ? st.weakPoints : null
         },
         constraints: {
           equipment: st.equipment,
-          injuries: st.injuries || []
+          injuries: st.injuries || [],
+          conditions: st.conditions && st.conditions.length ? st.conditions : []
         },
         recovery: {
           sleepTypicalH: st.sleepH,
@@ -339,14 +397,14 @@ OF.intake = (function () {
           restrictions: st.restrictions || []
         }
       },
-      appGoalType: goalMap[st.goal] || "maintain"
+      appGoalType: appGoal
     };
   }
 
   /* ================= finish: persist + build the program ================= */
 
   function finish(st) {
-    var m = toProfilePatch(st);
+    var m = toProfilePatch(st);   // (the minor-safety goal override lives in there)
     OF.profile.update(m.patch, "intake");
 
     // bodyweight answer → a Body record (in kg), so calorie/protein/water
@@ -403,6 +461,8 @@ OF.intake = (function () {
         lines.push("Programmed around: " + program.coach2.injuryNotes.join("; ") + ".");
       }
     }
+    if (program.coach2 && program.coach2.styleNote) lines.push(program.coach2.styleNote);
+    if (program.coach2 && program.coach2.cardioNote) lines.push(program.coach2.cardioNote);
     if (st.milestone) lines.push("Target locked in: “" + st.milestone + "”. I'll track you toward it and tell you honestly how pace looks.");
     lines.push("Ask me “why?” about any part of this — every choice has research behind it. You can redo this interview any time from Settings or by telling me you want to switch things up.");
     return lines;
@@ -500,6 +560,11 @@ OF.intake = (function () {
     curStep = step;
     bubble(step.say(state), "coach");
     renderInput(step);
+    // move focus to the first answer control — keyboard/screen-reader users
+    // were dumped back at the top of the page after EVERY question
+    var host = document.getElementById("intake-input");
+    var first = host && host.querySelector("button, input");
+    if (first) { try { first.focus(); } catch (e) {} }
   }
 
   function answer(value, label) {
@@ -527,10 +592,26 @@ OF.intake = (function () {
     curStep = null;
   }
 
+  var lastFocus = null;
+
+  function onOverlayKeydown(ev) {
+    if (ev.key === "Escape") { close(); return; }
+    if (ev.key !== "Tab") return;
+    // focus trap: an aria-modal dialog must not leak focus to the page behind
+    var o = document.getElementById("intake-overlay");
+    var f = o ? o.querySelectorAll('button, input, [tabindex]:not([tabindex="-1"])') : [];
+    if (!f.length) return;
+    var first = f[0], last = f[f.length - 1];
+    if (ev.shiftKey && document.activeElement === first) { ev.preventDefault(); last.focus(); }
+    else if (!ev.shiftKey && document.activeElement === last) { ev.preventDefault(); first.focus(); }
+  }
+
   function start() {
     state = {};
+    lastFocus = document.activeElement;
     var o = overlay();
     o.classList.add("open");
+    o.addEventListener("keydown", onOverlayKeydown);
     var log = document.getElementById("intake-log");
     if (log) log.innerHTML = "";
     var input = document.getElementById("intake-input");
@@ -541,8 +622,13 @@ OF.intake = (function () {
 
   function close() {
     var o = document.getElementById("intake-overlay");
-    if (o) o.classList.remove("open");
+    if (o) {
+      o.classList.remove("open");
+      o.removeEventListener("keydown", onOverlayKeydown);
+    }
     curStep = null;
+    if (lastFocus && lastFocus.focus) { try { lastFocus.focus(); } catch (e) {} }  // restore focus
+    lastFocus = null;
   }
 
   return {

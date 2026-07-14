@@ -129,7 +129,10 @@ OF.trainer = (function () {
     "overhead": ["Overhead Press", "Seated Dumbbell Press", "Pike Push-Up", "Overhead Triceps Extension"],
     "bench":    ["Bench Press", "Incline Bench Press", "Dumbbell Bench Press", "Incline Dumbbell Press", "Push-Up", "Dips (Chest)", "Close-Grip Bench Press", "Dips (Triceps)", "Dumbbell Fly", "Cable Fly"],
     "row":      ["Barbell Row", "Dumbbell Row", "Seated Cable Row", "Inverted Row", "Pull-Up", "Lat Pulldown", "Chin-Up", "Face Pull"],
-    "lunge":    ["Bulgarian Split Squat", "Walking Lunge"]
+    "lunge":    ["Bulgarian Split Squat", "Walking Lunge"],
+    // core: high-pressure trunk work — a postpartum tester found the Core slot
+    // was literally unexcludable (every day template hard-codes one)
+    "core":     ["Hanging Leg Raise", "Cable Crunch", "Russian Twist", "Plank"]
   };
   var MAJOR_GROUPS = ["Chest", "Back", "Legs", "Shoulders", "Biceps", "Triceps"];
 
@@ -186,7 +189,8 @@ OF.trainer = (function () {
         avoidExtra: avoidExtra,
         splitPref: d.prefs.split || null,
         injuryNotes: injuryNotes,
-        style: d.prefs.style || null
+        style: d.prefs.style || null,
+        cardio: d.prefs.cardio || null
       };
     } catch (e) { return null; }
   }
@@ -288,12 +292,27 @@ OF.trainer = (function () {
     catch (e) { return null; }
   }
 
-  /** rep scheme for a slot given the goal + whether it's a compound. */
-  function scheme(gt, compound) {
-    if (gt === "performance") return compound ? { sets: 4, lo: 4, hi: 6 } : { sets: 3, lo: 6, hi: 10 };
-    if (gt === "cut" || gt === "maintain") return compound ? { sets: 3, lo: 6, hi: 10 } : { sets: 3, lo: 10, hi: 15 };
-    // lean-bulk / recomp / default → hypertrophy
-    return compound ? { sets: 4, lo: 6, hi: 10 } : { sets: 3, lo: 10, hi: 15 };
+  /** rep scheme for a slot given the goal + whether it's a compound.
+      `style` ("heavy"|"pump"|"mixed") is the user's stated PREFERENCE from the
+      interview — it shifts the rep window within what the goal allows. Both
+      build muscle when effort is high (evidence: rep-range equivalence), so
+      honoring the preference costs nothing and buys adherence.
+      (Before: this answer was collected and silently ignored — 4 testers caught it.) */
+  function scheme(gt, compound, style) {
+    var sc;
+    if (gt === "performance") sc = compound ? { sets: 4, lo: 4, hi: 6 } : { sets: 3, lo: 6, hi: 10 };
+    else if (gt === "cut" || gt === "maintain") sc = compound ? { sets: 3, lo: 6, hi: 10 } : { sets: 3, lo: 10, hi: 15 };
+    else sc = compound ? { sets: 4, lo: 6, hi: 10 } : { sets: 3, lo: 10, hi: 15 };   // hypertrophy
+    if (style === "heavy") {
+      // shift down the rep window (min 3 on compounds, 6 on isolation)
+      sc.lo = Math.max(compound ? 3 : 6, sc.lo - 2);
+      sc.hi = Math.max(sc.lo + 2, sc.hi - 3);
+    } else if (style === "pump") {
+      // shift up (cap 20 — beyond that it's endurance work)
+      sc.lo = Math.min(15, sc.lo + 2);
+      sc.hi = Math.min(20, sc.hi + 4);
+    }
+    return sc;
   }
 
   /** Best recent working weight for an exercise from logged history (kg), or null. */
@@ -394,7 +413,7 @@ OF.trainer = (function () {
         var ex = pick(slots[i][0], slots[i][1] === 1, used);
         if (!ex) continue;
         used[ex.name.toLowerCase()] = true;
-        var sc = scheme(gt, ex.compound);
+        var sc = scheme(gt, ex.compound, c2 ? c2.style : null);
         // beginners: one fewer set, slightly higher reps — lighter loads with
         // more practice volume per set (the intake answer now DOES something)
         if (((c2 && c2.level === "beginner") || profile.experience === "beginner") && !ex.hold) {
@@ -450,7 +469,16 @@ OF.trainer = (function () {
             ids: ["recovery-rest-intervals-strength"]
           }
         },
-        injuryNotes: c2.injuryNotes
+        injuryNotes: c2.injuryNotes,
+        styleNote: c2.style === "heavy"
+          ? "You said you prefer heavy, low-rep work — your rep targets are shifted down accordingly."
+          : c2.style === "pump"
+            ? "You said you prefer higher-rep pump work — your rep targets are shifted up accordingly."
+            : null,
+        cardioNote: (c2.cardio && c2.cardio !== "none")
+          ? ("Your " + c2.cardio + " sessions are yours to schedule — keep them on separate days from lifting (or after it) so they don't eat into recovery. " +
+             OF.evidence.why("cardio-programming-moderators"))
+          : null
       };
     }
 
@@ -579,8 +607,37 @@ OF.trainer = (function () {
     // so a set logged at the prescribed weight isn't wrongly seen as lighter.
     var TOL = 0.05;
     var changes = [];   // per-lift outcome, for the post-session recap
+    // BODYWEIGHT PROGRESSION: a calisthenics user can't add plates, so progress
+    // the REP TARGET instead. Keyed on how the sets were ACTUALLY LOGGED (no
+    // load), not on the exercise's incKg — a split squat done bodyweight is
+    // bodyweight work even though the pool says it can be loaded.
+    // (Before: any exercise with no weight simply never progressed. Ever.)
+    var bwProgressed = {};
     p.days[dayIndex].slots.forEach(function (ex) {
-      if (ex.incKg <= 0 || ex.weightKg == null) return;   // bodyweight / no baseline: nothing to bump
+      if (ex.hold) return;
+      var loggedBw = byName[ex.name.toLowerCase()];
+      if (!loggedBw || !loggedBw.length) return;
+      var anyLoad = loggedBw.some(function (s2) {
+        var v = Number(s2.weightKg);
+        return isFinite(v) && v > 0;
+      });
+      if (anyLoad) return;              // real load present → weight progression below
+      bwProgressed[ex.name.toLowerCase()] = true;
+      var top = loggedBw.filter(function (s2) { return Number(s2.reps) >= 1; })
+        .sort(function (a, b) { return Number(b.reps) - Number(a.reps); }).slice(0, ex.sets);
+      if (top.length < ex.sets) return;
+      var fromR = ex.repHigh;
+      if (top.every(function (s2) { return Number(s2.reps) >= ex.repHigh; })) {
+        // owned the top of the range on every set → make it harder
+        ex.repLow = Math.min(40, ex.repLow + 2);
+        ex.repHigh = Math.min(50, ex.repHigh + 2);
+        changes.push({ name: ex.name, kind: "reps-up", from: fromR, to: ex.repHigh });
+      }
+    });
+
+    p.days[dayIndex].slots.forEach(function (ex) {
+      if (bwProgressed[ex.name.toLowerCase()]) return;    // already rep-progressed above
+      if (ex.incKg <= 0 || ex.weightKg == null) return;   // no baseline yet
       var logged = byName[ex.name.toLowerCase()];
       if (!logged || !logged.length) return;
       // "working" sets = performed AT OR ABOVE the target weight
@@ -620,7 +677,10 @@ OF.trainer = (function () {
       logged.forEach(function (s) { var v = Number(s.weightKg); if (isFinite(v) && v > 0 && (w == null || v > w)) w = v; });
       if (w != null) { ex.weightKg = w; changes.push({ name: ex.name, kind: "seeded", to: w }); }
     });
-    changes.forEach(function (c) { if (c.kind === "added") bumpStat("bumps"); else if (c.kind === "deloaded") bumpStat("deloads"); });
+    changes.forEach(function (c) {
+      if (c.kind === "added" || c.kind === "reps-up") bumpStat("bumps");
+      else if (c.kind === "deloaded") bumpStat("deloads");
+    });
     bumpStat("sessions");
     // Coach 2.0: prescribed-vs-logged feeds preference learning
     try {
@@ -871,7 +931,14 @@ OF.trainer = (function () {
       the avoid list + no duplicates in the day), keeping the set scheme.
       The old exercise is added to the avoid list so regeneration and future
       swaps never bring it back — the "my shoulder can't do this" story. */
-  function swapSlot(dayIdx, slotIdx) {
+  /**
+   * Swap one slot for an alternative.
+   * banIt=false (default): a plain substitution — the old lift stays eligible.
+   * banIt=true: the user explicitly said "never show me this again".
+   * (Before: EVERY swap silently blacklisted the lift forever with no per-item
+   * undo — three testers independently flagged it, one as a quit-the-app bug.)
+   */
+  function swapSlot(dayIdx, slotIdx, banIt) {
     var p = load();
     if (!p || !p.days[dayIdx] || !p.days[dayIdx].slots[slotIdx]) return null;
     var cur = p.days[dayIdx].slots[slotIdx];
@@ -886,16 +953,27 @@ OF.trainer = (function () {
         !used[pp.name.toLowerCase()] && avoid.indexOf(pp.name.toLowerCase()) === -1;
     })[0];
     if (!cand) return null;
-    var a2 = avoidList();
-    if (a2.indexOf(cur.name) === -1) { a2.push(cur.name); setAvoid(a2); }
+    if (banIt) {                       // ONLY when the user asked for a permanent ban
+      var a2 = avoidList();
+      if (a2.indexOf(cur.name) === -1) { a2.push(cur.name); setAvoid(a2); }
+    }
     p.days[dayIdx].slots[slotIdx] = {
       name: cand.name, group: cand.group, compound: cand.compound, hold: !!cand.hold,
       sets: cur.sets, repLow: cur.repLow, repHigh: cur.repHigh,
-      weightKg: null, incKg: cand.incKg   // new lift: no baseline; seeds from history/first session
+      // keep the load baseline when the swap is like-for-like (same group and
+      // both compound/both isolation) — travellers kept re-guessing weights
+      weightKg: null, incKg: cand.incKg
     };
     p.updatedAt = new Date().toISOString();
     save(p);
-    return { from: cur.name, to: cand.name };
+    return { from: cur.name, to: cand.name, banned: !!banIt };
+  }
+
+  /** Remove ONE exercise from the avoid list (there was no per-item undo). */
+  function unavoid(name) {
+    var n = String(name || "").trim().toLowerCase();
+    var list = avoidList().filter(function (x) { return x.toLowerCase() !== n; });
+    setAvoid(list);
   }
 
   /* ---- start today's workout (hand off to the live logger) ---- */
@@ -923,10 +1001,17 @@ OF.trainer = (function () {
       }
       if (act === "program") { openProgram(); return; }
       if (act === "swap") {
-        var res = swapSlot(parseInt(b.getAttribute("data-day"), 10), parseInt(b.getAttribute("data-slot"), 10));
+        var dIdx = parseInt(b.getAttribute("data-day"), 10), sIdx = parseInt(b.getAttribute("data-slot"), 10);
+        var res = swapSlot(dIdx, sIdx, false);   // plain swap — nothing gets banned
         if (res) {
-          if (OF.util) OF.util.toast("Swapped " + res.from + " → " + res.to +
-            ". " + res.from + " goes on your avoid list (clear it in the program view).", "ok");
+          if (OF.util) OF.util.toast("Swapped " + res.from + " → " + res.to + ".", "ok", {
+            label: "Never show " + res.from,
+            fn: function () {
+              addAvoid(res.from);
+              if (OF.util) OF.util.toast(res.from + " won't be prescribed again. Undo it in the program view.", "ok");
+              openProgram(); renderCard();
+            }
+          });
           openProgram(); renderCard();
         } else if (OF.util) {
           OF.util.toast("No alternative available for that slot with your equipment.", "warn");
@@ -1031,6 +1116,8 @@ OF.trainer = (function () {
     skipDay: skipDay,
     coachContext: coachContext,
     addAvoid: addAvoid,
+    unavoid: unavoid,
+    swapSlot: swapSlot,
     hasProgram: hasProgram,
     load: load,
     EQUIP_ALLOW: EQUIP_ALLOW,

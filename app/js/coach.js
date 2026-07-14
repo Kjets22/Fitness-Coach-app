@@ -624,7 +624,7 @@ OF.coach = (function () {
     }
     if (/\beat(ing)?\b|\bfood\b|\bmeals?\b|nutrition|protein|pre-?workout|\bfuel\b|breakfast|before (training|a workout|the gym|my workout)/.test(q)) {
       var kcal = t && t.status === "ok" ? t.calories : null, prot = t && t.status === "ok" ? t.proteinG : null;
-      return "Pre-training, aim for easy carbs + a bit of protein 60–90 min out (oats or fruit + Greek yogurt or a scoop of protein)." +
+      return "Pre-training, aim for easy carbs + a bit of protein 60–90 min out (" + preWorkoutExample() + ")." +
         (prot ? " Your daily target is ~" + prot + "g protein" + (kcal ? " / " + kcal + " kcal" : "") + " — spread protein across the day and get a solid feed in after you lift." : "");
     }
     if (/today|session|workout|walk|do|plan|next/.test(q)) {

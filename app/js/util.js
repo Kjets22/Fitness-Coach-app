@@ -87,6 +87,10 @@ OF.util = (function () {
     if (!el) {
       el = document.createElement("div");
       el.id = "of-toast";
+      // announce to screen readers — a blind tester never heard confirmations
+      // OR the Undo button that follows a delete
+      el.setAttribute("role", "status");
+      el.setAttribute("aria-live", "polite");
       (document.body || document.documentElement).appendChild(el);
     }
     el.className = "toast " + (kind === "warn" ? "toast-warn" : kind === "ok" ? "toast-ok" : "toast-error");
@@ -164,8 +168,10 @@ OF.util = (function () {
       color = "url(#" + gid + ")";
     }
     var valSize = Math.round(size * (opts.sub ? 0.24 : 0.26));
+    var ringName = opts.label || ((opts.value != null ? opts.value : Math.round(f * 100) + "%") +
+      (opts.sub ? " " + opts.sub : ""));
     var out = '<svg class="ring" width="' + size + '" height="' + size +
-      '" viewBox="0 0 ' + size + " " + size + '" role="img" aria-hidden="true">' + defs +
+      '" viewBox="0 0 ' + size + " " + size + '" role="img" aria-label="' + esc(ringName) + '">' + defs +
       '<circle class="ring-bg" cx="' + half + '" cy="' + half + '" r="' + r +
       '" stroke-width="' + stroke + '"/>' +
       '<circle class="ring-fg" cx="' + half + '" cy="' + half + '" r="' + r +

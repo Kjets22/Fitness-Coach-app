@@ -207,17 +207,36 @@ OF.food = (function () {
     var today = U.todayISO();
     var todays = S.getAll("food").filter(function (r) { return r.date === today; });
     if (!todays.length) { els.summary.innerHTML = ""; return; }
-    var kcal = 0, prot = 0;
+    var kcal = 0, prot = 0, carb = 0, fat = 0;
     todays.forEach(function (r) {
       if (isFinite(Number(r.calories))) kcal += Number(r.calories);
       if (isFinite(Number(r.protein))) prot += Number(r.protein);
+      if (isFinite(Number(r.carbs))) carb += Number(r.carbs);
+      if (isFinite(Number(r.fat))) fat += Number(r.fat);
     });
+    // show ALL FOUR macros against target where you actually make eating
+    // decisions — a keto tester and a macro-tracker both had to leave the tab
+    // (or add meals up by hand) just to see carbs
+    var t = null;
+    try {
+      var gi = OF.goals && OF.goals.info ? OF.goals.info() : null;
+      t = (gi && gi.targets && gi.targets.status === "ok") ? gi.targets : null;
+    } catch (e) {}
+    function part(label, val, target, unit) {
+      var v = Math.round(val);
+      return '<span class="macro-part"><strong>' + U.esc(String(v)) +
+        (target ? " / " + U.esc(String(Math.round(target))) : "") + U.esc(unit) + '</strong> ' +
+        U.esc(label) + '</span>';
+    }
     els.summary.innerHTML =
       '<span class="entry-ico">' + OF.icons.get("apple") + '</span>' +
-      '<span>Today: <strong>' + U.esc(String(Math.round(kcal))) + ' kcal</strong> · <strong>' +
-      U.esc(String(Math.round(prot))) + 'g</strong> protein</span>' +
-      '<span><strong>' + todays.length + '</strong> meal' + (todays.length === 1 ? '' : 's') +
-      ' logged</span>';
+      '<span class="macro-row">' +
+        part("kcal", kcal, t ? t.calories : null, "") +
+        part("protein", prot, t ? t.proteinG : null, "g") +
+        part("carbs", carb, t ? t.carbsG : null, "g") +
+        part("fat", fat, t ? t.fatG : null, "g") +
+      '</span>' +
+      '<span><strong>' + todays.length + '</strong> meal' + (todays.length === 1 ? '' : 's') + '</span>';
   }
 
   /** "Log again" chips: the user's recent distinct meals — most meals repeat,
@@ -236,7 +255,14 @@ OF.food = (function () {
       opts.push(r.foodName.trim());
     });
     if (OF.foodDB) {
-      OF.foodDB.all().forEach(function (f) {
+      // respect the diet the interview collected (a halal tester was offered
+      // pork and beer; a vegan was offered dairy)
+      var restrictions = [];
+      try {
+        var d = OF.profile && OF.profile.get ? OF.profile.get() : null;
+        restrictions = (d && d.recovery && d.recovery.restrictions) || [];
+      } catch (e) {}
+      OF.foodDB.all(restrictions).forEach(function (f) {
         var k = f.name.toLowerCase();
         if (seen[k]) return;
         seen[k] = true;

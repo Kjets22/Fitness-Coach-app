@@ -155,7 +155,12 @@ OF.storage = (function () {
      included: social (server-backed auth/profile cache), pairKey (a device
      secret has no business inside a shareable backup file), activeWorkout
      (transient in-flight session). */
-  var APPSTATE_KEYS = ["trainerProgram", "trainerStats", "prMeta", "streakMeta"];
+  /* Everything under optimalfit.* that ISN'T a record list but still IS the
+     user's data. A backup that silently drops these loses the coach's entire
+     memory of you — a privacy-minded tester found the interview answers,
+     learned preferences and chat history were all missing from exports. */
+  var APPSTATE_KEYS = ["trainerProgram", "trainerStats", "prMeta", "streakMeta",
+    "coachProfile", "learnState", "coachChat", "avoidExercises", "exRest"];
 
   function exportAll() {
     var out = {

@@ -59,18 +59,27 @@ function runIntake(w, a) {
   const st = {};
   let step = F.steps[0];
   const go = (v) => { if (step) step = F.advance(st, step.id, v); };
-  go(a.goal); go(a.milestone); go(a.timeline); go(a.age);
-  if (step && step.id === "beginner-pep") go(true);
-  if (step && step.id === "returning-pep") go(true);
-  if (step && step.id === "weak-points") go(a.weakPoints || []);
-  go(a.days); go(a.session);
-  if (step && step.id === "bodyweight") go(a.weight || null);
-  go(a.split); go(a.style); go(a.cardio);
-  if (step && step.id === "likes") go(a.likes);
-  if (step && step.id === "dislikes") go(a.dislikes);
-  go(a.equipment); go(a.injury);
-  if (step && step.id === "injury-patterns") go(a.patterns || []);
-  go(a.sleep); go(a.stress); go(a.job); go(a.diet);
+  // drive the flow BY STEP ID so it survives future flow changes
+  const answers = {
+    goal: a.goal, milestone: a.milestone, timeline: a.timeline,
+    age: a.years != null ? a.years : 30,
+    conditions: a.conditions || [],
+    "training-age": a.age,
+    "beginner-pep": true, "returning-pep": true, "safety-brief": true,
+    "weak-points": a.weakPoints || [],
+    days: a.days, "session-length": a.session, bodyweight: a.weight || null,
+    split: a.split, style: a.style, cardio: a.cardio,
+    likes: a.likes || [], dislikes: a.dislikes || [],
+    equipment: a.equipment,
+    "injury-area": a.injury ? (Array.isArray(a.injury) ? a.injury : [a.injury]) : [],
+    "injury-patterns": a.patterns || [],
+    sleep: a.sleep, stress: a.stress, job: a.job, diet: a.diet || []
+  };
+  let guard = 40;
+  while (step && guard-- > 0) {
+    if (!(step.id in answers)) throw new Error("eval has no answer for step: " + step.id);
+    go(answers[step.id]);
+  }
   if (step !== null) throw new Error("intake did not complete; stuck at " + (step && step.id));
   const m = F.toProfilePatch(st);
   w.OF.profile.update(m.patch, "intake");

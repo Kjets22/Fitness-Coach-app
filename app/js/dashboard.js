@@ -194,7 +194,10 @@ OF.dashboard = (function () {
         readiness.level === "medium" ? "var(--warn)" :
         readiness.level === "low" ? "var(--danger)" : "grad";
       ringHtml = U.progressRing(readiness.score / 100,
-        { size: 76, color: color, value: String(readiness.score), sub: "/100" });
+        { size: 76, color: color, value: String(readiness.score), sub: "/100",
+          // level as a WORD, not just a hue (a colorblind tester and a blind
+          // tester both lost this signal); also the ring's accessible name
+          label: "Readiness " + readiness.score + " out of 100 — " + readiness.level });
     } else {
       ringHtml = U.progressRing(0, { size: 76, color: "grad", value: "—" });
     }
@@ -208,7 +211,9 @@ OF.dashboard = (function () {
       (brief ? '<p class="hero-brief" data-nav="trainer" role="button" tabindex="0" title="Jump to today\'s session">' + U.esc(brief) + '</p>' : '') + '</div>' +
       '<div class="hero-ring" data-nav="readiness" role="button" tabindex="0" title="' +
       U.esc((readiness && readiness.status === "ok" ? readiness.verdict : "Log a few nights of sleep to unlock your readiness score") + " — tap to learn what this means") +
-      '">' + ringHtml + '<span class="hero-ring-label">Readiness</span></div>' +
+      '">' + ringHtml + '<span class="hero-ring-label">Readiness' +
+      (readiness && readiness.status === "ok" ? ' \u00b7 ' + U.esc(readiness.level) : '') +
+      '</span></div>' +
       '</header>';
     // celebrate a new streak milestone (once)
     try {
@@ -272,9 +277,12 @@ OF.dashboard = (function () {
 
   function card(label, valueHtml, sub, extras) {
     extras = extras || {};
+    // the accessible name must carry the VALUE — an aria-label of just the
+    // label made a blind tester's own numbers unspeakable
+    var plainValue = String(valueHtml).replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim();
     var tap = extras.metric
       ? ' stat-card-tap" data-metric="' + extras.metric + '" role="button" tabindex="0" aria-label="' +
-        U.esc(label) + ' — tap for trend'
+        U.esc(label + ": " + plainValue + (sub ? ", " + sub : "") + " — tap for trend")
       : '';
     return '<div class="stat-card' + tap + '">' +
       '<div class="stat-head"><div class="stat-label">' + U.esc(label) + '</div>' +
@@ -711,15 +719,19 @@ OF.dashboard = (function () {
       var q = Number(r.quality);
       // no quality recorded (imports/auto-sync) = neutral, NOT "terrible night" red
       var color = !isFinite(q) ? "var(--accent)" : q >= 4 ? "var(--accent-2)" : q === 3 ? "var(--warn)" : "var(--danger)";
+      // redundant, non-color cue (a colorblind tester could not tell good nights
+      // from bad ones — the hues converge for red-green colorblindness)
+      var mark = !isFinite(q) ? "" : q >= 4 ? "\u2022" : q === 3 ? "\u2013" : "\u00d7";
       var hours = Math.round((r.durationMin / 60) * 10) / 10;
-      bars.push({ label: label, value: hours, color: color, valueLabel: String(hours) });
+      bars.push({ label: label + (mark ? " " + mark : ""), value: hours, color: color,
+        valueLabel: String(hours) });
     }
     var inner = hasAny
       ? OF.charts.barChart({ bars: bars, yMax: 10, yFmt: function (v) { return v + "h"; } }) +
         '<div class="chart-legend">' +
-        '<span class="legend-item"><span class="legend-swatch" style="background:var(--accent-2)"></span>quality 4&ndash;5</span>' +
-        '<span class="legend-item"><span class="legend-swatch" style="background:var(--warn)"></span>quality 3</span>' +
-        '<span class="legend-item"><span class="legend-swatch" style="background:var(--danger)"></span>quality 1&ndash;2</span>' +
+        '<span class="legend-item"><span class="legend-swatch" style="background:var(--accent-2)"></span>&bull; quality 4&ndash;5</span>' +
+        '<span class="legend-item"><span class="legend-swatch" style="background:var(--warn)"></span>&ndash; quality 3</span>' +
+        '<span class="legend-item"><span class="legend-swatch" style="background:var(--danger)"></span>&times; quality 1&ndash;2</span>' +
         '</div>'
       : OF.charts.empty("No sleep logged in the last 14 days.");
     return chartCard("Sleep — last 14 days (h)", inner);

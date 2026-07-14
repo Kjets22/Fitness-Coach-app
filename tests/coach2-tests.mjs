@@ -45,7 +45,15 @@ import { makeWorld, check, section, report } from "./coach2-shim.mjs";
   check("max loss rate 1%/wk", s.maxWeeklyLossPctBW === 1.0);
   check("red flags include numbness", s.seeProfessionalIf.join(" ").includes("numbness"));
   check("whyHonest tags practice-based", E.whyHonest("progression-deload").includes("practice"));
-  check("LLM context under 2.5 KB", JSON.stringify(E.coachContext()).length < 2500);
+  check("LLM context stays compact", JSON.stringify(E.coachContext()).length < 3200,
+    JSON.stringify(E.coachContext()).length);
+  const ctxIds = E.coachContext().entries.map(e => e.id);
+  check("safety entries ALWAYS reach the coach", ["safety-injury-red-flags", "safety-calorie-floor", "safety-max-rates"]
+    .every(id => ctxIds.includes(id)), ctxIds.filter(i => i.startsWith("safety")));
+  check("screenProfile flags a minor", E.screenProfile({ experience: { age: 16 } }).some(n => n.kind === "minor"));
+  check("screenProfile flags a condition", E.screenProfile({ constraints: { conditions: ["high blood pressure"] } }).length === 1);
+  check("screenProfile is silent for a healthy adult", E.screenProfile({ experience: { age: 30 }, constraints: { conditions: [] } }).length === 0);
+  check("red flags now include cardiac symptoms", E.safety().seeProfessionalIf.join(" ").toLowerCase().includes("chest pain"));
 }
 
 /* ---------------- intake flow (pure engine) ---------------- */
@@ -56,7 +64,7 @@ import { makeWorld, check, section, report } from "./coach2-shim.mjs";
   // beginner path: gets the pep talk, skips weak-points and injury-patterns
   let st = {}, step = F.steps[0];
   const go = v => { step = F.advance(st, step.id, v); };
-  go("muscle"); go("gain 10 lb"); go(26); go(0);
+  go("muscle"); go("gain 10 lb"); go(26); go(25); go([]); go(0);
   check("beginner gets education step", step.id === "beginner-pep", step.id);
   go(true); go(3); go(45);
   check("bodyweight asked before split", step.id === "bodyweight", step.id);
@@ -65,14 +73,14 @@ import { makeWorld, check, section, report } from "./coach2-shim.mjs";
   check("weight captured", st.weightDisplay === 185, st.weightDisplay);
   go("mixed"); go("walk");
   check("beginner SKIPS the 15-lift likes/dislikes walls", step.id === "equipment", step.id);
-  go("dumbbells"); go(null);
+  go("dumbbells"); go([]);
   check("no injury skips pattern step", step.id === "sleep", step.id);
   go(7.5); go(3); go("desk"); go([]);
   check("beginner path completes", step === null);
   // returning-lifter lane
   let stR = {}, sR = F.steps[0];
   const goR = v => { sR = F.advance(stR, sR.id, v); };
-  goR("muscle"); goR(null); goR(null); goR("returning");
+  goR("muscle"); goR(null); goR(null); goR(25); goR([]); goR("returning");
   check("returning lane gets its own pep talk", sR.id === "returning-pep", sR.id);
   check("returning maps to intermediate", F.level(stR) === "intermediate");
   const m = F.toProfilePatch(st);
@@ -83,14 +91,32 @@ import { makeWorld, check, section, report } from "./coach2-shim.mjs";
   // advanced path: weak points asked, injury patterns asked
   let st2 = {}, s2 = F.steps[0];
   const go2 = v => { s2 = F.advance(st2, s2.id, v); };
-  go2("strength"); go2(null); go2(52); go2(5);
+  go2("strength"); go2(null); go2(52); go2(52); go2([]); go2(5);
   check("advanced gets weak-points", s2.id === "weak-points", s2.id);
   go2(["Legs"]); go2(5); go2(60); go2(null); go2("ppl"); go2("heavy"); go2("none");
-  go2([]); go2([]); go2("full-gym"); go2("knee");
+  go2([]); go2([]); go2("full-gym"); go2(["knee", "shoulder"]);
   check("injury triggers pattern step", s2.id === "injury-patterns", s2.id);
-  go2(["squat", "lunge"]); go2(6.5); go2(4); go2("physical"); go2([]);
+  go2(["squat", "overhead"]); go2(6.5); go2(4); go2("physical"); go2([]);
   check("advanced path completes", s2 === null);
-  check("injury recorded with patterns", st2.injuries[0].area === "knee" && st2.injuries[0].aggravates.length === 2);
+  check("MULTIPLE injuries captured", st2.injuries.length === 2, st2.injuries);
+  check("both injuries carry the patterns", st2.injuries.every(i => i.aggravates.length === 2));
+
+  // safety lane: a minor + a condition get the safety brief and no deficit
+  let st3 = {}, s3 = F.steps[0];
+  const go3 = v => { s3 = F.advance(st3, s3.id, v); };
+  go3("fat-loss"); go3(null); go3(null); go3(16); go3(["high blood pressure"]); go3(0);
+  check("under-18 + condition triggers the safety brief", s3.id === "safety-brief", s3.id);
+  check("safety brief text mentions a doctor", s3.say(st3).toLowerCase().includes("doctor"));
+  const m3 = F.toProfilePatch(st3);
+  check("age persisted to the profile", m3.patch.experience.age === 16);
+  check("conditions persisted", m3.patch.constraints.conditions[0] === "high blood pressure");
+  check("SAFETY: a minor asking to cut is NOT put on a deficit",
+    m3.appGoalType === "maintain" && m3.patch.goals.appGoalType === "maintain", m3.appGoalType);
+  // ...but an adult who asks to cut still cuts
+  let st4 = {}, s4 = F.steps[0];
+  const go4 = v => { s4 = F.advance(st4, s4.id, v); };
+  go4("fat-loss"); go4(null); go4(null); go4(37); go4([]);
+  check("an adult who asks to cut still cuts", F.toProfilePatch(st4).appGoalType === "cut");
 }
 
 /* ---------------- learning math ---------------- */
@@ -240,6 +266,76 @@ import { makeWorld, check, section, report } from "./coach2-shim.mjs";
   const rev2 = w.OF.learn.weeklyReview(43);
   const chest2 = rev2.decisions.find(d => d.group === "Chest");
   check("dwell: no second move within 14 days", !chest || !chest.move || !chest2 || chest2.move === 0, chest2);
+}
+
+/* ---------------- user-panel regressions (25 synthetic testers) ----------------
+   Each of these locks in a fix for a complaint raised independently by 2+
+   personas. They exist so the fixes can never silently regress. */
+{
+  section("user-panel regressions");
+  // 1. the interview must USE the answers it collects (4 personas)
+  const wHeavy = makeWorld();
+  wHeavy.OF.profile.update({ goals: { primary: "muscle" }, prefs: { daysPerWeek: 3, style: "heavy" },
+    experience: { trainingAgeYears: 2 }, constraints: { equipment: "full-gym" } }, "intake");
+  const pHeavy = wHeavy.OF.trainer.createProgram({ daysPerWeek: 3, equipment: "full-gym", experience: "intermediate", sessionMinutes: 60 });
+  const wPump = makeWorld();
+  wPump.OF.profile.update({ goals: { primary: "muscle" }, prefs: { daysPerWeek: 3, style: "pump" },
+    experience: { trainingAgeYears: 2 }, constraints: { equipment: "full-gym" } }, "intake");
+  const pPump = wPump.OF.trainer.createProgram({ daysPerWeek: 3, equipment: "full-gym", experience: "intermediate", sessionMinutes: 60 });
+  const topReps = p => p.days[0].slots.filter(x => !x.hold)[0].repHigh;
+  check("style 'heavy' lowers the rep target", topReps(pHeavy) < topReps(pPump), [topReps(pHeavy), topReps(pPump)]);
+  check("style note is surfaced to the user", !!pHeavy.coach2.styleNote);
+  const wCardio = makeWorld();
+  wCardio.OF.profile.update({ goals: { primary: "muscle" }, prefs: { daysPerWeek: 3, cardio: "run" },
+    experience: { trainingAgeYears: 2 }, constraints: { equipment: "full-gym" } }, "intake");
+  const pCardio = wCardio.OF.trainer.createProgram({ daysPerWeek: 3, equipment: "full-gym", experience: "intermediate", sessionMinutes: 60 });
+  check("a cardio preference produces real guidance", /run/i.test(pCardio.coach2.cardioNote || ""), pCardio.coach2.cardioNote);
+
+  // 2. bodyweight users must actually progress (their reps go up)
+  const wBw = makeWorld();
+  wBw.OF.profile.update({ goals: { primary: "muscle" }, prefs: { daysPerWeek: 3 },
+    experience: { trainingAgeYears: 0 }, constraints: { equipment: "bodyweight" } }, "intake");
+  const pBw = wBw.OF.trainer.createProgram({ daysPerWeek: 3, equipment: "bodyweight", experience: "beginner", sessionMinutes: 45 });
+  const bwEx = pBw.days[0].slots.find(x => !x.hold && x.weightKg == null);
+  const beforeHigh = bwEx.repHigh;
+  // log every set at the TOP of the range → the target must get harder
+  const res = wBw.OF.trainer.completeSession(0, [{ name: bwEx.name,
+    sets: Array(bwEx.sets).fill({ weightKg: null, reps: bwEx.repHigh }) }]);
+  const after = wBw.OF.trainer.load().days[0].slots.find(x => x.name === bwEx.name);
+  check("bodyweight progression exists (reps go up)", after.repHigh > beforeHigh, [beforeHigh, after.repHigh]);
+  check("bodyweight progression is reported to the user", res.changes.some(c => c.kind === "reps-up"));
+
+  // 3. swapping must NOT permanently blacklist (3 personas)
+  const wSwap = makeWorld();
+  wSwap.OF.trainer.createProgram({ daysPerWeek: 3, equipment: "full-gym", experience: "intermediate", sessionMinutes: 60 });
+  const before = wSwap.OF.trainer.load().days[0].slots[0].name;
+  const sw = wSwap.OF.trainer.swapSlot(0, 0);         // default: no ban
+  check("a plain swap changes the exercise", sw && sw.to !== before);
+  check("a plain swap does NOT blacklist the old lift", sw.banned === false);
+  const regen = wSwap.OF.trainer.createProgram({ daysPerWeek: 3, equipment: "full-gym", experience: "intermediate", sessionMinutes: 60 });
+  check("the swapped-out lift can still be prescribed",
+    regen.days.flatMap(d => d.slots.map(x => x.name)).includes(before), before);
+  wSwap.OF.trainer.addAvoid(before);                  // explicit "never again"
+  const regen2 = wSwap.OF.trainer.createProgram({ daysPerWeek: 3, equipment: "full-gym", experience: "intermediate", sessionMinutes: 60 });
+  check("an explicit ban IS respected", !regen2.days.flatMap(d => d.slots.map(x => x.name)).includes(before));
+  wSwap.OF.trainer.unavoid(before);                   // per-item undo (didn't exist)
+  const regen3 = wSwap.OF.trainer.createProgram({ daysPerWeek: 3, equipment: "full-gym", experience: "intermediate", sessionMinutes: 60 });
+  check("a ban can be undone per-item", regen3.days.flatMap(d => d.slots.map(x => x.name)).includes(before));
+
+  // 4. injuries: multiple, and core is excludable (postpartum + chronic-pain testers)
+  const wInj = makeWorld();
+  wInj.OF.profile.update({ goals: { primary: "muscle" }, prefs: { daysPerWeek: 3 },
+    experience: { trainingAgeYears: 2 },
+    constraints: { equipment: "full-gym", injuries: [
+      { area: "core", aggravates: ["core"] },
+      { area: "shoulder", aggravates: ["overhead"] }
+    ] } }, "intake");
+  const pInj = wInj.OF.trainer.createProgram({ daysPerWeek: 3, equipment: "full-gym", experience: "intermediate", sessionMinutes: 60 });
+  const injNames = pInj.days.flatMap(d => d.slots.map(x => x.name));
+  check("core-pattern exclusion works (was impossible)",
+    !injNames.some(n => ["Hanging Leg Raise", "Cable Crunch", "Russian Twist", "Plank"].includes(n)), injNames);
+  check("a SECOND injury is excluded too",
+    !injNames.some(n => ["Overhead Press", "Seated Dumbbell Press", "Pike Push-Up", "Overhead Triceps Extension"].includes(n)));
 }
 
 report("coach2-tests");

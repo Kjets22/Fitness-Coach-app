@@ -55,9 +55,11 @@ OF.charts = (function () {
     return ticks;
   }
 
-  function svgOpen(w, h) {
+  function svgOpen(w, h, label) {
     return '<svg class="chart-svg" viewBox="0 0 ' + w + ' ' + h + '" ' +
-      'preserveAspectRatio="xMidYMid meet" role="img" xmlns="http://www.w3.org/2000/svg">';
+      'preserveAspectRatio="xMidYMid meet" role="img" ' +
+      (label ? 'aria-label="' + String(label).replace(/"/g, "&quot;") + '" ' : 'aria-hidden="true" ') +
+      'xmlns="http://www.w3.org/2000/svg">';
   }
 
   function gridLine(x1, x2, y) {

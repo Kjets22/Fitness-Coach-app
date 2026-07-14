@@ -366,14 +366,54 @@ OF.exercise = (function () {
                  : 'Prefilled from your last session — tap to adjust.') + '</div>' : '') +
         '<div class="set-head" aria-hidden="true"><span></span><span>' + U.esc(unit) + '</span><span></span><span>reps</span><span>done</span><span></span></div>' +
         rows +
-        '<button type="button" class="btn set-add" data-act="add-set" data-ex="' + i + '">+ Add set</button>' +
+        '<div class="set-add-row">' +
+          '<button type="button" class="btn set-add" data-act="add-set" data-ex="' + i + '">+ Add set</button>' +
+          '<button type="button" class="btn set-add" data-act="warmup" data-ex="' + i + '">+ Warm-up ramp</button>' +
+        '</div>' +
         '</div>';
     }).join("");
+  }
+
+  /* One tap builds the ramp lifters compute in their heads: empty bar x10,
+     ~55% x5, ~80% x3, prepended above the working sets (plate-rounded). */
+  function addWarmup(i) {
+    var ex = exList[i];
+    if (!ex) return;
+    var lb = U.weightUnit() === "lb";
+    var bar = lb ? 45 : 20, step = lb ? 5 : 2.5;
+    var work = 0;
+    ex.sets.forEach(function (s) {
+      var v = U.numOrNull(s.wRaw);
+      if (v != null && !isNaN(v)) work = Math.max(work, v);
+    });
+    if (work <= bar) {
+      showError("Type your working weight first — the ramp builds up to it."); return;
+    }
+    showError("");
+    var seen = {};
+    var rows = [];
+    [[bar, 10], [Math.round(work * 0.55 / step) * step, 5], [Math.round(work * 0.8 / step) * step, 3]]
+      .forEach(function (r) {
+        var w = Math.max(bar, r[0]);
+        if (w >= work || seen[w]) return;
+        seen[w] = 1;
+        rows.push({ kg: Math.round(U.fromDisplayWeight(w) * 100) / 100, reps: r[1],
+                    wRaw: String(w), rRaw: String(r[1]) });
+      });
+    if (!rows.length) return;
+    if (ex.sets.length + rows.length > MAX_SETS) {
+      showError("Not enough room under the " + MAX_SETS + "-set cap."); return;
+    }
+    ex.sets = rows.concat(ex.sets);
+    ex.touched = true;
+    saveActive();
+    renderBuilder();
   }
 
   /* Builder click actions (delegated). Returns true if handled. */
   function builderClick(btn) {
     var act = btn.getAttribute("data-act");
+    if (act === "warmup") { addWarmup(parseInt(btn.getAttribute("data-ex"), 10)); return true; }
     if (act !== "add-set" && act !== "del-set" && act !== "del-ex" && act !== "done-set") return false;
     var i = parseInt(btn.getAttribute("data-ex"), 10);
     var ex = exList[i];

@@ -310,6 +310,11 @@ h2 { font-size: var(--fs-3); font-weight: 700; letter-spacing: -0.01em; margin: 
 .form-row label > input, .form-row label > select, .form-row label > textarea { white-space: normal; }
 .form-row label.grow { flex: 3 1 220px; }
 
+/* feet + inches height pair (imperial units) */
+.ftin { display: flex; align-items: center; gap: 6px; }
+.ftin input { flex: 1 1 0; width: 100%; min-width: 0; }
+.ftin-unit { font-size: 0.78rem; font-weight: 600; color: var(--text-dim); flex: 0 0 auto; }
+
 input, select, textarea {
   background: var(--bg-2);
   border: 1px solid var(--card-edge);
@@ -1747,8 +1752,8 @@ body.metric-modal-open { overflow: hidden; }
 /* Start hub */
 .wo-hub { display: flex; flex-direction: column; gap: var(--sp-3); }
 .wo-start {
-  display: flex; align-items: center; gap: var(--sp-3);
-  width: 100%; text-align: left; cursor: pointer;
+  display: flex; flex-direction: column; align-items: center; gap: var(--sp-3);
+  width: 100%; text-align: center; cursor: pointer;
   padding: var(--sp-4);
   border: none; border-radius: var(--r-lg);
   background: var(--grad); color: #fff;
@@ -1762,7 +1767,8 @@ body.metric-modal-open { overflow: hidden; }
   display: flex; align-items: center; justify-content: center;
   background: rgba(255, 255, 255, 0.18); font-size: 1.1rem;
 }
-.wo-start-main { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.wo-start-main { display: flex; flex-direction: column; align-items: center; gap: 3px; min-width: 0; }
+.wo-start-sub { max-width: 34ch; }
 .wo-start-txt { font-weight: 800; font-size: 1.12rem; letter-spacing: -0.01em; }
 .wo-start-sub { font-size: 0.82rem; line-height: 1.35; opacity: 0.9; }
 .wo-manual-btn { min-height: 44px; align-self: center; }

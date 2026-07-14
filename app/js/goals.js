@@ -354,8 +354,23 @@ OF.goals = (function () {
 
     html += '<div class="chart-mini-label">About you (optional — sharpens the calorie math)</div>';
     html += '<div class="form-row">';
-    html += '<label>Height (' + e(hu) + ')<input type="number" id="gf-height" min="0" max="300" step="0.5" placeholder="optional" value="' +
-      (g.heightCm ? e(U.toDisplayHeight(g.heightCm)) : '') + '"></label>';
+    if (hu === "in") {
+      // imperial: a feet + inches pair reads far more naturally than raw inches
+      var totIn = g.heightCm ? Number(U.toDisplayHeight(g.heightCm)) : null;
+      var ftVal = "", inVal = "";
+      if (totIn != null && !isNaN(totIn)) {
+        ftVal = Math.floor(totIn / 12);
+        inVal = Math.round((totIn - ftVal * 12) * 2) / 2;
+        if (inVal >= 12) { ftVal += 1; inVal = 0; }
+      }
+      html += '<label>Height<span class="ftin">' +
+        '<input type="number" id="gf-height-ft" min="0" max="8" step="1" inputmode="numeric" placeholder="5" value="' + e(ftVal) + '" aria-label="Height, feet"><span class="ftin-unit">ft</span>' +
+        '<input type="number" id="gf-height-in" min="0" max="11.5" step="0.5" inputmode="decimal" placeholder="10" value="' + e(inVal) + '" aria-label="Height, inches"><span class="ftin-unit">in</span>' +
+        '</span></label>';
+    } else {
+      html += '<label>Height (' + e(hu) + ')<input type="number" id="gf-height" min="0" max="300" step="0.5" placeholder="optional" value="' +
+        (g.heightCm ? e(U.toDisplayHeight(g.heightCm)) : '') + '"></label>';
+    }
     html += '<label>Age<input type="number" id="gf-age" min="10" max="100" step="1" placeholder="optional" value="' +
       (g.age != null ? e(g.age) : '') + '"></label>';
     html += '<label>Sex<select id="gf-sex">' +
@@ -420,14 +435,30 @@ OF.goals = (function () {
       showFormError("Target date needs to be in the future."); return;
     }
 
-    var hRaw = U.numOrNull((document.getElementById("gf-height") || {}).value);
-    if (hRaw !== null && isNaN(hRaw)) { showFormError("Height must be a number."); return; }
+    var hRaw;
+    var ftEl = document.getElementById("gf-height-ft");
+    if (ftEl) {
+      // imperial pair: combine feet + inches into total inches (either field
+      // alone is fine — "5 ft" empty-inches means 5 ft 0 in)
+      var ftRaw = U.numOrNull(ftEl.value);
+      var inRaw = U.numOrNull((document.getElementById("gf-height-in") || {}).value);
+      if ((ftRaw !== null && isNaN(ftRaw)) || (inRaw !== null && isNaN(inRaw))) {
+        showFormError("Height must be a number."); return;
+      }
+      if (inRaw !== null && (inRaw < 0 || inRaw >= 12)) {
+        showFormError("Inches must be between 0 and 11.5 — carry the rest into feet."); return;
+      }
+      hRaw = ftRaw === null && inRaw === null ? null : (ftRaw || 0) * 12 + (inRaw || 0);
+    } else {
+      hRaw = U.numOrNull((document.getElementById("gf-height") || {}).value);
+      if (hRaw !== null && isNaN(hRaw)) { showFormError("Height must be a number."); return; }
+    }
     // 0.1 cm precision: whole-cm storage is coarser than the 0.1-in display
     // grid, so inch entries visibly shifted on save (70.0 -> 70.1)
     var heightCm = hRaw !== null ? Math.round(U.fromDisplayHeight(hRaw) * 10) / 10 : null;
     if (heightCm !== null && (heightCm < 90 || heightCm > 250)) {
       showFormError("Height looks off — expected " +
-        (U.heightUnit() === "in" ? "36-98 in" : "90-250 cm") + "."); return;
+        (U.heightUnit() === "in" ? "3 ft 0 in to 8 ft 2 in" : "90-250 cm") + "."); return;
     }
     var age = U.numOrNull((document.getElementById("gf-age") || {}).value);
     if (age !== null && (isNaN(age) || age < 10 || age > 100)) {

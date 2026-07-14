@@ -357,6 +357,9 @@ OF.exercise = (function () {
       return '<div class="ex-item">' +
         '<div class="ex-item-head">' +
           '<span class="ex-item-name">' + U.esc(ex.name) + '</span>' +
+          '<button type="button" class="btn ex-rest-chip" data-act="ex-rest" data-ex="' + i +
+            '" aria-label="Rest after ' + U.esc(ex.name) + ' sets — tap to change">⏱ ' +
+            fmtRest(restSecFor(ex.name)) + '</button>' +
           '<button type="button" class="btn set-del" data-act="del-ex" data-ex="' + i +
             '" aria-label="Remove ' + U.esc(ex.name) + '">Remove</button>' +
         '</div>' +
@@ -414,6 +417,7 @@ OF.exercise = (function () {
   function builderClick(btn) {
     var act = btn.getAttribute("data-act");
     if (act === "warmup") { addWarmup(parseInt(btn.getAttribute("data-ex"), 10)); return true; }
+    if (act === "ex-rest") { cycleExRest(parseInt(btn.getAttribute("data-ex"), 10)); return true; }
     if (act !== "add-set" && act !== "del-set" && act !== "del-ex" && act !== "done-set") return false;
     var i = parseInt(btn.getAttribute("data-ex"), 10);
     var ex = exList[i];
@@ -424,7 +428,7 @@ OF.exercise = (function () {
       if (!st) return true;
       st.done = !st.done;
       ex.touched = true;
-      if (st.done) startRest();   // marking done auto-starts the rest countdown
+      if (st.done) startRest(ex.name);   // marking done auto-starts the rest countdown
       saveActive();
       renderBuilder();
       renderRestBar();
@@ -685,10 +689,37 @@ OF.exercise = (function () {
      Counts DOWN in a floating pill; beeps + vibrates at zero, then lingers a
      minute as a "go" nudge. Tap = skip/dismiss. */
 
-  function startRest() {
+  /* ---- per-exercise rest overrides (persisted by exercise name) ----
+     Big lifts want 3:00, isolation work 1:00 — the chip on each exercise
+     header cycles 1:00 -> 1:30 -> 2:00 -> 3:00 and is remembered forever,
+     so Squat stays at 3:00 across sessions. No override -> timer-card preset. */
+  var EX_REST_KEY = "optimalfit.exRest";
+  function exRestMap() {
+    try {
+      var o = JSON.parse(localStorage.getItem(EX_REST_KEY));
+      return o && typeof o === "object" && !Array.isArray(o) ? o : {};
+    } catch (e) { return {}; }
+  }
+  function restSecFor(name) {
+    var v = exRestMap()[(name || "").trim().toLowerCase()];
+    return (typeof v === "number" && isFinite(v) && v >= 15) ? v : ((T && T.presetSec) || 90);
+  }
+  function cycleExRest(i) {
+    var ex = exList[i];
+    if (!ex) return;
+    var opts = [60, 90, 120, 180];
+    var next = opts[(opts.indexOf(restSecFor(ex.name)) + 1 + opts.length) % opts.length];
+    var m = exRestMap();
+    m[ex.name.trim().toLowerCase()] = next;
+    try { localStorage.setItem(EX_REST_KEY, JSON.stringify(m)); } catch (e) { /* stays session-only */ }
+    renderBuilder();
+  }
+  function fmtRest(sec) { return Math.floor(sec / 60) + ":" + String(sec % 60).padStart(2, "0"); }
+
+  function startRest(exName) {
     ensureAudio();                       // we're inside a tap/keypress — unlock the beep for later
     restStart = Date.now();
-    restDur = (T && T.presetSec) || 90;  // rest length picked on the timer card below
+    restDur = restSecFor(exName);        // exercise override, else the timer-card preset
     restCued = false;
     scheduleRestNotif();
   }
@@ -1335,7 +1366,7 @@ OF.exercise = (function () {
       if (reps == null || isNaN(reps) || reps < 1) return;   // nothing entered — just close the keyboard
       st.done = true;
       ex.touched = true;
-      startRest();
+      startRest(ex.name);
       saveActive();
       renderBuilder();
       renderRestBar();

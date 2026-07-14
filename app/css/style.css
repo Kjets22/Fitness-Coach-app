@@ -1749,6 +1749,11 @@ body.metric-modal-open { overflow: hidden; }
 .set-add { min-height: 44px; }
 .set-add-row { display: flex; gap: var(--sp-2); }
 .set-add-row .set-add { flex: 1; }
+.ex-rest-chip {
+  min-height: 32px; padding: 4px 10px; margin-left: auto; margin-right: 8px;
+  font-size: 0.8rem; font-variant-numeric: tabular-nums;
+  border-radius: 999px; white-space: nowrap;
+}
 .ex-add-row {
   display: flex;
   gap: var(--sp-2);

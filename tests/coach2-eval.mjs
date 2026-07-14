@@ -61,9 +61,14 @@ function runIntake(w, a) {
   const go = (v) => { if (step) step = F.advance(st, step.id, v); };
   go(a.goal); go(a.milestone); go(a.timeline); go(a.age);
   if (step && step.id === "beginner-pep") go(true);
+  if (step && step.id === "returning-pep") go(true);
   if (step && step.id === "weak-points") go(a.weakPoints || []);
-  go(a.days); go(a.session); go(a.split); go(a.style); go(a.cardio);
-  go(a.likes); go(a.dislikes); go(a.equipment); go(a.injury);
+  go(a.days); go(a.session);
+  if (step && step.id === "bodyweight") go(a.weight || null);
+  go(a.split); go(a.style); go(a.cardio);
+  if (step && step.id === "likes") go(a.likes);
+  if (step && step.id === "dislikes") go(a.dislikes);
+  go(a.equipment); go(a.injury);
   if (step && step.id === "injury-patterns") go(a.patterns || []);
   go(a.sleep); go(a.stress); go(a.job); go(a.diet);
   if (step !== null) throw new Error("intake did not complete; stuck at " + (step && step.id));

@@ -81,9 +81,13 @@ OF.intake = (function () {
         { label: "Never / just starting", value: 0 },
         { label: "Under a year", value: 0.5 },
         { label: "1–3 years", value: 2 },
-        { label: "3+ years", value: 5 }
+        { label: "3+ years", value: 5 },
+        { label: "Trained before — coming back from a break", value: "returning" }
       ] },
-      save: function (st, v) { st.trainingAge = v; }
+      save: function (st, v) {
+        if (v === "returning") { st.trainingAge = 1.5; st.returning = true; }
+        else st.trainingAge = v;
+      }
     },
     {
       id: "beginner-pep",
@@ -92,6 +96,15 @@ OF.intake = (function () {
         return "Perfect — beginners make the fastest progress of anyone (“newbie gains” are real: your body adapts to almost any sensible plan). I'll keep the plan simple, teach you as we go, and we'll add weight almost every week.";
       },
       input: { kind: "chips", options: [{ label: "Sounds good", value: true }] },
+      save: function () {}
+    },
+    {
+      id: "returning-pep",
+      when: function (st) { return !!st.returning; },
+      say: function () {
+        return "Welcome back — muscle memory is real, so you'll regain old strength much faster than you built it. I'll start you a notch lighter than where you left off and ramp quickly; don't let ego pick the weights in week one.";
+      },
+      input: { kind: "chips", options: [{ label: "Deal", value: true }] },
       save: function () {}
     },
     {
@@ -128,16 +141,24 @@ OF.intake = (function () {
       save: function (st, v) { st.sessionMinutes = v; }
     },
     {
+      id: "bodyweight",
+      say: function () {
+        var lb = OF.units && OF.units.weightUnit ? OF.units.weightUnit() === "lb" : true;
+        return "What do you weigh right now (" + (lb ? "lb" : "kg") + ")? This unlocks your daily calorie, protein and water targets — without it the dashboard can't do its math.";
+      },
+      input: { kind: "text", placeholder: "e.g. 185", skip: "Skip for now" },
+      save: function (st, v) {
+        var n = v == null ? null : Number(String(v).replace(/[^0-9.]/g, ""));
+        st.weightDisplay = (isFinite(n) && n > 0) ? n : null;
+      }
+    },
+    {
       id: "split",
       say: function (st) {
         var rec = st.days <= 3 ? (st.days <= 2 ? "full-body" : "full-body") : st.days === 4 ? "upper-lower" : "ppl";
         st.recommendedSplit = rec;
         var names = { "full-body": "Full body", "upper-lower": "Upper / Lower", "ppl": "Push / Pull / Legs" };
-        return "How do you want the week organized? Quick guide: " +
-          "FULL BODY = every muscle each session (best at 2–3 days); " +
-          "UPPER/LOWER = alternating halves (great at 4); " +
-          "PUSH/PULL/LEGS = pressing day, pulling day, leg day (shines at 5–6). " +
-          "With " + st.days + " days I'd lean " + names[rec] + " — research says hitting each muscle ~2×/week is what matters, and that split gets you there. But it's your call: the split you enjoy is the one you'll keep showing up for.";
+        return "How should I organize your week? In plain terms — Full body: everything each visit. Upper/Lower: top half one day, legs the next. Push/Pull/Legs: chest+shoulders day, back day, leg day. With " + st.days + " days I'd pick " + names[rec] + " for you (it hits each muscle twice a week, which is what the research cares about) — or just let me choose.";
       },
       input: { kind: "chips", options: [
         { label: "You choose for me", value: null },
@@ -153,7 +174,7 @@ OF.intake = (function () {
     {
       id: "style",
       say: function () {
-        return "Do you enjoy heavy low-rep work (3–6 grinding reps), higher-rep pump work (10–15, chasing the burn), or a mix? Research says both build muscle when pushed hard — so this is about what YOU like doing.";
+        return "Last preference: do you like lifting HEAVY (few slow, hard reps), lighter with MORE reps (chasing the burn), or a mix? Both build muscle — this is purely about what you'll enjoy.";
       },
       input: { kind: "chips", options: [
         { label: "Heavy & low-rep", value: "heavy" },
@@ -178,12 +199,14 @@ OF.intake = (function () {
     },
     {
       id: "likes",
+      when: function (st) { return lvl(st) !== "beginner"; },
       say: function () { return "Which lifts do you LOVE? I'll build around them — enjoying your program is the strongest predictor that you'll stick to it."; },
       input: { kind: "multi", options: COMMON_LIFTS.map(function (n) { return { label: n, value: n }; }), done: "Those are my favorites", skip: "No strong favorites" },
       save: function (st, v) { st.likes = v || []; }
     },
     {
       id: "dislikes",
+      when: function (st) { return lvl(st) !== "beginner"; },
       say: function () { return "And which do you HATE or refuse to do? Zero judgment — they'll never appear in your plan."; },
       input: { kind: "multi", options: COMMON_LIFTS.map(function (n) { return { label: n, value: n }; }), done: "That's the blacklist", skip: "Nothing I refuse" },
       save: function (st, v) { st.dislikes = v || []; }
@@ -326,6 +349,20 @@ OF.intake = (function () {
     var m = toProfilePatch(st);
     OF.profile.update(m.patch, "intake");
 
+    // bodyweight answer → a Body record (in kg), so calorie/protein/water
+    // targets work from day one instead of waiting for a weigh-in
+    try {
+      if (st.weightDisplay && OF.storage) {
+        var kg = OF.units && OF.units.fromDisplayWeight
+          ? Math.round(OF.units.fromDisplayWeight(st.weightDisplay) * 100) / 100
+          : st.weightDisplay;
+        if (kg >= 20 && kg <= 400 && !OF.storage.getAll("body").length) {
+          OF.storage.add("body", { date: U.todayISO(), weightKg: kg,
+            bodyFatPct: null, muscleMassPct: null, notes: "" });
+        }
+      }
+    } catch (e) { /* weigh in later on the Body tab */ }
+
     // if no app goal exists yet, create one so targets/insights align
     // (same record shape onboarding.js uses)
     try {
@@ -358,8 +395,8 @@ OF.intake = (function () {
     if (program.coach2) {
       var pg = program.coach2.perGroupWeeklySets;
       var vols = Object.keys(pg).map(function (g) { return g + " " + pg[g].sets; }).join(", ");
-      lines.push("Weekly hard sets per muscle: " + vols + " — inside the research range for a " +
-        program.coach2.level + ", starting moderate so YOUR response data decides where we go next.");
+      lines.push("Your weekly training dose (working sets per muscle): " + vols + " — right in the research sweet spot for a " +
+        program.coach2.level + ". We start moderate; your own results decide where it goes next.");
       lines.push(program.coach2.whys.effort.text);
       lines.push(program.coach2.whys.rest.text);
       if (program.coach2.injuryNotes && program.coach2.injuryNotes.length) {

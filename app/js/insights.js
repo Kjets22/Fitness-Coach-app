@@ -163,8 +163,8 @@ OF.insights = (function () {
         (better ? " — aim for about " + d.targetH + "h." : ").");
     }
     var sub = [];
-    if (d.rDur != null) sub.push('<span class="mini-stat">duration &harr; performance r = ' + d.rDur + '</span>');
-    if (d.rQual != null) sub.push('<span class="mini-stat">quality &harr; performance r = ' + d.rQual + '</span>');
+    if (d.rDur != null) sub.push('<span class="mini-stat">sleep-length link ' + d.rDur + ' (−1..1)</span>');
+    if (d.rQual != null) sub.push('<span class="mini-stat">sleep-quality link ' + d.rQual + ' (−1..1)</span>');
     sub.push('<span class="mini-stat">' + d.n + ' sleep+workout days</span>');
     return card("Sleep target", confTag(d.confidence), e(head), sub.join(""), null, "moon");
   }
@@ -375,7 +375,7 @@ OF.insights = (function () {
       var colors = { improving: "var(--accent-2)", stalling: "var(--danger)", flat: "var(--text-dim)", inactive: "var(--text-dim)" };
       var sub = ex.sessions + " sessions";
       if (ex.bestSet) sub += " · best " + U.fmtWeight(ex.bestSet.weightKg, 1) + " × " + ex.bestSet.reps;
-      if (ex.latestE1RMKg != null) sub += " · e1RM " + U.fmtWeight(ex.latestE1RMKg, 1);
+      if (ex.latestE1RMKg != null) sub += " · est. 1-rep max " + U.fmtWeight(ex.latestE1RMKg, 1);
       // Community benchmark one-liner: filled in ASYNC by OF.receipts
       // (signed-in + cohort has 5+ contributors); hidden until then.
       var bench = canReceipt

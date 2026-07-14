@@ -38,6 +38,12 @@ OF.food = (function () {
     els.list.addEventListener("click", onListClick);
     var recentHost = document.getElementById("food-recent");
     if (recentHost) recentHost.addEventListener("click", onRecentClick);
+    // autocomplete: your own meal history first, then the built-in food DB;
+    // picking an exact match auto-fills the macros (still editable)
+    els.name.setAttribute("list", "food-name-options");
+    els.name.addEventListener("input", onNameInput);
+    els.name.addEventListener("change", onNameInput);
+    refreshNameOptions();
     if (els.summary) {
       els.summary.setAttribute("title", "Tap to edit your latest meal");
       els.summary.addEventListener("click", function () {
@@ -216,12 +222,56 @@ OF.food = (function () {
 
   /** "Log again" chips: the user's recent distinct meals — most meals repeat,
       so one tap prefills the whole form instead of retyping name + 4 macros. */
+  var autoFilled = false;   // macros last set by autocomplete → safe to overwrite
+
+  /** History + built-in DB into the <datalist> (history wins, deduped). */
+  function refreshNameOptions() {
+    var dl = document.getElementById("food-name-options");
+    if (!dl) return;
+    var seen = Object.create(null), opts = [];
+    S.getAll("food").slice().sort(U.byNewest).forEach(function (r) {
+      var k = (r.foodName || "").trim().toLowerCase();
+      if (!k || seen[k] || opts.length >= 40) return;
+      seen[k] = true;
+      opts.push(r.foodName.trim());
+    });
+    if (OF.foodDB) {
+      OF.foodDB.all().forEach(function (f) {
+        var k = f.name.toLowerCase();
+        if (seen[k]) return;
+        seen[k] = true;
+        opts.push(f.name);
+      });
+    }
+    dl.innerHTML = opts.map(function (n) { return '<option value="' + U.esc(n) + '">'; }).join("");
+  }
+
+  /** Exact name match (your history first, then the DB) → fill the macros. */
+  function onNameInput() {
+    var k = els.name.value.trim().toLowerCase();
+    if (!k) return;
+    var macrosEmpty = !els.calories.value && !els.protein.value && !els.carbs.value && !els.fat.value;
+    if (!macrosEmpty && !autoFilled) return;   // never clobber hand-typed numbers
+    var hit = null;
+    var hist = S.getAll("food").slice().sort(U.byNewest);
+    for (var i = 0; i < hist.length; i++) {
+      if ((hist[i].foodName || "").trim().toLowerCase() === k) { hit = hist[i]; break; }
+    }
+    if (!hit && OF.foodDB) hit = OF.foodDB.find(k);
+    if (!hit) { if (autoFilled) { els.calories.value = ""; els.protein.value = ""; els.carbs.value = ""; els.fat.value = ""; autoFilled = false; } return; }
+    els.calories.value = hit.calories != null ? hit.calories : "";
+    els.protein.value = hit.protein != null ? hit.protein : "";
+    els.carbs.value = hit.carbs != null ? hit.carbs : "";
+    els.fat.value = hit.fat != null ? hit.fat : "";
+    autoFilled = true;
+  }
+
   function renderRecent() {
     var host = document.getElementById("food-recent");
     if (!host) return;
     var seen = Object.create(null), chips = [];
     var arr = S.getAll("food").slice().sort(U.byNewest);
-    for (var i = 0; i < arr.length && chips.length < 6; i++) {
+    for (var i = 0; i < arr.length && chips.length < 8; i++) {
       var r = arr[i];
       var k = (r.foodName || "").trim().toLowerCase();
       if (!k || seen[k]) continue;
@@ -272,6 +322,7 @@ OF.food = (function () {
   function refreshAfterWrite() {
     renderList();
     renderRecent();
+    refreshNameOptions();
     if (OF.dashboard && OF.dashboard.refresh) { try { OF.dashboard.refresh(); } catch (e) {} }
   }
 

@@ -69,7 +69,8 @@ OF.entitlements = (function () {
     var blurb = f.blurb || "This uses AI.";
     if (!signedIn()) {
       return card(title, blurb + " It’s an OptimalFit Premium feature and every new account gets a 7-day free trial — sign in or create an account to start yours. Everything else in the app is free.",
-        '<button type="button" class="btn primary" data-ent="signin">Sign in / Start free trial</button>');
+        '<button type="button" class="btn primary" data-ent="signin">Sign in / Start free trial</button>' +
+        '<a class="btn ghost" href="#dashboard">Meanwhile: build your program free</a>');
     }
     if (!profile()) {
       // auth account exists but the profile (where the trial lives) was never

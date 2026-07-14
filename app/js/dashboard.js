@@ -66,10 +66,20 @@ OF.dashboard = (function () {
   }
 
   /** Delegated navigation for [data-nav] elements in the hero/value strip. */
+  var lastReadiness = null;
+
   function onHeroNav(e) {
     var el = e.target.closest("[data-nav]");
     if (!el) return;
     var nav = el.getAttribute("data-nav");
+    if (nav === "readiness") {
+      // touch users can't hover the tooltip — explain the ring in plain words
+      var r = lastReadiness;
+      U.toast(r && r.status === "ok"
+        ? "Readiness " + r.score + "/100 — how ready your body looks for training today, from your recent sleep, workouts and rest days. " + (r.verdict || "")
+        : "Readiness scores how ready your body is to train, from your sleep and training pattern. Log a few nights of sleep to unlock it.", "ok");
+      return;
+    }
     if (nav === "streak") {
       try {
         var s = OF.streak.compute();
@@ -174,6 +184,7 @@ OF.dashboard = (function () {
   }
 
   function renderHero(readiness) {
+    lastReadiness = readiness;   // the tap-to-explain handler reads this
     if (!heroEl) return;
     var dateTxt = new Date().toLocaleDateString(undefined,
       { weekday: "long", month: "long", day: "numeric" });
@@ -195,8 +206,8 @@ OF.dashboard = (function () {
       '<div class="hero-main"><div class="hero-greet-row"><h1 class="hero-greet">' + U.esc(greeting()) + '</h1>' + streakChip + '</div>' +
       '<p class="hero-date">' + U.esc(dateTxt) + '</p>' +
       (brief ? '<p class="hero-brief" data-nav="trainer" role="button" tabindex="0" title="Jump to today\'s session">' + U.esc(brief) + '</p>' : '') + '</div>' +
-      '<div class="hero-ring" data-nav="insights" role="button" tabindex="0" title="' +
-      U.esc((readiness && readiness.status === "ok" ? readiness.verdict : "Log a few nights of sleep to unlock your readiness score") + " — tap for insights") +
+      '<div class="hero-ring" data-nav="readiness" role="button" tabindex="0" title="' +
+      U.esc((readiness && readiness.status === "ok" ? readiness.verdict : "Log a few nights of sleep to unlock your readiness score") + " — tap to learn what this means") +
       '">' + ringHtml + '<span class="hero-ring-label">Readiness</span></div>' +
       '</header>';
     // celebrate a new streak milestone (once)

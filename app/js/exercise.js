@@ -862,7 +862,9 @@ OF.exercise = (function () {
   function pillRow(name, val) {
     var labels = name === "intensity"
       ? ["Very light", "Light", "Moderate", "Hard", "Max effort"]
-      : ["Awful", "Weak", "Normal", "Strong", "Best ever"];
+      : name === "enjoyment"
+        ? ["Hated it", "Meh", "Fine", "Good fun", "Loved it"]
+        : ["Awful", "Weak", "Normal", "Strong", "Best ever"];
     var pills = "";
     for (var i = 1; i <= 5; i++) {
       pills += '<button type="button" class="wo-pill' + (i === val ? ' on' : '') +
@@ -896,6 +898,8 @@ OF.exercise = (function () {
           '<div class="wo-pills" id="wo-intensity">' + pillRow("intensity", finish.intensity) + '</div></div>' +
         '<div class="wo-rate-block"><span class="wo-rate-lbl">How did it go?</span>' +
           '<div class="wo-pills" id="wo-performance">' + pillRow("performance", finish.performance) + '</div></div>' +
+        '<div class="wo-finish-block"><span class="wo-finish-lbl">Did you enjoy it?</span>' +
+          '<div class="wo-pills" id="wo-enjoyment">' + pillRow("enjoyment", finish.enjoyment || 3) + '</div></div>' +
         '<label class="wo-finish-field grow">Notes' +
           '<input type="text" id="wo-notes" maxlength="300" placeholder="optional" value="' + U.esc(finish.notes || "") + '">' +
         '</label>' +
@@ -948,6 +952,9 @@ OF.exercise = (function () {
     stopTick();
     clearActive();
     exList = [];
+    try {   // Coach 2.0: enjoyment rating feeds preference learning
+      if (OF.learn && finish.enjoyment) OF.learn.feedback("enjoyment", finish.enjoyment, rec.type || "");
+    } catch (eFb) { /* best-effort */ }
     finish = { open: false, intensity: 3, performance: 3 };
     showHub();
     renderList();

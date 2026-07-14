@@ -20,6 +20,22 @@ OF.coach = (function () {
   var U = OF.util, S = OF.storage;
   var els = {};
   var messages = [];        // {role: "user"|"coach"|"error", text}
+  var CHAT_KEY = "optimalfit.coachChat";   // Coach 2.0: the coach REMEMBERS
+  function loadChat() {
+    try {
+      var a = JSON.parse(localStorage.getItem(CHAT_KEY) || "[]");
+      if (Array.isArray(a)) messages = a.filter(function (m) {
+        return m && typeof m.text === "string" && (m.role === "user" || m.role === "coach");
+      }).slice(-MAX_MSGS);
+    } catch (e) { /* fresh chat */ }
+  }
+  function saveChat() {
+    try {
+      localStorage.setItem(CHAT_KEY, JSON.stringify(messages.filter(function (m) {
+        return m.role !== "error";
+      }).slice(-MAX_MSGS)));
+    } catch (e) { /* chat stays session-only */ }
+  }
   var MAX_MSGS = 20;
   var busy = false;
   var health = null;        // null | "no-server" | "no-claude" | "need-key" | "ok"
@@ -289,8 +305,24 @@ OF.coach = (function () {
       communityBenchmarks = null;
     }
 
+    // Coach 2.0 blocks: who the user IS (profile), what the science says
+    // (evidence), what we've learned about THEM (learning), and what was
+    // said recently (memory) — all compact.
+    var coachingProfile = null, evidenceKB = null, learning = null;
+    try { coachingProfile = OF.profile ? OF.profile.coachContext() : null; } catch (e) {}
+    try { evidenceKB = OF.evidence ? OF.evidence.coachContext() : null; } catch (e) {}
+    try { learning = OF.learn ? OF.learn.coachContext() : null; } catch (e) {}
+    var recentConversation = messages.filter(function (m) { return m.role !== "error"; })
+      .slice(-6).map(function (m) {
+        return { who: m.role, said: m.text.length > 240 ? m.text.slice(0, 237) + "..." : m.text };
+      });
+
     return {
       today: U.todayISO(),
+      coachingProfile: coachingProfile,
+      evidenceKB: evidenceKB,
+      learning: learning,
+      recentConversation: recentConversation.length ? recentConversation : undefined,
       recordCounts: {
         sleep: data.sleep.length, food: data.food.length,
         exercise: data.exercise.length, body: data.body.length,
@@ -453,9 +485,28 @@ OF.coach = (function () {
         '<p class="coach-empty muted">I’m your personal trainer. Ask me anything about your training, food, ' +
         'sleep or recovery — or build a plan on the dashboard and I’ll coach you through it. ' +
         'Answers use your tracked data and can take 10&ndash;60 seconds.</p>';
+      // Coach 2.0: no profile yet → the interview IS the front door
+      if (OF.intake && OF.profile && !OF.profile.exists()) {
+        html += '<div class="coach-cta card"><h3>Let me actually coach you</h3>' +
+          '<p class="muted small">A 2-minute interview — goals, schedule, likes and hates, injuries — ' +
+          'and I\u2019ll build a program with the reasoning to back it.</p>' +
+          '<button type="button" class="btn primary" data-intake>Start the interview</button></div>';
+      } else if (OF.profile) {
+        var trigs = [];
+        try { trigs = OF.profile.reinterviewTriggers(); } catch (e2) {}
+        if (trigs.length) {
+          html += '<div class="msg-row">' + '<span class="coach-avatar" aria-hidden="true">' + OF.icons.get("sparkles") + '</span>' +
+            '<div class="bubble bubble-coach">' + U.esc(trigs[0].message) +
+            '</div></div><div class="coach-chips">' +
+            '<button type="button" class="coach-chip" data-intake>Let\u2019s do the check-in</button></div>';
+        }
+      }
       html += '<div class="coach-chips">' + chips().map(function (c) {
         return '<button type="button" class="coach-chip" data-q="' + U.esc(c) + '">' + U.esc(c) + '</button>';
-      }).join("") + '</div>';
+      }).join("") +
+      (OF.learn && OF.trainer && OF.trainer.hasProgram && OF.trainer.hasProgram()
+        ? '<button type="button" class="coach-chip" data-checkin>Weekly check-in</button>' : "") +
+      '</div>';
     }
     var avatar = '<span class="coach-avatar" aria-hidden="true">' + OF.icons.get("sparkles") + '</span>';
     messages.forEach(function (m) {
@@ -466,6 +517,13 @@ OF.coach = (function () {
           '<div class="bubble bubble-' + m.role + '">' + U.esc(m.text) + '</div></div>';
       }
     });
+    // Coach 2.0: thumbs on the latest answer feed the learning loop
+    var lastMsg = messages[messages.length - 1];
+    if (!busy && lastMsg && lastMsg.role === "coach" && !lastMsg.rated) {
+      html += '<div class="coach-fb">' +
+        '<button type="button" class="btn mini" data-fb="1" aria-label="Good answer">&#128077;</button>' +
+        '<button type="button" class="btn mini" data-fb="-1" aria-label="Bad answer">&#128078;</button></div>';
+    }
     if (busy) {
       html += '<div class="msg-row">' + avatar +
         '<div class="bubble bubble-coach bubble-thinking">Coach is thinking&hellip; ' +
@@ -485,6 +543,7 @@ OF.coach = (function () {
   function pushMsg(role, text) {
     messages.push({ role: role, text: text });
     if (messages.length > MAX_MSGS) messages = messages.slice(-MAX_MSGS);
+    saveChat();
     // [24] announce ONLY the new coach/error reply to screen readers — the
     // transcript itself is no longer aria-live, so the whole conversation is
     // not re-read on every message.
@@ -649,6 +708,7 @@ OF.coach = (function () {
   /* ---------------- wiring ---------------- */
 
   function init() {
+    loadChat();
     els.status = document.getElementById("coach-status");
     els.chat = document.getElementById("coach-chat");
     els.log = document.getElementById("coach-log");
@@ -661,9 +721,62 @@ OF.coach = (function () {
       send(els.input.value);
     });
     els.log.addEventListener("click", function (e) {
+      var fb = e.target.closest("[data-fb]");
+      if (fb) {
+        var val = Number(fb.getAttribute("data-fb"));
+        try {
+          var lastCoach = messages.filter(function (m) { return m.role === "coach"; }).pop();
+          if (OF.learn) OF.learn.feedback("thumbs", val, lastCoach ? lastCoach.text.slice(0, 80) : "");
+          if (lastCoach) lastCoach.rated = true;
+          saveChat();
+        } catch (e2) {}
+        renderLog();
+        if (OF.util && OF.util.toast) OF.util.toast(val > 0 ? "Noted — more like that." : "Noted — I\u2019ll adjust.", "ok");
+        return;
+      }
+      if (e.target.closest("[data-intake]")) {
+        if (OF.intake) OF.intake.start();
+        return;
+      }
+      if (e.target.closest("[data-checkin]")) {
+        runWeeklyCheckin();
+        return;
+      }
       var chip = e.target.closest(".coach-chip");
       if (chip) send(chip.getAttribute("data-q"));
     });
+  }
+
+  /* Coach 2.0: the weekly review runs ON-DEVICE (no LLM needed) — the
+     engines decide, the coach explains. */
+  function runWeeklyCheckin() {
+    try {
+      var rev = OF.learn.weeklyReview();
+      OF.learn.applyReview(rev);
+      var lines = [];
+      if (rev.deload) {
+        lines.push("Check-in: this week should be a DELOAD. " + (rev.deloadWhy || ""));
+      } else {
+        var moves = (rev.decisions || []).filter(function (d) { return d.move; });
+        var holds = (rev.decisions || []).filter(function (d) { return !d.move; });
+        if (!rev.decisions || !rev.decisions.length) {
+          lines.push("Check-in: not enough logged training yet for a volume verdict — keep logging your program sessions and I\u2019ll have real reads for you within a couple of weeks.");
+        } else {
+          lines.push("Weekly check-in done. " + (moves.length
+            ? "Adjustments: " + moves.map(function (d) { return d.group + " " + d.current + "\u2192" + d.target + " sets/wk"; }).join("; ") + "."
+            : "No volume changes this week — steady as she goes."));
+          var why = (moves[0] || holds[0]);
+          if (why && why.why) lines.push(why.why);
+        }
+      }
+      var sug = OF.learn.dislikeSuggestions();
+      if (sug.length) lines.push(sug[0].message);
+      pushMsg("coach", lines.join(" "));
+      renderLog();
+    } catch (e) {
+      pushMsg("error", "Check-in hit a snag — try again after logging a workout.");
+      renderLog();
+    }
   }
 
   /** Called by app.js every time the Coach tab is opened. */

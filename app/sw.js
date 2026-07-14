@@ -15,7 +15,7 @@
    ============================================================ */
 
 /* Bump this string when any shell file changes. */
-var VERSION = "v61";
+var VERSION = "v62";
 var CACHE = "optimalfit-shell-" + VERSION;
 
 var SHELL = [
@@ -34,7 +34,11 @@ var SHELL = [
   "./js/food-photo.js",
   "./js/exercise-library.js",
   "./js/exercise.js",
+  "./js/evidence.js",
+  "./js/coach-profile.js",
+  "./js/coach-learn.js",
   "./js/trainer.js",
+  "./js/coach-intake.js",
   "./js/body.js",
   "./js/physique.js",
   "./js/charts.js",

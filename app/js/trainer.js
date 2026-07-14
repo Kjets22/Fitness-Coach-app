@@ -113,6 +113,155 @@ OF.trainer = (function () {
 
   var SESSION_CAP = { 30: 4, 45: 5, 60: 6, 75: 7 };  // exercises per session by minutes
 
+  /* ================= Coach 2.0 — profile-aware programming =================
+     When a User Coaching Profile exists (OF.profile, written by the intake
+     interview), generation upgrades: split honors the user's preference,
+     injuries exclude whole movement patterns, hated lifts never appear,
+     liked lifts are preferred, and weekly per-muscle sets are shaped to the
+     evidence-based range for their training level (OF.evidence) — starting
+     moderate and letting the learning loop (OF.learn) nudge from there.
+     Without a profile, generation is EXACTLY the legacy path. */
+
+  /* movement pattern → exercises it loads (for injury filtering) */
+  var PATTERN_RULES = {
+    "squat":    ["Back Squat", "Front Squat", "Goblet Squat", "Leg Press", "Bulgarian Split Squat", "Walking Lunge", "Leg Extension"],
+    "hinge":    ["Deadlift", "Romanian Deadlift", "Hip Thrust"],
+    "overhead": ["Overhead Press", "Seated Dumbbell Press", "Pike Push-Up", "Overhead Triceps Extension"],
+    "bench":    ["Bench Press", "Incline Bench Press", "Dumbbell Bench Press", "Incline Dumbbell Press", "Push-Up", "Dips (Chest)", "Close-Grip Bench Press", "Dips (Triceps)", "Dumbbell Fly", "Cable Fly"],
+    "row":      ["Barbell Row", "Dumbbell Row", "Seated Cable Row", "Inverted Row", "Pull-Up", "Lat Pulldown", "Chin-Up", "Face Pull"],
+    "lunge":    ["Bulgarian Split Squat", "Walking Lunge"]
+  };
+  var MAJOR_GROUPS = ["Chest", "Back", "Legs", "Shoulders", "Biceps", "Triceps"];
+
+  function splitName(pref, n) {
+    var base = pref === "ppl" ? "Push / Pull / Legs" : pref === "upper-lower" ? "Upper / Lower" : "Full Body";
+    return base + " (" + n + "\u00d7/wk)";
+  }
+
+  /** Split-preference → DAY-template keys for the available days (null = legacy). */
+  function splitKeysFor(pref, days) {
+    if (pref === "ppl") {
+      if (days <= 3) return ["push", "pull", "legs"];
+      if (days === 4) return ["push", "pull", "legs", "upper"];
+      if (days === 5) return ["push", "pull", "legs", "upper", "lower"];
+      return ["push", "pull", "legs", "push", "pull", "legs"];
+    }
+    if (pref === "upper-lower") {
+      if (days <= 2) return ["upper", "lower"];
+      if (days === 3) return ["upper", "lower", "fullA"];
+      if (days === 4) return ["upper", "lower", "upper", "lower"];
+      if (days === 5) return ["upper", "lower", "upper", "lower", "fullA"];
+      return ["upper", "lower", "upper", "lower", "upper", "lower"];
+    }
+    if (pref === "full-body") {
+      if (days <= 2) return ["fullA", "fullB"];
+      if (days === 3) return ["fullA", "fullB", "fullC"];
+      return ["fullA", "fullB", "fullC", "fullA"].slice(0, Math.min(days, 4));
+    }
+    return null;
+  }
+
+  /** Read the Coach-2.0 profile into generation inputs (null = legacy path). */
+  function coach2Inputs() {
+    try {
+      if (!OF.profile || !OF.profile.exists() || !OF.evidence) return null;
+      var d = OF.profile.get();
+      var level = OF.profile.level() || "intermediate";
+      var avoidExtra = OF.profile.dislikedExercises();
+      var injuryNotes = [];
+      (d.constraints.injuries || []).forEach(function (inj) {
+        (inj.aggravates || []).forEach(function (pat) {
+          var names = PATTERN_RULES[pat];
+          if (names) {
+            names.forEach(function (n) { avoidExtra.push(n.toLowerCase()); });
+            injuryNotes.push(inj.area + " → no " + pat + " pattern");
+          } else {
+            avoidExtra.push(String(pat).toLowerCase());   // a specific exercise name
+          }
+        });
+      });
+      return {
+        level: level,
+        likes: OF.profile.likedExercises(),
+        avoidExtra: avoidExtra,
+        splitPref: d.prefs.split || null,
+        injuryNotes: injuryNotes,
+        style: d.prefs.style || null
+      };
+    } catch (e) { return null; }
+  }
+
+  /** Weekly hard sets per muscle group across the whole split. */
+  function weeklySetsByGroup(days) {
+    var out = {};
+    days.forEach(function (day) {
+      day.slots.forEach(function (ex) {
+        if (ex.hold) return;
+        out[ex.group] = (out[ex.group] || 0) + ex.sets;
+      });
+    });
+    return out;
+  }
+
+  /** Shape per-group weekly sets into the evidence band (start moderate;
+      the learning loop's stored target wins once it exists). Mutates days.
+      Returns { perGroup: {group: {sets, target}} } for the why block. */
+  function volumeShape(days, c2) {
+    var band = OF.evidence.volumeBand(c2.level);
+    var report = {};
+    MAJOR_GROUPS.forEach(function (g) {
+      var have = weeklySetsByGroup(days)[g] || 0;
+      if (!have) return;                       // split doesn't train it directly
+      var target = (OF.learn && OF.learn.volumeTarget ? OF.learn.volumeTarget(g) : null) ||
+        OF.evidence.volumeStart(c2.level);
+      target = Math.max(band[0], Math.min(band[1], target));
+      var guard = 40;
+      while (have < target && guard-- > 0) {
+        // bump an accessory (isolation, non-hold) set for this group;
+        // spread across days: pick the day with the fewest sets for g
+        var best = null;
+        days.forEach(function (day) {
+          day.slots.forEach(function (ex) {
+            if (ex.group !== g || ex.hold || ex.compound || ex.sets >= 5) return;
+            if (!best || ex.sets < best.sets) best = ex;
+          });
+        });
+        if (!best) {
+          days.forEach(function (day) {        // no accessory: allow compounds to 5
+            day.slots.forEach(function (ex) {
+              if (ex.group !== g || ex.hold || ex.sets >= 5) return;
+              if (!best || ex.sets < best.sets) best = ex;
+            });
+          });
+        }
+        if (!best) break;
+        best.sets += 1; have += 1;
+      }
+      while (have > band[1] && guard-- > 0) {
+        var worst = null;
+        days.forEach(function (day) {          // accessories first (min 2 sets)
+          day.slots.forEach(function (ex) {
+            if (ex.group !== g || ex.hold || ex.compound || ex.sets <= 2) return;
+            if (!worst || ex.sets > worst.sets) worst = ex;
+          });
+        });
+        if (!worst) {
+          days.forEach(function (day) {        // then compounds (min 3 sets)
+            day.slots.forEach(function (ex) {
+              if (ex.group !== g || ex.hold || !ex.compound || ex.sets <= 3) return;
+              if (!worst || ex.sets > worst.sets) worst = ex;
+            });
+          });
+        }
+        if (!worst) break;
+        worst.sets -= 1; have -= 1;
+      }
+      report[g] = { sets: have, target: target };
+    });
+    return { perGroup: report, band: band };
+  }
+
+
   /* ---------------- storage ---------------- */
   function load() {
     try { var raw = localStorage.getItem(KEY); return raw ? JSON.parse(raw) : null; }
@@ -184,9 +333,17 @@ OF.trainer = (function () {
     var cap = SESSION_CAP[profile.sessionMinutes] || 6;
     var emphasis = profile.emphasis || null;   // a muscle-group string or null
 
+    // Coach 2.0: profile-aware shaping (null → exact legacy behavior)
+    var c2 = coach2Inputs();
+    if (c2 && c2.splitPref) {
+      var keys = splitKeysFor(c2.splitPref, profile.daysPerWeek || 3);
+      if (keys) split = { name: splitName(c2.splitPref, keys.length), days: keys };
+    }
+
     // per-group rotating index so repeated days pick DIFFERENT exercises
     var rot = {};
     var avoided = avoidList().map(function (n) { return n.toLowerCase(); });
+    if (c2) avoided = avoided.concat(c2.avoidExtra);
     function pick(group, compound, usedLower) {
       var cands = POOL.filter(function (p) {
         return p.group === group && (compound ? p.compound : true) &&
@@ -200,11 +357,22 @@ OF.trainer = (function () {
         var iso = cands.filter(function (p) { return !p.compound; });
         if (iso.length) cands = iso;
       }
-      // prefer compounds for compound slots; if none, relax to any in-group
+      // Coach 2.0: exercises the user SAID they love come first — enjoyment
+      // drives adherence, and adherence beats optimal.
+      if (c2 && c2.likes.length && cands.length > 1) {
+        cands = cands.slice().sort(function (a, b) {
+          var la = c2.likes.indexOf(a.name.toLowerCase()) !== -1 ? 0 : 1;
+          var lb = c2.likes.indexOf(b.name.toLowerCase()) !== -1 ? 0 : 1;
+          return la - lb;
+        });
+      }
+      // prefer compounds for compound slots; if none, relax to any in-group —
+      // but NEVER relax the avoid list (injury exclusions are hard constraints)
       if (!cands.length) {
         cands = POOL.filter(function (p) {
           return p.group === group && p.equip.some(function (t) { return allow.indexOf(t) !== -1; }) &&
-            !usedLower[p.name.toLowerCase()];
+            !usedLower[p.name.toLowerCase()] &&
+            avoided.indexOf(p.name.toLowerCase()) === -1;
         });
       }
       if (!cands.length) return null;
@@ -229,7 +397,7 @@ OF.trainer = (function () {
         var sc = scheme(gt, ex.compound);
         // beginners: one fewer set, slightly higher reps — lighter loads with
         // more practice volume per set (the intake answer now DOES something)
-        if (profile.experience === "beginner" && !ex.hold) {
+        if (((c2 && c2.level === "beginner") || profile.experience === "beginner") && !ex.hold) {
           sc = { sets: Math.max(2, sc.sets - 1), lo: sc.lo + 2, hi: sc.hi + 2 };
         }
         var isHold = !!ex.hold;
@@ -245,9 +413,50 @@ OF.trainer = (function () {
       return { name: tmpl.name, slots: exercises };
     });
 
+    // Coach 2.0: shape weekly per-muscle sets into the evidence band and
+    // record the "why" for every major decision (surfaced in UI + LLM).
+    var coach2 = null;
+    if (c2) {
+      var shaped = volumeShape(days, c2);
+      coach2 = {
+        level: c2.level,
+        perGroupWeeklySets: shaped.perGroup,
+        volumeBand: shaped.band,
+        whys: {
+          split: {
+            text: "This split trains each muscle about " + OF.evidence.frequencyTarget().join("\u2013") +
+              "\u00d7/week. " + OF.evidence.why("frequency-2x-per-week"),
+            ids: ["frequency-2x-per-week"]
+          },
+          volume: {
+            text: "Weekly sets per muscle start in the middle of the evidence range for a " + c2.level +
+              " (" + shaped.band[0] + "\u2013" + shaped.band[1] + " hard sets). " +
+              OF.evidence.why("volume-hypertrophy-range") + " " +
+              OF.evidence.why("individual-response-variability"),
+            ids: ["volume-hypertrophy-range", "individual-response-variability"]
+          },
+          effort: {
+            text: (gt === "performance"
+              ? "Main lifts stay heavy (" + OF.evidence.repRange("strength").join("\u2013") + " reps, " +
+                OF.evidence.rirBand("strength").join("\u2013") + " reps in reserve). " + OF.evidence.why("intensity-load-strength")
+              : "Work sets stop " + OF.evidence.rirBand("hypertrophy").join("\u2013") +
+                " reps shy of failure. " + OF.evidence.why("effort-rir-hypertrophy")),
+            ids: gt === "performance" ? ["intensity-load-strength", "effort-rir-strength"] : ["effort-rir-hypertrophy", "intensity-rep-range-hypertrophy"]
+          },
+          rest: {
+            text: "Rest " + OF.evidence.restMinutes(true).join("\u2013") + " min on compounds, " +
+              OF.evidence.restMinutes(false).join("\u2013") + " min on isolation work. " +
+              OF.evidence.why("recovery-rest-intervals-strength"),
+            ids: ["recovery-rest-intervals-strength"]
+          }
+        },
+        injuryNotes: c2.injuryNotes
+      };
+    }
+
     var now = new Date().toISOString();
     return {
-      createdAt: now, updatedAt: now,
+      createdAt: now, updatedAt: now, coach2: coach2,
       // store the ACTUAL number of days generated, not the raw request: an
       // out-of-range daysPerWeek (e.g. 7) falls back to SPLITS[3] above, and the
       // stored field / "N days/wk" string must match the real split.
@@ -413,6 +622,12 @@ OF.trainer = (function () {
     });
     changes.forEach(function (c) { if (c.kind === "added") bumpStat("bumps"); else if (c.kind === "deloaded") bumpStat("deloads"); });
     bumpStat("sessions");
+    // Coach 2.0: prescribed-vs-logged feeds preference learning
+    try {
+      if (OF.learn && OF.learn.recordSessionOutcome) {
+        OF.learn.recordSessionOutcome(p.days[dayIndex].slots, loggedExercises);
+      }
+    } catch (e2) { /* learning must never break progression */ }
     // advance from the day just trained (not a possibly-skipped pointer)
     p.pointer = (dayIndex + 1) % p.days.length;
     p.updatedAt = new Date().toISOString();
@@ -448,6 +663,18 @@ OF.trainer = (function () {
       todaySession: ns ? {
         name: ns.name,
         exercises: ns.exercises.map(function (ex) { return ex.name + " " + prescription(ex); })
+      } : null,
+      // Coach 2.0: the program's own reasoning, so the LLM cites OUR whys
+      programRationale: p.coach2 ? {
+        level: p.coach2.level,
+        weeklySetsPerMuscle: p.coach2.perGroupWeeklySets,
+        whys: {
+          split: p.coach2.whys.split.text,
+          volume: p.coach2.whys.volume.text,
+          effort: p.coach2.whys.effort.text,
+          rest: p.coach2.whys.rest.text
+        },
+        injuryNotes: p.coach2.injuryNotes && p.coach2.injuryNotes.length ? p.coach2.injuryNotes : undefined
       } : null
     };
   }
@@ -621,6 +848,16 @@ OF.trainer = (function () {
 
   /* ---- per-exercise swap + persistent avoid list (injured/hated lifts) ---- */
 
+  /** Add one exercise to the avoid list (used by learned-dislike confirm). */
+  function addAvoid(name) {
+    var n = String(name || "").trim();
+    if (!n) return;
+    var list = avoidList();
+    if (list.map(function (x) { return x.toLowerCase(); }).indexOf(n.toLowerCase()) !== -1) return;
+    list.push(n);
+    try { localStorage.setItem(AVOID_KEY, JSON.stringify(list.slice(0, 40))); } catch (e) {}
+  }
+
   var AVOID_KEY = "optimalfit.avoidExercises";
   function avoidList() {
     try { var a = JSON.parse(localStorage.getItem(AVOID_KEY) || "[]"); return Array.isArray(a) ? a : []; }
@@ -678,7 +915,12 @@ OF.trainer = (function () {
     var b = ev.target.closest && ev.target.closest("[data-tr]");
     if (b) {
       var act = b.getAttribute("data-tr");
-      if (act === "setup") { openIntake(); return; }
+      if (act === "setup") {
+        // Coach 2.0: the full interview replaces the 5-question modal
+        // (falls back to the legacy modal if intake isn't loaded)
+        if (OF.intake && OF.intake.start) { OF.intake.start(); return; }
+        openIntake(); return;
+      }
       if (act === "program") { openProgram(); return; }
       if (act === "swap") {
         var res = swapSlot(parseInt(b.getAttribute("data-day"), 10), parseInt(b.getAttribute("data-slot"), 10));
@@ -788,6 +1030,9 @@ OF.trainer = (function () {
     bumpStat: bumpStat,
     skipDay: skipDay,
     coachContext: coachContext,
+    addAvoid: addAvoid,
+    hasProgram: hasProgram,
+    load: load,
     EQUIP_ALLOW: EQUIP_ALLOW,
     SPLITS: SPLITS
   };

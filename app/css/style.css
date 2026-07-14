@@ -2555,3 +2555,31 @@ body.metric-modal-open { overflow: hidden; }
 .list-more { display: block; width: 100%; min-height: 44px; margin-top: 8px;
   background: var(--card); border: 1px dashed var(--card-edge);
   border-radius: var(--r-sm); color: var(--accent); font-weight: 600; }
+
+
+/* ---------- Coach 2.0: intake interview overlay ---------- */
+#intake-overlay {
+  position: fixed; inset: 0; z-index: 320; display: none;
+  background: color-mix(in srgb, var(--bg) 78%, transparent);
+  backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
+}
+#intake-overlay.open { display: flex; align-items: stretch; justify-content: center; }
+.intake-panel {
+  display: flex; flex-direction: column; width: 100%; max-width: 560px;
+  background: var(--card); margin: 0 auto;
+  padding-top: env(safe-area-inset-top, 0px);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+.intake-head {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: var(--sp-3) var(--sp-4); border-bottom: 1px solid var(--card-edge);
+}
+.intake-head h2 { margin: 0; font-size: var(--fs-4); }
+#intake-log { flex: 1; overflow-y: auto; padding: var(--sp-4); display: flex; flex-direction: column; gap: 10px; }
+#intake-log .msg-user { align-self: flex-end; }
+.intake-input { padding: var(--sp-3) var(--sp-4); border-top: 1px solid var(--card-edge); }
+.intake-input .coach-chips { max-height: 40vh; overflow-y: auto; }
+.coach-chip.chip-on { border-color: var(--accent); background: var(--accent-soft); color: var(--accent); font-weight: 700; }
+.coach-fb { display: flex; gap: 8px; margin: -2px 0 4px 30px; }
+.coach-cta { padding: var(--sp-4); margin-bottom: var(--sp-3); }
+.coach-cta h3 { margin: 0 0 6px; }

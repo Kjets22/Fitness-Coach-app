@@ -30,6 +30,7 @@ OF.sleep = (function () {
     els.summary = document.getElementById("sleep-summary");
 
     setDefaults();
+    renderQuick();
     els.form.addEventListener("submit", onSubmit);
     els.cancel.addEventListener("click", exitEditMode);
     els.bed.addEventListener("input", updatePreview);
@@ -44,6 +45,35 @@ OF.sleep = (function () {
       });
     }
     renderList();
+  }
+
+  /* One-tap "usual night": sleep barely varies, so when today is unlogged
+     offer last night's times + quality as a single tap (with Undo). */
+  function renderQuick() {
+    var host = document.getElementById("sleep-quick");
+    if (!host) return;
+    var today = U.todayISO();
+    var arr = S.getAll("sleep");
+    var todayHas = arr.some(function (r) { return r.date === today; });
+    var last = arr.slice().sort(U.byNewest)[0];
+    if (todayHas || !last || !last.bedTime || !last.wakeTime) { host.innerHTML = ""; return; }
+    host.innerHTML = '<div class="recent-chips"><button type="button" class="btn mini" id="sleep-usual">' +
+      "\u26a1 Log usual night: " + U.esc(last.bedTime) + "\u2192" + U.esc(last.wakeTime) +
+      " \u00b7 quality " + (last.quality || 3) + '</button></div>';
+    host.querySelector("#sleep-usual").addEventListener("click", function () {
+      var dur = U.sleepDurationMin(last.bedTime, last.wakeTime);
+      var rec = S.add("sleep", { date: today, bedTime: last.bedTime, wakeTime: last.wakeTime,
+        quality: last.quality || 3, durationMin: dur, notes: "" });
+      if (!rec) return;
+      renderList();
+      renderQuick();
+      if (OF.dashboard && OF.dashboard.refresh) { try { OF.dashboard.refresh(); } catch (e) {} }
+      U.toast("Logged " + Math.floor(dur / 60) + "h " + (dur % 60) + "m of sleep for today.", "ok", {
+        label: "Undo",
+        fn: function () { S.remove("sleep", rec.id); renderList(); renderQuick();
+          if (OF.dashboard && OF.dashboard.refresh) { try { OF.dashboard.refresh(); } catch (e) {} } }
+      });
+    });
   }
 
   function setDefaults() {
@@ -204,6 +234,7 @@ OF.sleep = (function () {
   }
 
   function renderList() {
+    setTimeout(renderQuick, 0);   // keep the one-tap chip in sync
     renderSummary();
     var arr = S.getAll("sleep").slice().sort(U.byNewest);
     if (!arr.length) {

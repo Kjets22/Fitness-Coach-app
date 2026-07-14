@@ -228,16 +228,55 @@ OF.food = (function () {
       seen[k] = true;
       chips.push(r);
     }
-    host.innerHTML = chips.length
+    // "Copy yesterday": when today is unlogged and yesterday wasn't, one tap
+    // re-logs the whole day — most days eat like the day before.
+    var today = U.todayISO(), yday = U.todayISO(-1);
+    var all = S.getAll("food");
+    var todayHas = all.some(function (r) { return r.date === today; });
+    var yCount = all.filter(function (r) { return r.date === yday; }).length;
+    var copyBtn = (!todayHas && yCount > 0)
+      ? '<div class="recent-chips"><button type="button" class="btn mini" data-copy-yday>' +
+        "\u26a1 Copy yesterday's meals (" + yCount + ')</button></div>'
+      : "";
+    host.innerHTML = copyBtn + (chips.length
       ? '<div class="recent-chips"><span class="recent-lbl">Log again:</span>' +
         chips.map(function (r) {
           return '<button type="button" class="btn mini" data-recent="' + U.esc(r.id) + '">' +
             U.esc((r.foodName || "").slice(0, 24)) + '</button>';
         }).join("") + '</div>'
-      : "";
+      : "");
+  }
+
+  function copyYesterday() {
+    var today = U.todayISO(), yday = U.todayISO(-1);
+    var meals = S.getAll("food").filter(function (r) { return r.date === yday; })
+      .sort(function (a, b) { return String(a.time).localeCompare(String(b.time)); });
+    if (!meals.length) return;
+    var added = [];
+    meals.forEach(function (r) {
+      var rec = S.add("food", { date: today, time: r.time, mealType: r.mealType,
+        foodName: r.foodName, calories: r.calories, protein: r.protein,
+        carbs: r.carbs, fat: r.fat, notes: r.notes || "" });
+      if (rec) added.push(rec.id);
+    });
+    refreshAfterWrite();
+    U.toast("Copied " + added.length + " meal" + (added.length === 1 ? "" : "s") + " from yesterday \u2014 edit any that differ.", "ok", {
+      label: "Undo",
+      fn: function () {
+        added.forEach(function (id) { S.remove("food", id); });
+        refreshAfterWrite();
+      }
+    });
+  }
+
+  function refreshAfterWrite() {
+    renderList();
+    renderRecent();
+    if (OF.dashboard && OF.dashboard.refresh) { try { OF.dashboard.refresh(); } catch (e) {} }
   }
 
   function onRecentClick(e) {
+    if (e.target.closest("[data-copy-yday]")) { copyYesterday(); return; }
     var b = e.target.closest("[data-recent]");
     if (!b) return;
     var r = S.get("food", b.getAttribute("data-recent"));

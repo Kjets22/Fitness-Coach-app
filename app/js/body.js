@@ -66,7 +66,11 @@ OF.body = (function () {
 
   function setDefaults() {
     els.date.value = U.todayISO();
-    els.weight.value = "";
+    // prefill the last weight — day-to-day weight barely moves, so most
+    // entries are a one-field tweak instead of typed from scratch
+    var last = S.getAll("body").slice().sort(U.byNewest)[0];
+    els.weight.value = (last && last.weightKg != null)
+      ? U.toDisplayWeight(last.weightKg) : "";
     els.fat.value = "";
     els.muscle.value = "";
     els.notes.value = "";

@@ -607,14 +607,36 @@ OF.exercise = (function () {
     if (inp.getAttribute("data-field") === "r") next = Math.max(1, Math.round(next));
     inp.value = String(next);
     builderInput(inp);   // sync exList state + saveActive
+    updateStepper(inp);  // live plate hint tracks the new value
+  }
+
+  /* Zero-tap plate calculator: while a weight field is focused, the strip
+     also shows which plates to load PER SIDE for the typed total (standard
+     bar: 45 lb / 20 kg). Skipped when the total is at/below the bar or
+     doesn't split cleanly onto standard plates (e.g. dumbbell work). */
+  function plateHint(total) {
+    if (total == null || isNaN(total)) return "";
+    var lb = U.weightUnit() === "lb";
+    var bar = lb ? 45 : 20;
+    var plates = lb ? [45, 35, 25, 10, 5, 2.5] : [25, 20, 15, 10, 5, 2.5, 1.25];
+    var side = (Number(total) - bar) / 2;
+    if (side <= 0) return "";
+    var out = [];
+    for (var i = 0; i < plates.length && side > 1e-9; i++) {
+      while (side >= plates[i] - 1e-9) { out.push(plates[i]); side -= plates[i]; }
+    }
+    if (side > 1e-9 || !out.length) return "";   // doesn't land on standard plates
+    return " · " + out.join("+") + " /side";
   }
 
   function updateStepper(inp) {
     var el = stepperStrip();
     if (!inp) { el.hidden = true; stepperTarget = null; return; }
     stepperTarget = inp;
-    el.querySelector(".stepper-lbl").textContent =
-      inp.getAttribute("data-field") === "r" ? "± 1 rep" : "± " + stepSizeFor(inp) + " " + U.weightUnit();
+    var isReps = inp.getAttribute("data-field") === "r";
+    el.querySelector(".stepper-lbl").textContent = isReps
+      ? "± 1 rep"
+      : "± " + stepSizeFor(inp) + " " + U.weightUnit() + plateHint(U.numOrNull(inp.value));
     el.hidden = false;
   }
 
@@ -1232,7 +1254,10 @@ OF.exercise = (function () {
       if (menu) renderMenu(menu, t.value);
       return;
     }
-    if (t.hasAttribute && t.hasAttribute("data-field")) builderInput(t);
+    if (t.hasAttribute && t.hasAttribute("data-field")) {
+      builderInput(t);
+      if (t === stepperTarget) updateStepper(t);   // live plate hint while typing
+    }
     // finish-screen notes: keep in state so tapping Back then Complete (which
     // re-renders the finish screen) doesn't silently wipe what was typed.
     if (t.id === "wo-notes") { finish.notes = t.value; return; }

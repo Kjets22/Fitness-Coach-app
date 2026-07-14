@@ -15,7 +15,7 @@
    ============================================================ */
 
 /* Bump this string when any shell file changes. */
-var VERSION = "v58";
+var VERSION = "v59";
 var CACHE = "optimalfit-shell-" + VERSION;
 
 var SHELL = [

@@ -628,6 +628,48 @@ OF.exercise = (function () {
     restStart = Date.now();
     restDur = (T && T.presetSec) || 90;  // rest length picked on the timer card below
     restCued = false;
+    scheduleRestNotif();
+  }
+
+  /* ---- background rest alert (native builds) ----
+     JS freezes when the app is backgrounded, so the in-page beep can't fire
+     if the lifter switches apps mid-rest. On native we schedule an OS local
+     notification for rest-end (+2s); while the app stays foreground the
+     in-page cue fires first and CANCELS it, so there's never a double alarm.
+     Web builds: no plugin -> these are silent no-ops. */
+  var REST_NOTIF_ID = 8642;
+  function restNotifPlugin() {
+    var C = window.Capacitor;
+    var LN = C && C.Plugins && C.Plugins.LocalNotifications;
+    return (LN && typeof LN.schedule === "function") ? LN : null;
+  }
+  function scheduleRestNotif() {
+    var LN = restNotifPlugin();
+    if (!LN) return;
+    var at = new Date(restStart + restDur * 1000 + 2000);
+    var doSchedule = function () {
+      LN.schedule({ notifications: [{
+        id: REST_NOTIF_ID,
+        title: "Rest done — go!",
+        body: "Time for your next set.",
+        schedule: { at: at },
+        sound: "default"   // iOS: unset means SILENT; a missing named file falls back to the system default sound
+      }] }).catch(function () { /* best-effort */ });
+    };
+    LN.cancel({ notifications: [{ id: REST_NOTIF_ID }] }).catch(function () {}).then(function () {
+      return LN.checkPermissions();
+    }).then(function (s) {
+      var st = s && s.display;
+      if (st === "granted") { doSchedule(); return; }
+      if (st === "denied") return;   // user said no — never nag mid-workout
+      return LN.requestPermissions().then(function (r) {
+        if (r && r.display === "granted") doSchedule();
+      });
+    }).catch(function () { /* plugin hiccup: in-page beep still covers foreground */ });
+  }
+  function cancelRestNotif() {
+    var LN = restNotifPlugin();
+    if (LN) LN.cancel({ notifications: [{ id: REST_NOTIF_ID }] }).catch(function () {});
   }
 
   function renderRestBar() {
@@ -642,7 +684,7 @@ OF.exercise = (function () {
       bar.id = "rest-bar"; bar.type = "button";
       bar.setAttribute("aria-label", "Rest countdown — tap to skip");
       bar.addEventListener("click", function () {
-        restStart = null; saveActive(); renderRestBar();
+        restStart = null; cancelRestNotif(); saveActive(); renderRestBar();
       });
       document.body.appendChild(bar);
     }
@@ -653,7 +695,16 @@ OF.exercise = (function () {
         Math.floor(remain / 60) + ":" + String(remain % 60).padStart(2, "0") +
         '</strong> <span class="rest-dismiss">· tap to skip</span>';
     } else {
-      if (!restCued) { restCued = true; beep(); try { if (navigator.vibrate) navigator.vibrate([120, 80, 120]); } catch (e) { /* iOS ignores */ } }
+      if (!restCued) {
+        restCued = true;
+        cancelRestNotif();   // foreground cue wins — don't also fire the OS notification
+        // only beep if we actually witnessed the moment; waking from background
+        // more than 2s late means the OS notification already did the alerting
+        if (remain >= -2) {
+          beep();
+          try { if (navigator.vibrate) navigator.vibrate([120, 80, 120]); } catch (e) { /* iOS ignores */ }
+        }
+      }
       bar.classList.add("rest-done");
       bar.innerHTML = '<span class="rest-lbl">Rest done</span> <strong>— go!</strong>' +
         ' <span class="rest-dismiss">· tap to hide</span>';
@@ -708,6 +759,7 @@ OF.exercise = (function () {
     exList = [];
     activeProgramDay = null;
     restStart = null;
+    cancelRestNotif();
     finish.open = false;
     showHub();
     updateLivePill();
@@ -799,6 +851,7 @@ OF.exercise = (function () {
     var prs = detectPRs(rec.exercises || []);
     activeProgramDay = null;
     restStart = null;
+    cancelRestNotif();
     stopTick();
     clearActive();
     exList = [];
@@ -949,6 +1002,58 @@ OF.exercise = (function () {
     if (els.form) els.form.classList.add("hidden");
     els.hub.classList.remove("hidden");
     els.error = document.getElementById("exercise-error");
+    renderRepeatBtn();
+  }
+
+  /** Most recent session that actually has logged exercises (for one-tap repeat). */
+  function lastLoggedSession() {
+    var arr = S.getAll("exercise").slice().sort(U.byNewest);
+    for (var i = 0; i < arr.length; i++) {
+      var exs = arr[i].exercises;
+      if (Array.isArray(exs) && exs.some(function (ex) {
+        return ex && ex.name && Array.isArray(ex.sets) && ex.sets.length;
+      })) return arr[i];
+    }
+    return null;
+  }
+
+  /* One-tap "same as last time": most lifters run the same session for weeks,
+     so the hub offers the previous workout pre-loaded — names, sets, weights. */
+  function renderRepeatBtn() {
+    var rep = document.getElementById("wo-repeat-btn");
+    var last = lastLoggedSession();
+    if (!last) { if (rep) rep.remove(); return; }
+    var names = last.exercises.map(function (ex) { return ex && ex.name; }).filter(Boolean);
+    var lbl = names.slice(0, 3).join(", ") + (names.length > 3 ? " +" + (names.length - 3) : "");
+    if (!rep) {
+      rep = document.createElement("button");
+      rep.type = "button";
+      rep.id = "wo-repeat-btn";
+      rep.className = "btn ghost wo-manual-btn";
+      rep.setAttribute("data-wo", "repeat");
+      var manualBtn = els.hub.querySelector('[data-wo="manual"]');
+      els.hub.insertBefore(rep, manualBtn);
+    }
+    rep.textContent = "Repeat last workout · " + lbl;
+  }
+
+  function startRepeatLast() {
+    var last = lastLoggedSession();
+    if (!last) return;
+    if (loadActive() && !confirm("You have a workout in progress. Start a new one and discard it?")) return;
+    activeStartedAt = Date.now();
+    sessType = typeof last.type === "string" && last.type ? last.type : "strength";
+    activeProgramDay = null;
+    finish = { open: false, intensity: 3, performance: 3 };
+    exList = last.exercises.filter(function (ex) { return ex && ex.name; })
+      .slice(0, MAX_EXERCISES)
+      .map(function (ex) {
+        return { name: ex.name, prefilled: true,
+          sets: (Array.isArray(ex.sets) ? ex.sets : []).slice(0, MAX_SETS).map(seedSet) };
+      });
+    mode = "active";
+    saveActive();
+    renderActive();
   }
 
   /* ============================================================
@@ -1065,6 +1170,7 @@ OF.exercise = (function () {
 
     // hub buttons
     if (t.closest && t.closest('[data-wo="start"]')) { startSession(); return; }
+    if (t.closest && t.closest('[data-wo="repeat"]')) { startRepeatLast(); return; }
     if (t.closest && t.closest('[data-wo="manual"]')) { openManual(); return; }
     if (t.closest && t.closest('[data-wo="hub-back"]')) { closeManual(); return; }
 

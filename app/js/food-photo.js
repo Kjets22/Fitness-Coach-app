@@ -265,6 +265,17 @@ OF.foodPhoto = (function () {
       '</div>' +
       (e.portionEstimate ? '<p class="muted small photo-portion">Portion: ' +
         U.esc(e.portionEstimate) + '</p>' : '') +
+      // per-item breakdown: the AI now decomposes the plate — showing its
+      // work lets the user spot the one wrong component instead of
+      // distrusting the whole number
+      (Array.isArray(e.items) && e.items.length ? '<ul class="photo-items">' +
+        e.items.map(function (it) {
+          return '<li><span>' + U.esc(it.name) +
+            (it.grams ? ' <span class="muted">~' + U.esc(String(Math.round(it.grams))) + ' g</span>' : '') +
+            '</span><span>' + U.esc(String(it.calories)) + ' kcal · ' +
+            U.esc(String(it.protein_g)) + 'P/' + U.esc(String(it.carbs_g)) + 'C/' +
+            U.esc(String(it.fat_g)) + 'F</span></li>';
+        }).join("") + '</ul>' : '') +
       '<div class="photo-macros">' +
         numField("photo-cal", "Calories (kcal)", e.calories, 10000, 1) +
         numField("photo-prot", "Protein (g)", e.protein_g, 1000, 0.1) +

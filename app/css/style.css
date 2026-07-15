@@ -2585,3 +2585,11 @@ body.metric-modal-open { overflow: hidden; }
 .coach-cta h3 { margin: 0 0 6px; }
 .macro-row { display: flex; flex-wrap: wrap; gap: 10px; }
 .macro-part { white-space: nowrap; font-size: 0.86rem; }
+
+.photo-items { list-style: none; margin: 0 0 var(--sp-3); padding: 8px 12px;
+  background: var(--bg-2); border-radius: var(--r-sm); border: 1px solid var(--card-edge);
+  display: flex; flex-direction: column; gap: 5px; }
+.photo-items li { display: flex; justify-content: space-between; gap: 10px;
+  font-size: 0.82rem; }
+.photo-items li span:last-child { white-space: nowrap; color: var(--text-dim);
+  font-variant-numeric: tabular-nums; }

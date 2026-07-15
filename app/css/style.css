@@ -2593,3 +2593,6 @@ body.metric-modal-open { overflow: hidden; }
   font-size: 0.82rem; }
 .photo-items li span:last-child { white-space: nowrap; color: var(--text-dim);
   font-variant-numeric: tabular-nums; }
+.photo-items-toggle { margin-bottom: var(--sp-2); }
+.photo-item-pick { display: flex; align-items: center; gap: 8px; min-height: 28px; }
+.photo-item-pick input { width: 18px; height: 18px; min-height: 18px; accent-color: var(--accent); }

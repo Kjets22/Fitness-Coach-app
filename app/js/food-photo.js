@@ -256,6 +256,8 @@ OF.foodPhoto = (function () {
       '</label>';
   }
 
+  var excludedItems = [];
+
   function resultHtml() {
     var e = estimate;
     return '<h2>Estimate</h2>' +
@@ -265,14 +267,19 @@ OF.foodPhoto = (function () {
       '</div>' +
       (e.portionEstimate ? '<p class="muted small photo-portion">Portion: ' +
         U.esc(e.portionEstimate) + '</p>' : '') +
-      // per-item breakdown: the AI now decomposes the plate — showing its
-      // work lets the user spot the one wrong component instead of
-      // distrusting the whole number
-      (Array.isArray(e.items) && e.items.length ? '<ul class="photo-items">' +
-        e.items.map(function (it) {
-          return '<li><span>' + U.esc(it.name) +
+      // per-item breakdown: COLLAPSED by default (the totals are all an
+      // average user needs) — expanding it reveals a checkbox per component,
+      // so "I didn't eat the sauce" is one tap and the totals follow.
+      (Array.isArray(e.items) && e.items.length ?
+        '<button type="button" class="btn mini photo-items-toggle" id="photo-items-toggle" aria-expanded="false">' +
+          "What's on the plate (" + e.items.length + ") \u25be</button>" +
+        '<ul class="photo-items hidden" id="photo-items">' +
+        e.items.map(function (it, i) {
+          return '<li><label class="photo-item-pick">' +
+            '<input type="checkbox" checked data-item="' + i + '" aria-label="Include ' + U.esc(it.name) + '">' +
+            '<span>' + U.esc(it.name) +
             (it.grams ? ' <span class="muted">~' + U.esc(String(Math.round(it.grams))) + ' g</span>' : '') +
-            '</span><span>' + U.esc(String(it.calories)) + ' kcal · ' +
+            '</span></label><span>' + U.esc(String(it.calories)) + ' kcal · ' +
             U.esc(String(it.protein_g)) + 'P/' + U.esc(String(it.carbs_g)) + 'C/' +
             U.esc(String(it.fat_g)) + 'F</span></li>';
         }).join("") + '</ul>' : '') +
@@ -399,6 +406,7 @@ OF.foodPhoto = (function () {
             "The AI is busy with another request — try again in a minute.";
         } else if (j && j.ok && j.estimate && typeof j.estimate === "object") {
           estimate = j.estimate;
+          excludedItems = [];
           state = estimate.isFood ? "result" : "nonfood";
         } else {
           state = "error";
@@ -511,6 +519,16 @@ OF.foodPhoto = (function () {
         checkServer();
         return;
       }
+      if (e.target.closest("#photo-items-toggle")) {
+        var ul = document.getElementById("photo-items");
+        var tg = document.getElementById("photo-items-toggle");
+        if (ul && tg) {
+          var open = ul.classList.toggle("hidden");
+          tg.setAttribute("aria-expanded", open ? "false" : "true");
+          tg.innerHTML = "What's on the plate (" + (estimate.items || []).length + ") " + (open ? "\u25be" : "\u25b4");
+        }
+        return;
+      }
       if (e.target.closest("#photo-again")) {
         state = "pick";
         errorMsg = "";
@@ -519,7 +537,23 @@ OF.foodPhoto = (function () {
       }
     });
     els.modal.addEventListener("change", function (e) {
-      if (e.target && e.target.id === "photo-file") onFilePicked(e.target);
+      if (e.target && e.target.id === "photo-file") { onFilePicked(e.target); return; }
+      // un/re-checking a component recomputes the four macro fields from the
+      // checked items — "log the plate minus the fries" without any math
+      if (e.target && e.target.hasAttribute && e.target.hasAttribute("data-item")) {
+        var items = (estimate && estimate.items) || [];
+        var cal = 0, pr = 0, cb = 0, ft = 0, excluded = [];
+        var boxes = els.modal.querySelectorAll("[data-item]");
+        Array.prototype.forEach.call(boxes, function (b) {
+          var it = items[Number(b.getAttribute("data-item"))];
+          if (!it) return;
+          if (b.checked) { cal += it.calories; pr += it.protein_g; cb += it.carbs_g; ft += it.fat_g; }
+          else excluded.push(it.name);
+        });
+        var set = function (id, v) { var el = document.getElementById(id); if (el) el.value = Math.round(v * 10) / 10; };
+        set("photo-cal", Math.round(cal)); set("photo-prot", pr); set("photo-carb", cb); set("photo-fat", ft);
+        excludedItems = excluded;
+      }
     });
     document.addEventListener("keydown", function (e) {
       if (e.key === "Escape" && isOpen()) closeModal();

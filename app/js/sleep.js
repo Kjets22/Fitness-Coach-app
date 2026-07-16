@@ -57,8 +57,14 @@ OF.sleep = (function () {
     var todayHas = arr.some(function (r) { return r.date === today; });
     var last = arr.slice().sort(U.byNewest)[0];
     if (todayHas || !last || !last.bedTime || !last.wakeTime) { host.innerHTML = ""; return; }
+    var t12 = function (hm) {
+      var m = /^(\d{1,2}):(\d{2})$/.exec(String(hm || ""));
+      if (!m) return hm;
+      var d = new Date(); d.setHours(+m[1], +m[2], 0, 0);
+      return d.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
+    };
     host.innerHTML = '<div class="recent-chips"><button type="button" class="btn mini" id="sleep-usual">' +
-      "\u26a1 Log usual night: " + U.esc(last.bedTime) + "\u2192" + U.esc(last.wakeTime) +
+      "\u26a1 Log usual night: " + U.esc(t12(last.bedTime)) + "\u2192" + U.esc(t12(last.wakeTime)) +
       " \u00b7 quality " + (last.quality || 3) + '</button></div>';
     host.querySelector("#sleep-usual").addEventListener("click", function () {
       var dur = U.sleepDurationMin(last.bedTime, last.wakeTime);

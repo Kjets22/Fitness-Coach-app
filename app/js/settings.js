@@ -48,6 +48,12 @@ OF.settings = (function () {
         OF.util.toast("Could not save preferences.", "warn");
       }
     });
+    // the interview's closing line promises "redo any time from Settings" —
+    // this is that button (it was a promise without a door)
+    var redo = document.getElementById("pref-redo-interview");
+    if (redo) redo.addEventListener("click", function () {
+      if (OF.intake && OF.intake.start) OF.intake.start();
+    });
   }
 
   /* ---------- "Use on your phone" server info ---------- */

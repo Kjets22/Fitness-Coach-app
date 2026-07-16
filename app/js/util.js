@@ -5,7 +5,7 @@
    ============================================================ */
 
 window.OF = window.OF || {};
-OF.APP_VERSION = "1.2.3 (build 19)";  // bump every build; shown to the owner only
+OF.APP_VERSION = "1.3.0 (build 20)";  // bump every build; shown to the owner only
 
 OF.util = (function () {
   "use strict";
@@ -112,7 +112,7 @@ OF.util = (function () {
     // Force a restyle so back-to-back toasts still animate.
     el.classList.add("show");
     if (toastTimer) clearTimeout(toastTimer);
-    toastTimer = setTimeout(function () { el.classList.remove("show"); }, action ? 8000 : 6000);
+    toastTimer = setTimeout(function () { el.classList.remove("show"); }, action ? 6000 : 4500);
   }
 
   /** Delete-with-undo: show "<what> deleted" with an 8s Undo that restores the

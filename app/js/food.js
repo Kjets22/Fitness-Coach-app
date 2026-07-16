@@ -317,12 +317,12 @@ OF.food = (function () {
         "\u26a1 Copy yesterday's meals (" + yCount + ')</button></div>'
       : "";
     host.innerHTML = copyBtn + (chips.length
-      ? '<div class="recent-chips"><span class="recent-lbl">Tap to log again:</span>' +
+      ? '<div class="recent-chips recent-scroll"><span class="recent-lbl">Tap to log again:</span>' +
         chips.map(function (r) {
           var nm = U.esc((r.foodName || "").slice(0, 24));
           return '<span class="recent-chip-wrap">' +
             '<button type="button" class="btn mini recent-log" data-recent="' + U.esc(r.id) + '">' + nm + '</button>' +
-            '<button type="button" class="btn mini recent-edit" data-recent-edit="' + U.esc(r.id) + '" aria-label="Edit ' + nm + ' before logging" title="Edit before logging">✎</button>' +
+            '<button type="button" class="btn mini recent-edit" data-recent-edit="' + U.esc(r.id) + '" aria-label="Edit ' + nm + ' before logging" title="Edit before logging">✎ edit</button>' +
             '</span>';
         }).join("") + '</div>'
       : "");
@@ -330,9 +330,14 @@ OF.food = (function () {
 
   function copyYesterday() {
     var today = U.todayISO(), yday = U.todayISO(-1);
-    var meals = S.getAll("food").filter(function (r) { return r.date === yday; })
+    var all = S.getAll("food").filter(function (r) { return r.date === yday; })
       .sort(function (a, b) { return String(a.time).localeCompare(String(b.time)); });
-    if (!meals.length) return;
+    // only meals already "eaten" by this time of day — copying tonight's
+    // dinner at 1pm inflated today's total and double-counted at dinner time
+    var now = U.nowTime();
+    var meals = all.filter(function (r) { return String(r.time || "") <= now; });
+    var skipped = all.length - meals.length;
+    if (!meals.length) { U.toast("Yesterday's meals are all later in the day — they'll be one tap away tonight.", "ok"); return; }
     var added = [];
     meals.forEach(function (r) {
       var rec = S.add("food", { date: today, time: r.time, mealType: r.mealType,
@@ -341,7 +346,8 @@ OF.food = (function () {
       if (rec) added.push(rec.id);
     });
     refreshAfterWrite();
-    U.toast("Copied " + added.length + " meal" + (added.length === 1 ? "" : "s") + " from yesterday \u2014 edit any that differ.", "ok", {
+    U.toast("Copied " + added.length + " meal" + (added.length === 1 ? "" : "s") + " from yesterday" +
+      (skipped ? " (" + skipped + " later meal" + (skipped === 1 ? "" : "s") + " left for tonight)" : "") + " \u2014 edit any that differ.", "ok", {
       label: "Undo",
       fn: function () {
         added.forEach(function (id) { S.remove("food", id); });
@@ -393,7 +399,7 @@ OF.food = (function () {
     });
     if (!rec) { U.toast("Could not save — storage is full or blocked.", "warn"); return; }
     refreshAfterWrite();
-    U.toast("Logged " + U.esc(r.foodName || "meal") + ". Tap 'edit' on a chip to tweak.", "ok", {
+    U.toast("Logged " + (r.foodName || "meal") + ".", "ok", {   // U.toast uses textContent — esc() here double-escaped "&"
       label: "Undo",
       fn: function () { S.remove("food", rec.id); refreshAfterWrite(); }
     });

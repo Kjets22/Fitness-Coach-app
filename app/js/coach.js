@@ -537,7 +537,9 @@ OF.coach = (function () {
         '<span class="dots"><span></span><span></span><span></span></span></div></div>';
     }
     els.log.innerHTML = html;
-    els.log.scrollTop = els.log.scrollHeight;
+    // fresh chat = read the greeting from its first line; conversations pin
+    // to the newest message as usual
+    els.log.scrollTop = messages.length ? els.log.scrollHeight : 0;
   }
 
   function setBusy(b) {

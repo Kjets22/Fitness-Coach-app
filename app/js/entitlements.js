@@ -67,6 +67,18 @@ OF.entitlements = (function () {
     var f = feature || {};
     var title = f.title || "A Premium AI feature";
     var blurb = f.blurb || "This uses AI.";
+    // compact: a one-line banner instead of a full-height card — used where
+    // the paywall sat ABOVE the core form and pushed it below the fold
+    // (user-panel finding: the Food tab opened on an ad, not the action)
+    if (f.compact) {
+      var act = !signedIn()
+        ? '<button type="button" class="btn mini" data-ent="signin">Try free</button>'
+        : (!profile()
+          ? '<button type="button" class="btn mini" data-ent="signin">Finish setup</button>'
+          : '<button type="button" class="btn mini" data-ent="recheck">Check access</button>');
+      return '<div class="ent-paywall ent-paywall-mini">' +
+        '<span class="ent-mini-txt">' + title + ' <span class="muted">— Premium</span></span>' + act + '</div>';
+    }
     if (!signedIn()) {
       return card(title, blurb + " It’s an OptimalFit Premium feature and every new account gets a 7-day free trial — sign in or create an account to start yours. Everything else in the app is free.",
         '<button type="button" class="btn primary" data-ent="signin">Sign in / Start free trial</button>' +

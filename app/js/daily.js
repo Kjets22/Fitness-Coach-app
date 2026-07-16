@@ -156,8 +156,11 @@ OF.daily = (function () {
   function onWaterListClick(evt) {
     var btn = evt.target.closest(".water-del");
     if (!btn) return;
+    var rec = S.get("water", btn.getAttribute("data-id"));
     S.remove("water", btn.getAttribute("data-id"));
     renderWater();
+    // the one silent, irreversible delete left in the daily flows — fixed
+    if (rec) U.undoDelete("water", rec, "Water entry", renderWater);
   }
 
   /* ---------------- steps ---------------- */

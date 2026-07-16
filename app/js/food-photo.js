@@ -121,7 +121,8 @@ OF.foodPhoto = (function () {
     // Photo → macros is a Premium AI feature.
     if (OF.entitlements && !OF.entitlements.isPremium()) {
       els.area.innerHTML = OF.entitlements.paywallHtml({
-        title: "Photo macros are Premium",
+        compact: true,
+        title: "\ud83d\udcf7 Photo macros",
         blurb: "Snap a meal and AI estimates the calories and macros for you."
       });
       OF.entitlements.bindPaywall(els.area, renderButton);

@@ -133,7 +133,10 @@ OF.targets = (function () {
     var best = null;
     (body || []).forEach(function (r) {
       if (num(r.weightKg) == null) return;
-      if (!best || (r.date || "") > (best.date || "")) best = r;
+      // tie-break same-day entries by creation moment (mirrors U.byNewest) —
+      // without it a same-day re-weigh never updated calorie/water targets
+      if (!best || (r.date || "") > (best.date || "") ||
+          ((r.date || "") === (best.date || "") && (r.createdAt || "") > (best.createdAt || ""))) best = r;
     });
     return best ? num(best.weightKg) : null;
   }

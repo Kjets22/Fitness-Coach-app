@@ -32,6 +32,9 @@ OF.app = (function () {
       lastTab = name;
       var scroller = document.querySelector("main.content");
       if (scroller) scroller.scrollTop = 0;
+      // a toast about the previous tab shouldn't ride along to the next one
+      var toastEl = document.getElementById("of-toast");
+      if (toastEl) toastEl.classList.remove("show");
     }
     document.querySelectorAll(".nav-btn, .header-btn").forEach(function (btn) {
       btn.classList.toggle("active", btn.getAttribute("data-tab") === name);
@@ -60,7 +63,7 @@ OF.app = (function () {
     var sheet = document.getElementById("log-sheet");
     if (!sheet) return;
     sheet.classList.remove("hidden");
-    var first = sheet.querySelector(".sheet-item");
+    var first = sheet.querySelector(".sheet-primary") || sheet.querySelector(".sheet-item");
     if (first) first.focus();
   }
   function closeSheet() {

@@ -2675,3 +2675,35 @@ html { touch-action: manipulation; }
   body.kb-open .nav { display: none; }
   body.kb-open .content { padding-bottom: 12px; }
 }
+
+/* Fixes from the interaction-agent panel (build 20) */
+/* toast: visible but never a tap-blocker; the Undo button must accept REAL
+   taps (pointer-events:none was inherited by the button — JS clicks worked
+   in tests but a finger tap would fall through on the phone) */
+.toast .toast-action { pointer-events: auto; }
+/* "Log again" chips: one scrollable row instead of a 7-row wall */
+.recent-scroll { flex-wrap: nowrap; overflow-x: auto; -webkit-overflow-scrolling: touch; padding-bottom: 4px; scrollbar-width: none; }
+.recent-scroll::-webkit-scrollbar { display: none; }
+.recent-scroll .recent-chip-wrap { flex-shrink: 0; }
+.recent-chip-wrap .recent-edit { opacity: 0.9; border-left: 1px solid var(--card-edge); font-size: 0.72rem; }
+/* compact premium banner (replaces the full-height paywall card above forms) */
+.ent-paywall-mini { display: flex; align-items: center; gap: 10px; padding: 8px 12px; margin-bottom: var(--sp-3);
+  border: 1px solid var(--card-edge); border-radius: var(--r-md); background: var(--bg-2); }
+.ent-paywall-mini .ent-mini-txt { flex: 1; min-width: 0; font-size: 0.82rem; }
+.ent-paywall-mini .btn.mini { min-height: 36px; flex-shrink: 0; }
+/* trainer card: never break exercise names mid-word ("Triceps Pushdow/n") */
+.tr-session li, .tr-ex-name { word-break: normal; overflow-wrap: break-word; }
+.dash-today-line { font-size: 0.9rem; }
+/* intake: progress counter + text-step skip on its own row */
+.intake-progress { margin-left: auto; margin-right: 10px; font-size: 0.72rem; color: var(--text-dim); font-variant-numeric: tabular-nums; white-space: nowrap; }
+#intake-text-form { flex-wrap: wrap; }
+#intake-text-form [data-skip] { flex: 1 1 100%; margin-top: 2px; }
+/* stepper strip rides the keyboard: with the webview resized (Keyboard
+   plugin) and the tab bar hidden (body.kb-open), the old 84px tab-bar
+   offset floated it mid-content — over the very row being edited */
+body.kb-open #stepper-strip { bottom: calc(8px + env(safe-area-inset-bottom, 0px)); }
+/* finish screen: "Strength" was truncating to "Stre" at intrinsic width */
+.wo-finish-field select { min-width: 130px; }
+/* live rest countdown pill: the loudest timer on screen while resting */
+#rest-bar { font-size: 1.05rem; padding: 12px 20px; box-shadow: var(--e3); }
+#rest-bar strong { font-size: 1.25rem; font-variant-numeric: tabular-nums; }

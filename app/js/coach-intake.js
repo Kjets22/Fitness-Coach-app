@@ -39,7 +39,7 @@ OF.intake = (function () {
     {
       id: "goal",
       say: function () {
-        return "Let's set up your coaching — this takes about 2 minutes, and everything you tell me shapes your plan. First: what's the main thing you want your body to do?";
+        return "Let's set up your coaching — quick setup takes about 30 seconds, the full version 3\u20134 minutes, and everything you tell me shapes your plan. First: what's the main thing you want your body to do?";
       },
       input: { kind: "chips", options: [
         { label: "Build muscle", value: "muscle" },
@@ -181,8 +181,8 @@ OF.intake = (function () {
           : "How many days a week can you realistically train?";
       },
       input: { kind: "chips", options: [
-        { label: "2", value: 2 }, { label: "3", value: 3 }, { label: "4", value: 4 },
-        { label: "5", value: 5 }, { label: "6", value: 6 }
+        { label: "2 days", value: 2 }, { label: "3 days", value: 3 }, { label: "4 days", value: 4 },
+        { label: "5 days", value: 5 }, { label: "6 days", value: 6 }
       ] },
       save: function (st, v) { st.days = v; }
     },
@@ -267,7 +267,11 @@ OF.intake = (function () {
       id: "dislikes",
       when: function (st) { return lvl(st) !== "beginner" && !st.quick; },
       say: function () { return "And which do you HATE or refuse to do? Zero judgment — they'll never appear in your plan."; },
-      input: { kind: "multi", options: COMMON_LIFTS.map(function (n) { return { label: n, value: n }; }), done: "That's the blacklist", skip: "Nothing I refuse" },
+      input: { kind: "multi", options: function (st) {
+        var liked = st.likes || [];
+        return COMMON_LIFTS.filter(function (n) { return liked.indexOf(n) === -1; })
+          .map(function (n) { return { label: n, value: n }; });
+      }, done: "That's the blacklist", skip: "Nothing I refuse" },
       save: function (st, v) { st.dislikes = v || []; }
     },
     {
@@ -512,6 +516,7 @@ OF.intake = (function () {
     o.innerHTML =
       '<div class="intake-panel">' +
         '<div class="intake-head"><h2>Your coach</h2>' +
+          '<span class="intake-progress" id="intake-progress"></span>' +
           '<button type="button" class="btn ghost mini" id="intake-close" aria-label="Close interview">Close</button></div>' +
         '<div class="coach-log" id="intake-log" aria-live="polite"></div>' +
         '<div class="intake-input" id="intake-input"></div>' +
@@ -537,12 +542,14 @@ OF.intake = (function () {
     if (!host) return;
     multiSel = [];
     var inp = step.input;
+    var opts = typeof inp.options === "function" ? inp.options(state) : inp.options;
+    step._opts = opts;   // onInputClick answers from the SAME resolved list
     if (inp.kind === "chips") {
-      host.innerHTML = '<div class="coach-chips">' + inp.options.map(function (o, i) {
+      host.innerHTML = '<div class="coach-chips">' + opts.map(function (o, i) {
         return '<button type="button" class="coach-chip" data-i="' + i + '">' + U.esc(o.label) + "</button>";
       }).join("") + "</div>";
     } else if (inp.kind === "multi") {
-      host.innerHTML = '<div class="coach-chips">' + inp.options.map(function (o, i) {
+      host.innerHTML = '<div class="coach-chips">' + opts.map(function (o, i) {
         return '<button type="button" class="coach-chip" data-multi="' + i + '" aria-pressed="false">' + U.esc(o.label) + "</button>";
       }).join("") +
       '<button type="button" class="btn primary mini" data-done>' + U.esc(inp.done || "Done") + "</button>" +
@@ -567,19 +574,23 @@ OF.intake = (function () {
     var t = ev.target;
     if (!curStep) return;
     var inp = curStep.input;
+    var opts = curStep._opts || inp.options;
     if (t.hasAttribute && t.hasAttribute("data-i")) {
-      var o = inp.options[Number(t.getAttribute("data-i"))];
+      var o = opts[Number(t.getAttribute("data-i"))];
       answer(o.value, o.label);
     } else if (t.hasAttribute && t.hasAttribute("data-multi")) {
       var idx = Number(t.getAttribute("data-multi"));
+      // "None"-style chips (value null) answer straight away — the two-tap
+      // select-then-done dance for the most common answer annoyed testers
+      if (opts[idx] && opts[idx].value === null) { answer([], opts[idx].label); return; }
       var pos = multiSel.indexOf(idx);
       if (pos === -1) multiSel.push(idx); else multiSel.splice(pos, 1);
       t.classList.toggle("chip-on", pos === -1);
       t.setAttribute("aria-pressed", pos === -1 ? "true" : "false");
     } else if (t.hasAttribute && t.hasAttribute("data-done")) {
-      var vals = multiSel.map(function (i) { return inp.options[i].value; });
-      var labels = multiSel.map(function (i) { return inp.options[i].label; });
-      answer(vals, labels.length ? labels.join(", ") : "None");
+      var vals = multiSel.map(function (i) { return opts[i].value; });
+      var labels = multiSel.map(function (i) { return opts[i].label; });
+      answer(vals.filter(function (v) { return v !== null; }), labels.length ? labels.join(", ") : "None");
     } else if (t.hasAttribute && t.hasAttribute("data-skip")) {
       answer(inp.kind === "multi" ? [] : null, "Skip");
     }
@@ -589,6 +600,19 @@ OF.intake = (function () {
     curStep = step;
     bubble(step.say(state), "coach");
     renderInput(step);
+    // progress: answered so far + a live estimate of what's left on this
+    // path — the #1 "feels long/buggy" complaint was having no idea how
+    // much interview remained
+    var prog = document.getElementById("intake-progress");
+    if (prog) {
+      var idx = -1;
+      for (var pi = 0; pi < STEPS.length; pi++) if (STEPS[pi].id === step.id) { idx = pi; break; }
+      var remaining = 0;
+      for (var pj = idx; pj >= 0 && pj < STEPS.length; pj++) {
+        if (!STEPS[pj].when || STEPS[pj].when(state)) remaining++;
+      }
+      prog.textContent = "Q" + (history.length + 1) + " of ~" + (history.length + remaining);
+    }
     // a Back affordance appears once you're past the first question
     if (history.length > 0) {
       var host0 = document.getElementById("intake-input");
@@ -702,6 +726,10 @@ OF.intake = (function () {
   }
 
   function close() {
+    // a mis-tap on Close at question 20 must not silently torch minutes of
+    // answers — nothing persists until finish()
+    if (curStep && history.length > 2 &&
+        !confirm("Leave the interview? Your answers so far will be lost.")) return;
     var o = document.getElementById("intake-overlay");
     if (o) {
       o.classList.remove("open");

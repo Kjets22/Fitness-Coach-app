@@ -139,7 +139,7 @@ OF.body = (function () {
     if (r.err) { showError(r.err); return; }
     showError("");
     lastSaveAt = Date.now();
-    var editId = els.editId.value;
+    var editId = els.editId.value, added = null;
     if (editId) {
       if (!S.update("body", editId, r.rec)) {
         showError("Could not save — browser storage is full or blocked. Your entry was NOT saved.");
@@ -147,13 +147,22 @@ OF.body = (function () {
       }
       exitEditMode();
     } else {
-      if (!S.add("body", r.rec)) {
+      added = S.add("body", r.rec);
+      if (!added) {
         showError("Could not save — browser storage is full or blocked. Your entry was NOT saved.");
         return;
       }
       setDefaults();
     }
-    if (r.warn) U.toast(r.warn, "warn"); // saved fine, but the numbers look off
+    if (r.warn) {
+      // suspected typo: saved, but hand the user the Undo right in the warning
+      U.toast(r.warn, "warn", added ? {
+        label: "Undo",
+        fn: function () { S.remove("body", added.id); renderList(); if (OF.dashboard) OF.dashboard.refresh(); }
+      } : undefined);
+    } else {
+      U.toast(editId ? "Measurement updated." : "Saved.", "ok");
+    }
     renderList();
     OF.dashboard && OF.dashboard.refresh();
   }

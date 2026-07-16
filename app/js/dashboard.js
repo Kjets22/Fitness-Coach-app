@@ -602,9 +602,17 @@ OF.dashboard = (function () {
     if (!targetsEl) return;
     var gi = OF.goals ? OF.goals.info() : { goal: null, targets: null };
     if (!gi.goal) {
+      var todayBits = [];
+      try {
+        var wml = OF.daily && OF.daily.waterTodayMl ? OF.daily.waterTodayMl() : 0;
+        if (wml > 0) todayBits.push("\ud83d\udca7 " + U.esc(U.fmtWater(wml)));
+        var sRec = OF.daily && OF.daily.stepsRecordFor ? OF.daily.stepsRecordFor(U.todayISO()) : null;
+        if (sRec && Number(sRec.count) > 0) todayBits.push("\ud83d\udc5f " + Number(sRec.count).toLocaleString() + " steps");
+      } catch (e) {}
       targetsEl.innerHTML =
         '<div class="card placeholder-card"><h2>Today vs targets</h2>' +
         '<div class="empty-state">' + OF.icons.badge("target") +
+        (todayBits.length ? '<p class="dash-today-line"><strong>Today so far:</strong> ' + todayBits.join(" \u00b7 ") + '</p>' : "") +
         '<p>Set a goal and this becomes daily calorie, protein, water and step rings that adapt to you.</p>' +
         '<a class="btn primary" href="#insights">Set a goal</a></div></div>';
       return;

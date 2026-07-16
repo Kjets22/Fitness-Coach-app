@@ -144,6 +144,7 @@ OF.exercise = (function () {
   function startPrescribed(prescribed, programDay, dayName) {
     // Don't silently wipe a workout already in progress.
     if (loadActive() && !confirm("You have a workout in progress. Start today's plan and discard it?")) return;
+    preRequestRestNotif();
     activeStartedAt = Date.now();
     sessType = "strength";
     activeProgramDay = (typeof programDay === "number") ? programDay : null;
@@ -605,6 +606,9 @@ OF.exercise = (function () {
   function tickElapsed() {
     var el = document.getElementById("wo-elapsed");
     if (el) el.textContent = fmtElapsed(Date.now() - activeStartedAt);
+    // the strip's input can be destroyed by a re-render (warm-up ramp,
+    // complete, discard) with no focusout — don't let it haunt other screens
+    if (stepperTarget && !document.body.contains(stepperTarget)) updateStepper(null);
     checkRestCue();
     renderRestBar();
     updateLivePill();
@@ -759,11 +763,27 @@ OF.exercise = (function () {
     var LN = C && C.Plugins && C.Plugins.LocalNotifications;
     return (LN && typeof LN.schedule === "function") ? LN : null;
   }
+  /** Ask for notification permission at a CALM moment (Start workout), not
+      on the first ✓ — the iOS alert used to land exactly as the lifter's
+      first rest began, covering the countdown, and re-presented on every
+      launch while unanswered. */
+  function preRequestRestNotif() {
+    var LN = restNotifPlugin();
+    if (!LN) return;
+    LN.checkPermissions().then(function (s) {
+      var st = s && s.display;
+      if (st !== "granted" && st !== "denied") return LN.requestPermissions();
+    }).catch(function () { /* best-effort */ });
+  }
   function scheduleRestNotif() {
     var LN = restNotifPlugin();
     if (!LN) return;
     var at = new Date(restStart + restDur * 1000 + 2000);
-    var doSchedule = function () {
+    LN.cancel({ notifications: [{ id: REST_NOTIF_ID }] }).catch(function () {}).then(function () {
+      return LN.checkPermissions();
+    }).then(function (s) {
+      var st = s && s.display;
+      if (st !== "granted") return;   // asked at Start; mid-set is never the moment
       LN.schedule({ notifications: [{
         id: REST_NOTIF_ID,
         title: "Rest done — go!",
@@ -771,16 +791,6 @@ OF.exercise = (function () {
         schedule: { at: at },
         sound: "default"   // iOS: unset means SILENT; a missing named file falls back to the system default sound
       }] }).catch(function () { /* best-effort */ });
-    };
-    LN.cancel({ notifications: [{ id: REST_NOTIF_ID }] }).catch(function () {}).then(function () {
-      return LN.checkPermissions();
-    }).then(function (s) {
-      var st = s && s.display;
-      if (st === "granted") { doSchedule(); return; }
-      if (st === "denied") return;   // user said no — never nag mid-workout
-      return LN.requestPermissions().then(function (r) {
-        if (r && r.display === "granted") doSchedule();
-      });
     }).catch(function () { /* plugin hiccup: in-page beep still covers foreground */ });
   }
   function cancelRestNotif() {
@@ -853,6 +863,7 @@ OF.exercise = (function () {
   function startSession() {
     // Same guard as startPrescribed: never silently wipe a live session.
     if (loadActive() && !confirm("You have a workout in progress. Start a new one and discard it?")) return;
+    preRequestRestNotif();
     activeStartedAt = Date.now();
     sessType = "strength";
     exList = [];
@@ -896,6 +907,7 @@ OF.exercise = (function () {
   }
 
   function renderFinish() {
+    updateStepper(null);   // never strand the ± strip across screens
     els.hub.classList.add("hidden");
     if (els.form) els.form.classList.add("hidden");
     els.active.classList.remove("hidden");
@@ -1106,7 +1118,7 @@ OF.exercise = (function () {
       var nSets2 = (rec.exercises || []).reduce(function (n, ex) { return n + (ex.sets ? ex.sets.length : 0); }, 0);
       body = '<div class="recap-pr">🎉 First workout logged!</div>' +
         '<p class="recap-generic">' + (rec.durationMin || 0) + ' min · ' + (rec.exercises || []).length +
-        ' exercise' + ((rec.exercises || []).length === 1 ? '' : 's') + (nSets2 ? ' · ' + nSets2 + ' sets' : '') +
+        ' exercise' + ((rec.exercises || []).length === 1 ? '' : 's') + (nSets2 ? ' · ' + nSets2 + ' set' + (nSets2 === 1 ? '' : 's') : '') +
         '. Every session from here teaches the app what works for you.</p>';
     }
     if (!body) body = '<p class="recap-generic">Logged. Every session counts — see you next time.</p>';
@@ -1130,6 +1142,7 @@ OF.exercise = (function () {
      Hub (no active session)
      ============================================================ */
   function showHub() {
+    updateStepper(null);   // never strand the ± strip across screens
     mode = "hub";
     stopTick();
     builderHost = null;

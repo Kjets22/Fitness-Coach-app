@@ -218,7 +218,10 @@ OF.dashboard = (function () {
     // celebrate a new streak milestone (once)
     try {
       var ms = OF.streak && OF.streak.newMilestone ? OF.streak.newMilestone() : 0;
-      if (ms && U.toast) U.toast("🔥 " + ms + "-day streak! Keep it going.", "ok");
+      if (ms) {
+        if (U.toast) U.toast("🔥 " + ms + "-day streak! Keep it going.", "ok");
+        try { if (OF.exercise && OF.exercise.celebrate) OF.exercise.celebrate(); } catch (e2) {}
+      }
     } catch (e) {}
   }
 

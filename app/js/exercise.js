@@ -997,22 +997,33 @@ OF.exercise = (function () {
     (loggedExercises || []).forEach(function (ex) {
       if (!ex || !ex.name || !Array.isArray(ex.sets)) return;
       var key = ex.name.trim().toLowerCase();
+      var maxReps = 0, anyLoaded = false;
       ex.sets.forEach(function (s) {
         var w = Number(s.weightKg), r = Number(s.reps);
         if (isFinite(w) && w > 0 && isFinite(r) && r >= 1 && r <= 12) {
+          anyLoaded = true;
           var eOne = r <= 1 ? w : w * (1 + r / 30);   // a true single IS its own 1RM (match strength-engine)
           if (!bestByName[key] || eOne > bestByName[key].best) bestByName[key] = { best: eOne, name: ex.name };
         }
+        if (isFinite(r) && r >= 1) maxReps = Math.max(maxReps, r);
       });
+      // bodyweight lift (no load logged): a new best REP count is a real PR too
+      if (!anyLoaded && maxReps > 0 && !bestByName[key]) {
+        bestByName[key] = { best: maxReps, name: ex.name, bw: true };
+      }
     });
     Object.keys(bestByName).forEach(function (key) {
-      var best = bestByName[key].best, name = bestByName[key].name, prev = meta[key];
+      var b = bestByName[key], best = b.best, name = b.name, isBw = !!b.bw;
+      // bodyweight PRs tracked under a separate key so a rep-count never races
+      // an e1RM value for the same lift
+      var mkey = isBw ? "bw:" + key : key, prev = meta[mkey];
       if (prev == null || best > prev * 1.001) {
         if (prev != null) {
-          prs.push({ name: name, e1RMkg: Math.round(best * 10) / 10, prev: Math.round(prev * 10) / 10 });
+          if (isBw) prs.push({ name: name, reps: Math.round(best), prevReps: Math.round(prev), bw: true });
+          else prs.push({ name: name, e1RMkg: Math.round(best * 10) / 10, prev: Math.round(prev * 10) / 10 });
           try { OF.trainer && OF.trainer.bumpStat && OF.trainer.bumpStat("prs"); } catch (e2) {}
         }
-        meta[key] = Math.round(best * 100) / 100; changed = true;
+        meta[mkey] = Math.round(best * 100) / 100; changed = true;
       }
     });
     if (changed) { try { localStorage.setItem("optimalfit.prMeta", JSON.stringify(meta)); } catch (e) {} }
@@ -1049,6 +1060,10 @@ OF.exercise = (function () {
     if (prs && prs.length) {
       body += '<div class="recap-pr">🎉 ' + (prs.length === 1 ? "New personal record!" : prs.length + " new personal records!") + '</div>';
       body += '<ul class="recap-pr-list">' + prs.map(function (p) {
+        if (p.bw) {
+          return '<li><strong>' + U.esc(p.name) + '</strong> — ' + U.esc(String(p.reps)) + ' reps' +
+            ' <span class="muted">(was ' + U.esc(String(p.prevReps)) + ')</span></li>';
+        }
         return '<li><strong>' + U.esc(p.name) + '</strong> — est. 1RM ' + U.esc(wTxtFn(p.e1RMkg)) +
           ' <span class="muted">(was ' + U.esc(wTxtFn(p.prev)) + ')</span></li>';
       }).join("") + '</ul>';
@@ -1565,7 +1580,7 @@ OF.exercise = (function () {
         osc.type = "sine";
         osc.frequency.value = 784 + i * 130;
         g.gain.setValueAtTime(0.0001, now + t);
-        g.gain.exponentialRampToValueAtTime(0.22, now + t + 0.02);
+        g.gain.exponentialRampToValueAtTime(0.5, now + t + 0.02);
         g.gain.exponentialRampToValueAtTime(0.0001, now + t + 0.16);
         osc.connect(g); g.connect(audioCtx.destination);
         osc.start(now + t); osc.stop(now + t + 0.18);
@@ -1705,5 +1720,5 @@ OF.exercise = (function () {
     renderTimer(host); updateDisplay();
   }
 
-  return { init: init, renderList: renderList, startPrescribed: startPrescribed };
+  return { init: init, renderList: renderList, startPrescribed: startPrescribed, celebrate: confettiBurst };
 })();

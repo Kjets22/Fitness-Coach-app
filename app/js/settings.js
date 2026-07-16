@@ -156,11 +156,19 @@ OF.settings = (function () {
       try {
         var replace = false;
         if (S.countAll() > 0) {
-          replace = confirm(
+          // default action (OK) is the SAFE one — merge, never destroys.
+          var wantMerge = confirm(
             "You already have " + S.countAll() + " records.\n\n" +
-            "OK = REPLACE everything with the imported file.\n" +
-            "Cancel = MERGE (keep current data, add new records)."
+            "OK = ADD the imported records to what you have (safe).\n" +
+            "Cancel = choose to replace instead."
           );
+          if (!wantMerge) {
+            replace = confirm(
+              "Replace ALL " + S.countAll() + " current records with the file?\n\n" +
+              "This ERASES your current data. OK only if you're sure."
+            );
+            if (!replace) return;   // backed out of both — do nothing
+          }
         }
         var res = S.importAll(String(reader.result), replace ? "replace" : "merge");
         refreshAllViews();

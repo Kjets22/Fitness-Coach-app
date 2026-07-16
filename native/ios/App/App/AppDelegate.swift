@@ -1,6 +1,7 @@
 import UIKit
 import WebKit
 import Capacitor
+import AVFoundation
 
 @UIApplicationMain
 class AppDelegate: UIResponder, UIApplicationDelegate {
@@ -35,6 +36,18 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         }
         RunLoop.main.add(timer, forMode: .common)
         bounceKillTimer = timer
+
+        // Make the rest-timer beep audible even when the ring/silent switch is
+        // on silent (WebAudio is muted by that switch by default). .playback
+        // ignores the switch; mixWithOthers + duckOthers keeps the user's music
+        // playing and just dips it for the short beep.
+        do {
+            try AVAudioSession.sharedInstance().setCategory(
+                .playback, mode: .default,
+                options: [.mixWithOthers, .duckOthers])
+            try AVAudioSession.sharedInstance().setActive(true)
+        } catch { /* non-fatal: beep just falls back to mute-switch behavior */ }
+
         return true
     }
 

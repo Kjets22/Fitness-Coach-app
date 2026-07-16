@@ -483,7 +483,7 @@ OF.intake = (function () {
     o.innerHTML =
       '<div class="intake-panel">' +
         '<div class="intake-head"><h2>Your coach</h2>' +
-          '<button type="button" class="btn ghost mini" id="intake-close" aria-label="Close interview">Save &amp; close</button></div>' +
+          '<button type="button" class="btn ghost mini" id="intake-close" aria-label="Close interview">Close</button></div>' +
         '<div class="coach-log" id="intake-log" aria-live="polite"></div>' +
         '<div class="intake-input" id="intake-input"></div>' +
       '</div>';
@@ -560,14 +560,50 @@ OF.intake = (function () {
     curStep = step;
     bubble(step.say(state), "coach");
     renderInput(step);
+    // a Back affordance appears once you're past the first question
+    if (history.length > 0) {
+      var host0 = document.getElementById("intake-input");
+      if (host0 && !host0.querySelector("[data-intake-back]")) {
+        var back = document.createElement("button");
+        back.type = "button";
+        back.className = "btn ghost mini intake-back";
+        back.setAttribute("data-intake-back", "1");
+        back.textContent = "\u2190 Back";
+        back.addEventListener("click", goBack);
+        host0.appendChild(back);
+      }
+    }
     // move focus to the first answer control — keyboard/screen-reader users
     // were dumped back at the top of the page after EVERY question
     var host = document.getElementById("intake-input");
     var first = host && host.querySelector("button, input");
     if (first) { try { first.focus(); } catch (e) {} }
+    // keyboard animates in ~300ms later on iOS — re-pin the log then so the
+    // question sits right above the input, no gap, not scrolled off the top
+    setTimeout(syncViewport, 60);
+    setTimeout(syncViewport, 360);
+  }
+
+  var history = [];   // {stepId, stateSnapshot} for the Back button
+
+  function goBack() {
+    if (!history.length) return;
+    var prev = history.pop();
+    state = prev.stateSnapshot;
+    // drop the last coach question + user answer bubbles
+    var log = document.getElementById("intake-log");
+    if (log) { for (var k = 0; k < 2 && log.lastChild; k++) log.removeChild(log.lastChild); }
+    var step = null;
+    for (var i = 0; i < STEPS.length; i++) if (STEPS[i].id === prev.stepId) { step = STEPS[i]; break; }
+    if (step) {
+      // remove the re-asked question's coach bubble too (ask() re-adds it)
+      if (log && log.lastChild) log.removeChild(log.lastChild);
+      ask(step);
+    }
   }
 
   function answer(value, label) {
+    history.push({ stepId: curStep.id, stateSnapshot: JSON.parse(JSON.stringify(state)) });
     bubble(label, "user");
     var next = advance(state, curStep.id, value);
     if (next) { ask(next); return; }
@@ -606,12 +642,28 @@ OF.intake = (function () {
     else if (!ev.shiftKey && document.activeElement === last) { ev.preventDefault(); first.focus(); }
   }
 
+  function syncViewport() {
+    var vv = window.visualViewport;
+    var h = vv ? vv.height : window.innerHeight;
+    document.documentElement.style.setProperty("--ivh", h + "px");
+    var log = document.getElementById("intake-log");
+    if (log) log.scrollTop = log.scrollHeight;   // keep the newest message visible
+  }
+
   function start() {
     state = {};
+    history = [];
     lastFocus = document.activeElement;
     var o = overlay();
     o.classList.add("open");
     o.addEventListener("keydown", onOverlayKeydown);
+    // track the keyboard: the panel shrinks to the space above it and the
+    // conversation stays scrolled to the question being answered
+    syncViewport();
+    if (window.visualViewport) {
+      window.visualViewport.addEventListener("resize", syncViewport);
+      window.visualViewport.addEventListener("scroll", syncViewport);
+    }
     var log = document.getElementById("intake-log");
     if (log) log.innerHTML = "";
     var input = document.getElementById("intake-input");
@@ -626,6 +678,11 @@ OF.intake = (function () {
       o.classList.remove("open");
       o.removeEventListener("keydown", onOverlayKeydown);
     }
+    if (window.visualViewport) {
+      window.visualViewport.removeEventListener("resize", syncViewport);
+      window.visualViewport.removeEventListener("scroll", syncViewport);
+    }
+    document.documentElement.style.removeProperty("--ivh");
     curStep = null;
     if (lastFocus && lastFocus.focus) { try { lastFocus.focus(); } catch (e) {} }  // restore focus
     lastFocus = null;

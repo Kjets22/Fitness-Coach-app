@@ -340,7 +340,7 @@ OF.exercise = (function () {
       '<button type="button" class="btn set-done' + (s.done ? ' on' : '') + '" data-act="done-set" data-ex="' + i +
         '" data-set="' + j + '" aria-label="Mark set ' + (j + 1) + (s.done ? ' not done' : ' done') +
         '" aria-pressed="' + (s.done ? 'true' : 'false') + '">✓</button>' +
-      '<button type="button" class="btn set-del" data-act="del-set" data-ex="' + i +
+      '<button type="button" class="btn set-del set-del-sep" data-act="del-set" data-ex="' + i +
         '" data-set="' + j + '" aria-label="Remove set ' + (j + 1) + '">&times;</button>' +
       '</div>';
   }

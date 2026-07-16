@@ -119,6 +119,11 @@ OF.app = (function () {
       var el = e.target;
       if (!el || !/^(INPUT|TEXTAREA|SELECT)$/.test(el.tagName)) return;
       if (el.type === "checkbox" || el.type === "radio") return;
+      // Inside a fixed overlay that manages its own keyboard layout, the
+      // document-level scrollIntoView pushes the panel up out of the shrunk
+      // viewport (the intake question scrolled off-screen with a gap under
+      // the field). Those overlays handle focus themselves — skip them.
+      if (el.closest && el.closest("#intake-overlay")) return;
       if (t) clearTimeout(t);
       t = setTimeout(function () {
         try { el.scrollIntoView({ block: "center", behavior: "smooth" }); }

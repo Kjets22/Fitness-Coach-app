@@ -71,3 +71,7 @@ Thumbs.db
 .env.personas
 # Public coach-server host+key (baked into app builds too)
 .env.coach
+
+# Tailscale funnel certs (secrets, never commit)
+*.ts.net.crt
+*.ts.net.key

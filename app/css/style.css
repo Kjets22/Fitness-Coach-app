@@ -2605,3 +2605,18 @@ body.metric-modal-open { overflow: hidden; }
 .set-row .set-del-sep { margin-left: 8px; opacity: 0.55; }
 .set-row .set-done.on { box-shadow: 0 0 0 2px var(--accent-2) inset; }
 .intake-back { align-self: flex-start; margin-top: 4px; }
+
+/* Log sheet: Workout is the primary action (fitness app) */
+.sheet-primary {
+  display: flex; align-items: center; gap: 14px;
+  width: 100%; text-align: left; text-decoration: none;
+  padding: 16px 18px; margin-bottom: var(--sp-3);
+  border-radius: var(--r-lg); background: var(--grad); color: #fff;
+  box-shadow: var(--e2), 0 8px 24px color-mix(in srgb, var(--g1) 40%, transparent);
+  min-height: 64px;
+}
+.sheet-primary:active { transform: scale(0.985); }
+.sheet-primary .entry-ico { background: rgba(255,255,255,0.2); color: #fff; }
+.sheet-primary-txt { display: flex; flex-direction: column; font-weight: 800; font-size: 1.12rem; }
+.sheet-primary-txt small { font-weight: 500; font-size: 0.8rem; opacity: 0.9; margin-top: 2px; }
+.sheet-ver { text-align: center; font-size: 0.72rem; margin: 8px 0 0; opacity: 0.6; }

@@ -555,13 +555,17 @@
   <div class="sheet-panel">
     <div class="sheet-grab" aria-hidden="true"></div>
     <h2>What do you want to log?</h2>
+    <a class="sheet-primary" href="#exercise">
+      <span class="entry-ico"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6.8 6.8v10.4M3.6 9.2v5.6M17.2 6.8v10.4M20.4 9.2v5.6M6.8 12h10.4"/></svg></span>
+      <span class="sheet-primary-txt">Workout<small>Start or log a training session</small></span>
+    </a>
     <button type="button" class="sheet-quick" id="log-quick-water">💧 Add a glass of water — one tap</button>
     <div class="sheet-grid">
-      <a class="sheet-item" href="#sleep">
-        <span class="entry-ico"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20.5 13.2A8.2 8.2 0 1 1 10.8 3.5a6.6 6.6 0 0 0 9.7 9.7Z"/></svg></span>Sleep
-      </a>
       <a class="sheet-item" href="#food">
         <span class="entry-ico"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 7.2c-1.6-1.9-4.6-1.8-6 .5-1.7 2.6-.7 6.9 1.4 9.4 1 1.2 2.3 1.9 3.4 1.4.4-.2.9-.2 1.3 0 1.1.5 2.4-.2 3.4-1.4 2.1-2.5 3.1-6.8 1.4-9.4-1.4-2.3-4.4-2.4-5.9-.5Z"/><path d="M12 7.2c0-2.2 1.3-3.6 3.2-4"/></svg></span>Food
+      </a>
+      <a class="sheet-item" href="#sleep">
+        <span class="entry-ico"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20.5 13.2A8.2 8.2 0 1 1 10.8 3.5a6.6 6.6 0 0 0 9.7 9.7Z"/></svg></span>Sleep
       </a>
       <a class="sheet-item" href="#daily">
         <span class="entry-ico"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3.2s5.5 5.6 5.5 9.4a5.5 5.5 0 0 1-11 0C6.5 8.8 12 3.2 12 3.2Z"/></svg></span>Water &amp; steps
@@ -569,11 +573,9 @@
       <a class="sheet-item" href="#body">
         <span class="entry-ico"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3.5" y="3.5" width="17" height="17" rx="4.5"/><path d="M8.2 11a4.2 4.2 0 0 1 7.6 0"/><path d="M12 10.4l1.8-1.8"/></svg></span>Body
       </a>
-      <a class="sheet-item" href="#exercise">
-        <span class="entry-ico"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6.8 6.8v10.4M3.6 9.2v5.6M17.2 6.8v10.4M20.4 9.2v5.6M6.8 12h10.4"/></svg></span>Exercise
-      </a>
     </div>
     <button type="button" class="btn ghost sheet-cancel" data-close-sheet>Cancel</button>
+    <p class="sheet-ver muted">OptimalFit build 14</p>
   </div>
 </div>
 
@@ -596,6 +598,7 @@
 <script src="js/units.js"></script>
 <script src="js/sleep.js"></script>
 <script src="js/food.js"></script>
+<script src="js/beep-sound.js"></script>
 <script src="js/food-db.js"></script>
 <script src="js/coach-config.js"></script>
 <script src="js/food-photo.js"></script>

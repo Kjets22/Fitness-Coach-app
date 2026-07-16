@@ -54,6 +54,7 @@ OF.exercise = (function () {
   var finish = { open: false, intensity: 3, performance: 3 };
 
   function init() {
+    ensureAudioUnlockOnce();
     els.tab = document.getElementById("tab-exercise");
     els.summary = document.getElementById("exercise-summary");
     els.hub = document.getElementById("workout-hub");
@@ -791,10 +792,8 @@ OF.exercise = (function () {
       if (!restCued) {
         restCued = true;
         cancelRestNotif();   // foreground cue wins — don't also fire the OS notification
-        // only beep if we actually witnessed the moment; waking from background
-        // more than 2s late means the OS notification already did the alerting
         if (remain >= -2) {
-          beep();
+          playBeep();
           try { if (navigator.vibrate) navigator.vibrate([120, 80, 120]); } catch (e) { /* iOS ignores */ }
         }
       }
@@ -1562,6 +1561,42 @@ OF.exercise = (function () {
     try { if (OF.units && OF.units.setPrefs) OF.units.setPrefs({ restPreset: sec }); }
     catch (e) { /* best-effort */ }
   }
+  // Robust audio: a real <audio> element beats WebAudio in iOS WKWebView.
+  // Primed (loaded + a silent play/pause) on the first user gesture so a later
+  // programmatic .play() is allowed.
+  var beepEl = null, beepPrimed = false;
+  function beepAudio() {
+    if (!beepEl && OF.BEEP_DATA_URI) {
+      beepEl = new Audio(OF.BEEP_DATA_URI);
+      beepEl.preload = "auto";
+    }
+    return beepEl;
+  }
+  function primeBeep() {
+    var el = beepAudio();
+    if (!el || beepPrimed) return;
+    beepPrimed = true;
+    try {
+      el.volume = 0;
+      var pr = el.play();
+      if (pr && pr.then) pr.then(function () { el.pause(); el.currentTime = 0; el.volume = 1; })
+        .catch(function () { el.volume = 1; });
+      else { el.pause(); el.currentTime = 0; el.volume = 1; }
+    } catch (e) { el.volume = 1; }
+  }
+  function playBeep() {
+    var el = beepAudio();
+    if (el) { try { el.currentTime = 0; el.volume = 1; el.play(); } catch (e) {} }
+    beep();   // WebAudio too — whichever the device honors
+  }
+
+  function ensureAudioUnlockOnce() {
+    document.addEventListener("pointerdown", function onFirstTap() {
+      primeBeep(); ensureAudio();
+      document.removeEventListener("pointerdown", onFirstTap);
+    }, { once: true });
+  }
+
   function ensureAudio() {
     try {
       if (!audioCtx) {
@@ -1588,7 +1623,7 @@ OF.exercise = (function () {
     } catch (e) { /* best-effort */ }
   }
   function finishCue() {
-    T.finished = true; beep();
+    T.finished = true; playBeep();
     try { if (navigator.vibrate) navigator.vibrate([120, 80, 120]); } catch (e) { /* iOS ignores */ }
     updateDisplay();
   }

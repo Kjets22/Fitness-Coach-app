@@ -620,12 +620,35 @@ OF.socialApi = (function () {
 
   /* ---------------- exports ---------------- */
 
+  /* ---------------- cross-device data backup ----------------
+     Mirrors the whole local store to the signed-in user's private
+     user_backups row (RLS own-row-only). cloud-sync.js drives this;
+     everything here is best-effort and offline-safe. */
+
+  function pushBackup(dataObj) {
+    if (!uid()) return Promise.resolve(null);
+    return sb().from("user_backups").upsert({
+      user_id: uid(),
+      data: dataObj,
+      updated_at: new Date().toISOString()
+    }, { onConflict: "user_id" }).then(check);
+  }
+
+  function pullBackup() {
+    if (!uid()) return Promise.resolve(null);
+    return sb().from("user_backups")
+      .select("data,updated_at").eq("user_id", uid()).maybeSingle()
+      .then(check);
+  }
+
   return {
     available: available,
     init: init,
     onAuthChange: onAuthChange,
     currentUser: currentUser,
     uid: uid,
+    pushBackup: pushBackup,
+    pullBackup: pullBackup,
     normErr: normErr,
 
     signUp: signUp,

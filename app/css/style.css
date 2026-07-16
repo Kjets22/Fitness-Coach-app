@@ -465,6 +465,9 @@ input[type="checkbox"], input[type="radio"] { -webkit-appearance: auto; appearan
 /* "Log again" recent-meal chips above the food form */
 .recent-chips { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: var(--sp-3); }
 .recent-lbl { font-size: 0.8rem; color: var(--text-dim); }
+.recent-chip-wrap { display: inline-flex; align-items: stretch; }
+.recent-chip-wrap .recent-log { border-top-right-radius: 0; border-bottom-right-radius: 0; }
+.recent-chip-wrap .recent-edit { border-top-left-radius: 0; border-bottom-left-radius: 0; margin-left: -1px; padding-left: 11px; padding-right: 11px; min-width: 40px; opacity: 0.75; }
 
 /* One-tap quick action at the top of the "+" log sheet */
 .sheet-quick {
@@ -2545,7 +2548,10 @@ body.metric-modal-open { overflow: hidden; }
 .tr-adapt .btn.mini { min-height: 36px; font-size: 0.78rem; }
 
 /* Dashboard trial / accumulated-value strip */
-.value-strip { border: 1px solid color-mix(in srgb, var(--g1) 35%, var(--card-edge)); background: linear-gradient(135deg, color-mix(in srgb, var(--g1) 10%, transparent), color-mix(in srgb, var(--g2) 8%, transparent)); }
+.value-strip { position: relative; border: 1px solid color-mix(in srgb, var(--g1) 35%, var(--card-edge)); background: linear-gradient(135deg, color-mix(in srgb, var(--g1) 10%, transparent), color-mix(in srgb, var(--g2) 8%, transparent)); }
+.value-strip-x { position: absolute; top: 6px; right: 6px; width: 32px; height: 32px; min-height: 32px; padding: 0; display: flex; align-items: center; justify-content: center; border: none; background: transparent; color: var(--text-dim); font-size: 1.3rem; line-height: 1; border-radius: 50%; cursor: pointer; }
+.value-strip-x:active { transform: scale(0.9); }
+.value-strip-body { padding-right: 28px; }
 .value-strip-head { font-weight: 800; font-size: 0.95rem; letter-spacing: -0.01em; margin-bottom: 4px; }
 .value-strip-body { margin: 0; font-size: 0.85rem; line-height: 1.45; color: var(--text); }
 .value-strip-soft { border-color: var(--card-edge); background: var(--bg-2); }

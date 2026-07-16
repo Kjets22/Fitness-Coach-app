@@ -50,26 +50,35 @@ OF.cloudSync = (function () {
     pushTimer = setTimeout(pushNow, 4000);
   }
 
-  /** Run once when a user becomes signed-in: restore or seed the cloud. */
+  /** Run once when a user becomes signed-in: merge the account's data in
+      (local always wins on conflicts), then push the union back up. This
+      works on a fresh reinstall (local empty → full restore) AND on a
+      device that already has a stray log (merge adds the account's history
+      without clobbering local). */
   function onSignIn() {
     var a = OF.socialApi;
     if (!a || !a.pullBackup) return;
-    var localCount = 0;
-    try { localCount = S.countAll(); } catch (e) {}
+    var before = 0;
+    try { before = S.countAll(); } catch (e) {}
     a.pullBackup().then(function (backup) {
-      if (backup && backup.data && localCount === 0) {
-        // fresh device (reinstall / new phone) → bring the account's data back
+      if (backup && backup.data) {
         restoring = true;
         try {
-          S.importAll(JSON.stringify(backup.data), "replace");
-          if (U.toast) U.toast("Welcome back — restored your data from your account.", "ok");
-          if (OF.settings && OF.settings.refreshAll) { try { OF.settings.refreshAll(); } catch (e) {} }
-        } catch (e) { /* corrupt backup: keep the empty local store */ }
+          S.importAll({ data: backup.data }, "merge");
+          var after = 0;
+          try { after = S.countAll(); } catch (e) {}
+          var added = after - before;
+          if (added > 0 && U.toast) {
+            U.toast(before === 0
+              ? "Welcome back — restored your data from your account."
+              : "Synced " + added + " item" + (added === 1 ? "" : "s") + " from your other device.", "ok");
+            if (OF.settings && OF.settings.refreshAll) { try { OF.settings.refreshAll(); } catch (e) {} }
+          }
+        } catch (e) { /* corrupt backup: leave local untouched */ }
         restoring = false;
-      } else {
-        // device already has data (or cloud empty) → make the cloud match local
-        pushNow();
       }
+      // always make the cloud copy the union of what we now hold
+      pushNow();
     }).catch(function () { /* offline — nothing to do */ });
   }
 

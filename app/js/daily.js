@@ -21,6 +21,7 @@ OF.daily = (function () {
     oz: [{ label: "+8 oz glass", ml: 237 }, { label: "+16 oz", ml: 473 }, { label: "+32 oz", ml: 946 }],
     ml: [{ label: "+250 ml glass", ml: 250 }, { label: "+500 ml", ml: 500 }, { label: "+1 L", ml: 1000 }]
   };
+  var STEP_QUICK = [1000, 2500, 5000];
 
   /* ---------------- helpers ---------------- */
 
@@ -197,6 +198,44 @@ OF.daily = (function () {
     els.stepsChart.innerHTML = hasAny
       ? OF.charts.barChart({ bars: bars, height: 150 })
       : OF.charts.empty("No steps logged in the last 14 days.");
+
+    // One-tap quick-add chips (like water) so steps never forces the keypad —
+    // the #2 ask in user testing. Each ADDS to today's running total.
+    if (els.stepsQuick) {
+      els.stepsQuick.innerHTML = STEP_QUICK.map(function (n) {
+        return '<button type="button" class="btn" data-steps="' + n + '">+' +
+          (n >= 1000 ? (n / 1000) + "k" : n) + '</button>';
+      }).join("");
+    }
+  }
+
+  function bumpSteps(delta) {
+    if (!isFinite(delta) || delta <= 0) return;
+    var date = U.todayISO();
+    var existing = stepsRecordFor(date);
+    var prev = existing && isFinite(Number(existing.count)) ? Number(existing.count) : 0;
+    var count = Math.min(200000, prev + Math.round(delta));
+    var ok = existing
+      ? S.update("steps", existing.id, { count: count, source: "manual" })
+      : S.add("steps", { date: date, count: count, source: "manual" });
+    if (!ok) { U.toast("Could not save — storage is full or blocked.", "warn"); return; }
+    renderSteps();
+    if (OF.dashboard && OF.dashboard.refresh) { try { OF.dashboard.refresh(); } catch (e) {} }
+    U.toast(count.toLocaleString() + " steps today.", "ok", {
+      label: "Undo",
+      fn: function () {
+        if (existing) S.update("steps", existing.id, { count: prev, source: existing.source || "manual" });
+        else { var r = stepsRecordFor(date); if (r) S.remove("steps", r.id); }
+        renderSteps();
+        if (OF.dashboard && OF.dashboard.refresh) { try { OF.dashboard.refresh(); } catch (e) {} }
+      }
+    });
+  }
+
+  function onStepsQuickClick(evt) {
+    var btn = evt.target.closest("button[data-steps]");
+    if (!btn) return;
+    bumpSteps(Number(btn.getAttribute("data-steps")));
   }
 
   function onStepsSubmit(evt) {
@@ -248,12 +287,14 @@ OF.daily = (function () {
     els.stepsCount = document.getElementById("steps-count");
     els.stepsErr = document.getElementById("steps-error");
     els.stepsChart = document.getElementById("steps-chart");
+    els.stepsQuick = document.getElementById("steps-quick");
 
     els.stepsDate.value = U.todayISO();
     els.waterQuick.addEventListener("click", onQuickClick);
     els.waterForm.addEventListener("submit", onCustomSubmit);
     els.waterToday.addEventListener("click", onWaterListClick);
     els.stepsForm.addEventListener("submit", onStepsSubmit);
+    if (els.stepsQuick) els.stepsQuick.addEventListener("click", onStepsQuickClick);
     renderAll();
   }
 

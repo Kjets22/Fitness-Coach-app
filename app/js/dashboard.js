@@ -31,9 +31,12 @@ OF.dashboard = (function () {
     if (st.prs) bits.push("celebrated <strong>" + st.prs + "</strong> PR" + (st.prs > 1 ? "s" : ""));
     var streakN = 0; try { streakN = OF.streak ? OF.streak.compute().current : 0; } catch (e) {}
     if (streakN >= 3) bits.push("kept a <strong>" + streakN + "-day</strong> streak");
-    if (trialDays != null) {
+    var dismissedToday = false;
+    try { dismissedToday = localStorage.getItem("optimalfit.valuestrip.dismissed") === U.todayISO(); } catch (e) {}
+    if (trialDays != null && !dismissedToday) {
       var val = bits.length ? "So far I've " + bits.slice(0, 2).join(" and ") + "." : "Your AI trainer, coach and photo tools are unlocked.";
       el.innerHTML = '<div class="card value-strip" data-nav="insights" role="button" tabindex="0" title="See everything your trainer is tracking">' +
+        '<button type="button" class="value-strip-x" data-dismiss-value aria-label="Dismiss for today">&times;</button>' +
         '<div class="value-strip-head">✨ Premium trial — ' + trialDays + ' day' + (trialDays === 1 ? "" : "s") + ' left</div>' +
         '<p class="value-strip-body">' + val + ' Keep your always-on trainer, the AI coach and photo tools — for less than one session with a human PT a month.</p></div>';
       el.hidden = false;
@@ -69,6 +72,14 @@ OF.dashboard = (function () {
   var lastReadiness = null;
 
   function onHeroNav(e) {
+    if (e.target.closest("[data-dismiss-value]")) {
+      // dismiss the trial upsell for today (it returns tomorrow, gently)
+      if (e.stopPropagation) e.stopPropagation();
+      try { localStorage.setItem("optimalfit.valuestrip.dismissed", U.todayISO()); } catch (er) {}
+      var v = document.getElementById("dash-value");
+      if (v) { v.hidden = true; v.innerHTML = ""; }
+      return;
+    }
     var el = e.target.closest("[data-nav]");
     if (!el) return;
     var nav = el.getAttribute("data-nav");

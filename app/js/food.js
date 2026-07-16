@@ -128,12 +128,14 @@ OF.food = (function () {
         return;
       }
       exitEditMode();
+      U.toast("Meal updated.", "ok");
     } else {
       if (!S.add("food", r.rec)) {
         showError("Could not save — browser storage is full or blocked. Your entry was NOT saved.");
         return;
       }
       setDefaults();
+      U.toast("Meal logged.", "ok");
     }
     renderList();
     OF.dashboard && OF.dashboard.refresh();
@@ -315,10 +317,13 @@ OF.food = (function () {
         "\u26a1 Copy yesterday's meals (" + yCount + ')</button></div>'
       : "";
     host.innerHTML = copyBtn + (chips.length
-      ? '<div class="recent-chips"><span class="recent-lbl">Log again:</span>' +
+      ? '<div class="recent-chips"><span class="recent-lbl">Tap to log again:</span>' +
         chips.map(function (r) {
-          return '<button type="button" class="btn mini" data-recent="' + U.esc(r.id) + '">' +
-            U.esc((r.foodName || "").slice(0, 24)) + '</button>';
+          var nm = U.esc((r.foodName || "").slice(0, 24));
+          return '<span class="recent-chip-wrap">' +
+            '<button type="button" class="btn mini recent-log" data-recent="' + U.esc(r.id) + '">' + nm + '</button>' +
+            '<button type="button" class="btn mini recent-edit" data-recent-edit="' + U.esc(r.id) + '" aria-label="Edit ' + nm + ' before logging" title="Edit before logging">✎</button>' +
+            '</span>';
         }).join("") + '</div>'
       : "");
   }
@@ -354,18 +359,44 @@ OF.food = (function () {
 
   function onRecentClick(e) {
     if (e.target.closest("[data-copy-yday]")) { copyYesterday(); return; }
+    var editBtn = e.target.closest("[data-recent-edit]");
+    if (editBtn) {
+      // long-press / "edit" affordance: prefill the form instead of logging,
+      // for the times a repeat meal needs tweaking (portion, a macro, notes)
+      var er = S.get("food", editBtn.getAttribute("data-recent-edit"));
+      if (!er) return;
+      els.name.value = er.foodName || "";
+      els.calories.value = er.calories != null ? er.calories : "";
+      els.protein.value = er.protein != null ? er.protein : "";
+      els.carbs.value = er.carbs != null ? er.carbs : "";
+      els.fat.value = er.fat != null ? er.fat : "";
+      if (er.mealType) els.mealType.value = er.mealType;
+      els.form.scrollIntoView({ behavior: "smooth", block: "start" });
+      els.name.focus();
+      return;
+    }
     var b = e.target.closest("[data-recent]");
     if (!b) return;
     var r = S.get("food", b.getAttribute("data-recent"));
     if (!r) return;
-    // prefill everything except date/time (those default to now)
-    els.name.value = r.foodName || "";
-    els.calories.value = r.calories != null ? r.calories : "";
-    els.protein.value = r.protein != null ? r.protein : "";
-    els.carbs.value = r.carbs != null ? r.carbs : "";
-    els.fat.value = r.fat != null ? r.fat : "";
-    if (r.mealType) els.mealType.value = r.mealType;
-    els.form.scrollIntoView({ behavior: "smooth", block: "start" });
+    // ONE TAP = logged. The #1 ask across user testing: a "Log again" chip
+    // should save the meal, not just fill the form. Guess the meal type from
+    // the current hour (breakfast tap at dinner = dinner), keep the food +
+    // macros, stamp it now, and offer Undo.
+    var rec = S.add("food", {
+      date: U.todayISO(),
+      time: U.nowTime(),
+      mealType: guessMealType(),
+      foodName: r.foodName,
+      calories: r.calories, protein: r.protein, carbs: r.carbs, fat: r.fat,
+      notes: ""
+    });
+    if (!rec) { U.toast("Could not save — storage is full or blocked.", "warn"); return; }
+    refreshAfterWrite();
+    U.toast("Logged " + U.esc(r.foodName || "meal") + ". Tap 'edit' on a chip to tweak.", "ok", {
+      label: "Undo",
+      fn: function () { S.remove("food", rec.id); refreshAfterWrite(); }
+    });
   }
 
   function renderList() {

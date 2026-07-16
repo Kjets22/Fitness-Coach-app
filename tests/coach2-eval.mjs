@@ -73,7 +73,8 @@ function runIntake(w, a) {
     equipment: a.equipment,
     "injury-area": a.injury ? (Array.isArray(a.injury) ? a.injury : [a.injury]) : [],
     "injury-patterns": a.patterns || [],
-    sleep: a.sleep, stress: a.stress, job: a.job, diet: a.diet || []
+    sleep: a.sleep, stress: a.stress, job: a.job, diet: a.diet || [],
+    "anything-else": a.freeNotes || null
   };
   let guard = 40;
   while (step && guard-- > 0) {

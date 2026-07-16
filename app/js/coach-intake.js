@@ -354,6 +354,13 @@ OF.intake = (function () {
         { label: "Gluten-free", value: "gluten-free" }
       ], done: "That's everything" },
       save: function (st, v) { st.restrictions = (v || []).filter(Boolean); }
+    },
+    {
+      id: "anything-else",
+      when: function (st) { return !st.quick; },   // quick path stays 30s; Settings card covers it
+      say: function () { return "Anything else I should know that the buttons didn't cover? Type it in your own words — equipment quirks, schedule limits, exercises or foods you refuse, how you like to be coached. It becomes part of how I coach you (and you can edit it anytime in Settings)."; },
+      input: { kind: "text", placeholder: "e.g. home gym only, mornings, hate burpees", skip: "Nothing else" },
+      save: function (st, v) { if (v) st.freeNotes = String(v).slice(0, 300); }
     }
   ];
 
@@ -398,7 +405,8 @@ OF.intake = (function () {
           style: st.style || null,
           cardio: st.cardio || null,
           likes: st.likes || [],
-          dislikes: st.dislikes || []
+          dislikes: st.dislikes || [],
+          notes: st.freeNotes || null
         },
         experience: {
           trainingAgeYears: st.trainingAge,
@@ -542,7 +550,7 @@ OF.intake = (function () {
       "</div>";
     } else {   // text
       host.innerHTML = '<form class="coach-input-row" id="intake-text-form">' +
-        '<input type="text" id="intake-text" maxlength="80" placeholder="' + U.esc(inp.placeholder || "") + '" autocomplete="off">' +
+        '<input type="text" id="intake-text" maxlength="300" placeholder="' + U.esc(inp.placeholder || "") + '" autocomplete="off">' +
         '<button type="submit" class="btn primary">Send</button>' +
         (inp.skip ? '<button type="button" class="btn ghost mini" data-skip>' + U.esc(inp.skip) + "</button>" : "") +
         "</form>";

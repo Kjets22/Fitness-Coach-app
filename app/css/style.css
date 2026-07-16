@@ -979,14 +979,25 @@ body.metric-modal-open { overflow: hidden; }
 /* ---------- 12. AI Coach ---------- */
 .coach-card { padding: 0; overflow: hidden; display: flex; flex-direction: column; }
 
+/* Chat-app layout: the coach tab fills the visible area, the LOG is the
+   internal scroller, and the input row is pinned at the bottom — so with
+   the native keyboard resize the input sits directly above the keyboard
+   instead of the page scrolling past it. */
+#tab-coach:not(.hidden) { display: flex; flex-direction: column; height: 100%; min-height: 0; }
+#tab-coach h1 { flex-shrink: 0; margin-bottom: var(--sp-2); }
+#coach-status { flex-shrink: 0; overflow-y: auto; max-height: 100%; }
+#coach-chat.coach-card { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; margin-bottom: 0; }
+.coach-disclaimer { flex-shrink: 0; margin: 6px 0 0; font-size: 0.68rem; }
+@media (max-width: 719px) { .coach-disclaimer { display: none; } } /* mobile: every px goes to the chat */
+
 .coach-log {
   display: flex;
   flex-direction: column;
   gap: 10px;
   padding: var(--sp-4);
   overflow-y: auto;
-  min-height: 260px;
-  max-height: 58vh;
+  flex: 1 1 auto;
+  min-height: 0;
 }
 
 .coach-empty { margin: 4px 0 var(--sp-2); font-size: 0.9rem; }
@@ -1082,9 +1093,17 @@ body.metric-modal-open { overflow: hidden; }
   border-top: 1px solid var(--card-edge);
   background: var(--card);
 }
-.coach-input-row input { flex: 1; min-width: 0; border-radius: var(--r-full); padding-left: 16px; }
-.coach-input-row .btn { border-radius: var(--r-full); }
-.coach-input-row input:disabled,
+.coach-input-row { flex-shrink: 0; align-items: flex-end; }
+.coach-input-row textarea {
+  flex: 1; min-width: 0;
+  border-radius: 22px; padding: 12px 16px;
+  font-size: 16px; line-height: 1.4;       /* 16px: iOS won't zoom-jump the focus */
+  min-height: 46px; max-height: 132px;      /* grows with the message, ~5 lines */
+  resize: none; overflow-y: auto;
+  field-sizing: content;                    /* native auto-grow where supported */
+}
+.coach-input-row .btn { border-radius: var(--r-full); min-height: 46px; }
+.coach-input-row textarea:disabled,
 .coach-input-row .btn:disabled { opacity: 0.55; cursor: not-allowed; }
 
 /* ---------- 13. Pairing / phone info / health import ---------- */
@@ -2649,3 +2668,10 @@ body.metric-modal-open { overflow: hidden; }
 html { touch-action: manipulation; }
 * { -webkit-tap-highlight-color: transparent; }
 
+
+/* Keyboard up (body.kb-open, set on focus of any text control): hide the
+   mobile tab bar so the focused input sits directly on the keyboard. */
+@media (max-width: 719px) {
+  body.kb-open .nav { display: none; }
+  body.kb-open .content { padding-bottom: 12px; }
+}

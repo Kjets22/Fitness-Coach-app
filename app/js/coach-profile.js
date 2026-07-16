@@ -209,7 +209,8 @@ OF.profile = (function () {
         style: d.prefs.style || undefined,
         cardio: d.prefs.cardio || undefined,
         likes: d.prefs.likes && d.prefs.likes.length ? d.prefs.likes.slice(0, 6) : undefined,
-        dislikes: d.prefs.dislikes && d.prefs.dislikes.length ? d.prefs.dislikes.slice(0, 6) : undefined
+        dislikes: d.prefs.dislikes && d.prefs.dislikes.length ? d.prefs.dislikes.slice(0, 6) : undefined,
+        notes: d.prefs.notes ? String(d.prefs.notes).slice(0, 300) : undefined
       },
       experience: {
         level: level() || undefined,

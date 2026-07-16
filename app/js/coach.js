@@ -524,6 +524,13 @@ OF.coach = (function () {
         '<button type="button" class="btn mini" data-fb="1" aria-label="Good answer">&#128077;</button>' +
         '<button type="button" class="btn mini" data-fb="-1" aria-label="Bad answer">&#128078;</button></div>';
     }
+    // follow-up chips stay available mid-conversation (user testing: they
+    // vanished after the first question and every follow-up meant typing)
+    if (!busy && messages.length) {
+      html += '<div class="coach-chips coach-chips-follow">' + chips().slice(0, 3).map(function (c) {
+        return '<button type="button" class="coach-chip" data-q="' + U.esc(c) + '">' + U.esc(c) + '</button>';
+      }).join("") + '</div>';
+    }
     if (busy) {
       html += '<div class="msg-row">' + avatar +
         '<div class="bubble bubble-coach bubble-thinking">Coach is thinking&hellip; ' +
@@ -535,9 +542,18 @@ OF.coach = (function () {
 
   function setBusy(b) {
     busy = b;
-    els.input.disabled = b;
+    // the input stays ENABLED while the coach thinks — user testing hated
+    // being locked out of typing the next question during a 10-60s answer
     els.send.disabled = b;
     els.send.textContent = b ? "Thinking…" : "Send";
+  }
+
+  /** Grow the textarea with its content (capped by the CSS max-height). */
+  function autosizeInput() {
+    var t = els.input;
+    if (!t || t.tagName !== "TEXTAREA") return;
+    t.style.height = "auto";
+    t.style.height = Math.min(t.scrollHeight, 132) + "px";
   }
 
   function pushMsg(role, text) {
@@ -719,7 +735,17 @@ OF.coach = (function () {
     els.form.addEventListener("submit", function (e) {
       e.preventDefault();
       send(els.input.value);
+      autosizeInput();
     });
+    // textarea: Enter sends (Shift+Enter = newline), and the box grows with
+    // the message up to ~5 lines (fallback for engines without field-sizing)
+    els.input.addEventListener("keydown", function (e) {
+      if (e.key === "Enter" && !e.shiftKey) {
+        e.preventDefault();
+        if (!els.send.disabled) { send(els.input.value); autosizeInput(); }
+      }
+    });
+    els.input.addEventListener("input", autosizeInput);
     els.log.addEventListener("click", function (e) {
       var fb = e.target.closest("[data-fb]");
       if (fb) {

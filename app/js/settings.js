@@ -21,8 +21,33 @@ OF.settings = (function () {
     document.getElementById("btn-demo").addEventListener("click", loadDemo);
     document.getElementById("btn-clear").addEventListener("click", clearAll);
     initUnits();
+    initCoachNotes();
     if (OF.healthImport) OF.healthImport.init();
     initPhoneInfo();
+  }
+
+  /* ---------- coach free-text preferences ----------
+     The same field the intake's "anything else?" step writes — editable any
+     time. Feeds OF.profile prefs.notes, which coachContext() sends with
+     every coach question and program change. */
+  function initCoachNotes() {
+    var ta = document.getElementById("pref-coach-notes");
+    var btn = document.getElementById("pref-coach-notes-save");
+    if (!ta || !btn) return;
+    try {
+      var p = OF.profile && OF.profile.get ? OF.profile.get() : null;   // returns the data object
+      var cur = p && p.prefs && p.prefs.notes;
+      if (cur) ta.value = cur;
+    } catch (e) {}
+    btn.addEventListener("click", function () {
+      var v = ta.value.trim().slice(0, 300);
+      try {
+        OF.profile.update({ prefs: { notes: v || null } }, "settings");
+        OF.util.toast(v ? "Saved — your coach will respect this." : "Preferences cleared.", "ok");
+      } catch (e) {
+        OF.util.toast("Could not save preferences.", "warn");
+      }
+    });
   }
 
   /* ---------- "Use on your phone" server info ---------- */

@@ -415,12 +415,12 @@
         <div class="coach-log" id="coach-log"></div>
         <div id="coach-live" aria-live="polite" style="position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0"></div>
         <form class="coach-input-row" id="coach-form" novalidate>
-          <input type="text" id="coach-input" maxlength="1000" autocomplete="off"
-                 placeholder="Ask your coach&hellip; (answers take 10&ndash;60 s)">
+          <textarea id="coach-input" rows="1" maxlength="1000" autocomplete="off"
+                 enterkeyhint="send" placeholder="Ask your coach anything&hellip;"></textarea>
           <button type="submit" class="btn primary" id="coach-send">Send</button>
         </form>
       </div>
-      <p class="muted small">Answers come from the OptimalFit coach service. Only your question
+      <p class="muted small coach-disclaimer">Answers come from the OptimalFit coach service. Only your question
       and a compact summary of your tracked data are sent to answer it &mdash; processed
       transiently and never stored; your full logs never leave this device. (The optional
       Community tab shares only what you explicitly post.)</p>
@@ -455,6 +455,16 @@
           </label>
         </div>
         <p class="muted small">Data is always stored in metric &mdash; this only changes how it is shown and entered.</p>
+      </div>
+
+      <div class="card">
+        <h2>Coach preferences</h2>
+        <p class="form-hint">Anything you want the coach to respect that the buttons don't cover &mdash; in your own words. The coach reads this with every answer and program change.</p>
+        <textarea id="pref-coach-notes" rows="3" maxlength="300"
+          placeholder="e.g. home gym only, train before work, no barbell squats, keep answers short"></textarea>
+        <div class="form-actions">
+          <button type="button" class="btn primary" id="pref-coach-notes-save">Save preferences</button>
+        </div>
       </div>
 
       <div class="card">

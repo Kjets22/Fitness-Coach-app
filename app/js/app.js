@@ -85,7 +85,10 @@ OF.app = (function () {
         closeSheet();
         return;
       }
-      if (e.target.closest(".sheet-item")) closeSheet();
+      // ANY destination in the sheet closes it — including the primary
+      // Workout action (it's .sheet-primary, which the old .sheet-item-only
+      // check missed: the workout tab opened BEHIND the still-open sheet)
+      if (e.target.closest(".sheet-item, .sheet-primary")) closeSheet();
     });
     document.addEventListener("keydown", function (e) {
       if (sheet.classList.contains("hidden")) return;
@@ -122,6 +125,29 @@ OF.app = (function () {
      is focused, scroll it into the visible area above the keyboard. Uses
      visualViewport when available (accurate keyboard height) and a delayed
      scrollIntoView so it runs after the keyboard animates in. */
+  /* While the keyboard is up, mobile hides the bottom tab bar so the chat /
+     form input sits DIRECTLY on the keyboard (native feel) instead of the
+     nav wedging between them. Driven by focus, not viewport math. */
+  function initKeyboardChrome() {
+    var offT = null;
+    function editable(el) {
+      return el && /^(INPUT|TEXTAREA|SELECT)$/.test(el.tagName) &&
+        el.type !== "checkbox" && el.type !== "radio";
+    }
+    document.addEventListener("focusin", function (e) {
+      if (!editable(e.target)) return;
+      if (offT) { clearTimeout(offT); offT = null; }
+      document.body.classList.add("kb-open");
+    });
+    document.addEventListener("focusout", function (e) {
+      if (!editable(e.target)) return;
+      // small delay: moving focus between two fields must not flash the bar
+      offT = setTimeout(function () {
+        document.body.classList.remove("kb-open");
+      }, 250);
+    });
+  }
+
   function initKeyboardScroll() {
     var t = null;
     document.addEventListener("focusin", function (e) {
@@ -157,6 +183,7 @@ OF.app = (function () {
     });
     initSheet();
     initKeyboardScroll();
+    initKeyboardChrome();
 
     // Day rollover while backgrounded (overnight, long flights): re-stamp the
     // stale "today" defaults and recompute every today-based view on return.

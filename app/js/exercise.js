@@ -605,8 +605,30 @@ OF.exercise = (function () {
   function tickElapsed() {
     var el = document.getElementById("wo-elapsed");
     if (el) el.textContent = fmtElapsed(Date.now() - activeStartedAt);
+    checkRestCue();
     renderRestBar();
     updateLivePill();
+  }
+
+  /** Audible rest-end cue, decoupled from the rest BAR: the bar only renders
+      on the workout tab, so the old in-bar beep never fired if the lifter sat
+      on the dashboard — they got a mute OS notification instead of a sound.
+      This runs on every tick regardless of tab; the real audio (ducks the
+      user's music via AVAudioSession) plays whenever the app is foreground. */
+  function checkRestCue() {
+    if (mode !== "active" || restStart == null || restCued) return;
+    var remainMs = restStart + (restDur || 90) * 1000 - Date.now();
+    if (remainMs > 0) return;
+    restCued = true;
+    if (document.visibilityState === "visible") {
+      cancelRestNotif();   // foreground cue wins — never double-alarm
+      if (remainMs >= -3000) {
+        playBeep();
+        try { if (navigator.vibrate) navigator.vibrate([120, 80, 120]); } catch (e) { /* iOS ignores */ }
+      }
+    }
+    // backgrounded: JS may be frozen anyway — the scheduled OS notification
+    // (with sound) is the cue, so don't cancel it here
   }
 
   /* ---------------- stepper strip (keyboard accessory for set inputs) ----------------
@@ -1588,6 +1610,12 @@ OF.exercise = (function () {
     var el = beepAudio();
     if (el) { try { el.currentTime = 0; el.volume = 1; el.play(); } catch (e) {} }
     beep();   // WebAudio too — whichever the device honors
+    // second burst ~600ms later: a single chirp is easy to miss under music;
+    // AVAudioSession ducks the music while these play
+    setTimeout(function () {
+      if (el) { try { el.currentTime = 0; el.play(); } catch (e) {} }
+      beep();
+    }, 600);
   }
 
   function ensureAudioUnlockOnce() {

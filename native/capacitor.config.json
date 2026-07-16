@@ -11,6 +11,10 @@
         "alert",
         "sound"
       ]
+    },
+    "Keyboard": {
+      "resize": "native",
+      "resizeOnFullScreen": true
     }
   }
 }

@@ -1530,7 +1530,10 @@ body.metric-modal-open { overflow: hidden; }
     border-right: none;
     border-top: 1px solid var(--card-edge);
     justify-content: space-around;
-    background: color-mix(in srgb, var(--bg) 86%, transparent);
+    /* near-opaque: users found content visibly scrolling under the bar
+       distracting (86% let too much through) — keep just enough blur-through
+       for depth without legible content behind the bar */
+    background: color-mix(in srgb, var(--bg) 96%, transparent);
     -webkit-backdrop-filter: blur(14px);
     backdrop-filter: blur(14px);
     overflow: visible;
@@ -2631,14 +2634,3 @@ body.metric-modal-open { overflow: hidden; }
 html { touch-action: manipulation; }
 * { -webkit-tap-highlight-color: transparent; }
 
-/* Owner-only version badge (only kjets2003/admin ever sees this) */
-#of-version-badge {
-  position: fixed; z-index: 600;
-  left: 50%; transform: translateX(-50%);
-  bottom: calc(4px + env(safe-area-inset-bottom, 0px));
-  font-size: 0.62rem; font-variant-numeric: tabular-nums;
-  color: var(--text-dim); background: color-mix(in srgb, var(--card) 80%, transparent);
-  padding: 2px 8px; border-radius: 999px; pointer-events: none;
-  border: 1px solid var(--card-edge);
-}
-#of-version-badge[hidden] { display: none; }

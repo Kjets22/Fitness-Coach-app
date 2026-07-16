@@ -64,7 +64,12 @@ OF.cloudSync = (function () {
       if (backup && backup.data) {
         restoring = true;
         try {
-          S.importAll({ data: backup.data }, "merge");
+          // backup.data IS the full exportAll() object ({data, prefs,
+          // appState}) — pass it straight through; wrapping it again made
+          // importAll look for records one level too deep (restored nothing).
+          // Fresh device (reinstall): full replace so prefs/app-state return
+          // too. Device with data: merge — local always wins.
+          S.importAll(backup.data, before === 0 ? "replace" : "merge");
           var after = 0;
           try { after = S.countAll(); } catch (e) {}
           var added = after - before;

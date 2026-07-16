@@ -53,9 +53,14 @@ APP=$(/usr/bin/find "$DD/Build/Products" -maxdepth 2 -name "App.app" -path "*iph
 [ -n "$APP" ] || { echo "!! built app not found under $DD"; exit 1; }
 grep -q "build $BUILD" "$APP/public/js/util.js" || { echo "!! bundle/build mismatch — aborting"; exit 1; }
 
-echo ">> clean install → phone (uninstall old copy first, so iOS never sees a downgrade)"
-xcrun devicectl device uninstall app --device "$DEVID" com.optimalfit.app >/dev/null 2>&1 || true
-xcrun devicectl device install app --device "$DEVID" "$APP"
+echo ">> installing → phone (in-place, like an App Store update: your data and login stay)"
+if ! xcrun devicectl device install app --device "$DEVID" "$APP"; then
+  # in-place install refused (e.g. version on the phone is somehow newer):
+  # fall back to a clean reinstall — signed-in accounts restore from the cloud
+  echo ">> in-place install refused — doing a clean reinstall instead"
+  xcrun devicectl device uninstall app --device "$DEVID" com.optimalfit.app >/dev/null 2>&1 || true
+  xcrun devicectl device install app --device "$DEVID" "$APP"
+fi
 xcrun devicectl device process launch --device "$DEVID" com.optimalfit.app >/dev/null 2>&1 \
   && echo ">> launched on the phone" \
   || echo ">> installed. (Couldn't auto-open — the phone is probably locked. Just tap the OptimalFit icon.)"

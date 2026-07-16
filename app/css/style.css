@@ -90,10 +90,16 @@ html, body {
   font-size: var(--fs-3);
   line-height: 1.5;
   -webkit-text-size-adjust: 100%;
-  /* iOS: stop the rubber-band bounce from dragging the fixed bars along
-     (the bottom tab bar "popped up" on overscroll, showing content under it) */
+  /* App-shell layout: the DOCUMENT never scrolls — main.content scrolls
+     internally instead. On iOS, WKWebView repositions position:fixed bars
+     during fast swipes/rubber-banding of the document ("the top and bottom
+     of the app get misplaced"); with the outer viewport locked, the header
+     and tab bar physically cannot move. */
+  height: 100%;
+  overflow: hidden;
   overscroll-behavior-y: none;
 }
+body { display: flex; flex-direction: column; }
 body.ob-open { overflow: hidden; }
 
 h1 { font-size: var(--fs-5); font-weight: 750; letter-spacing: -0.02em; margin: var(--sp-2) 0 var(--sp-4); }
@@ -134,8 +140,9 @@ h2 { font-size: var(--fs-3); font-weight: 700; letter-spacing: -0.01em; margin: 
 
 /* ---------- 3. App shell: header + nav + content ---------- */
 .app-header {
-  position: sticky;
+  position: sticky;   /* body no longer scrolls, so this is effectively static — kept for web fallback */
   top: 0;
+  flex-shrink: 0;
   z-index: 60;
   display: flex;
   align-items: center;
@@ -202,7 +209,7 @@ h2 { font-size: var(--fs-3); font-weight: 700; letter-spacing: -0.01em; margin: 
 .header-btn:active { transform: scale(0.94); }
 .header-btn.active { color: var(--accent); background: var(--accent-soft); }
 
-.app-shell { display: flex; min-height: calc(100vh - var(--header-h)); }
+.app-shell { display: flex; flex: 1 1 auto; min-height: 0; }
 
 .content {
   flex: 1;
@@ -211,6 +218,14 @@ h2 { font-size: var(--fs-3); font-weight: 700; letter-spacing: -0.01em; margin: 
   margin: 0 auto;
   width: 100%;
   min-width: 0;
+  /* the ONLY scroller in the shell (see html,body). min-height:0 matters:
+     without it the flex item refuses to shrink below its content on the
+     mobile column layout and clips instead of scrolling. */
+  min-height: 0;
+  height: 100%;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-y: contain;
 }
 
 /* tab entrance */
@@ -228,9 +243,9 @@ h2 { font-size: var(--fs-3); font-weight: 700; letter-spacing: -0.01em; margin: 
   width: var(--nav-w);
   padding: var(--sp-4) var(--sp-3);
   border-right: 1px solid var(--card-edge);
-  position: sticky;
-  top: var(--header-h);
-  height: calc(100vh - var(--header-h));
+  /* static flex child of the locked shell: fills the shell's height and
+     scrolls internally — no sticky/fixed maths for WKWebView to get wrong */
+  min-height: 0;
   flex-shrink: 0;
   overflow-y: auto;
 }
@@ -1515,7 +1530,7 @@ body.metric-modal-open { overflow: hidden; }
 
 /* ---------- 20. Mobile (<720px): bottom tab bar ---------- */
 @media (max-width: 719px) {
-  .app-shell { flex-direction: column-reverse; min-height: auto; }
+  .app-shell { flex-direction: column-reverse; min-height: 0; }
 
   .nav {
     flex-direction: row;

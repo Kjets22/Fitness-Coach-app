@@ -18,12 +18,21 @@ OF.app = (function () {
   var TABS = ["dashboard", "daily", "sleep", "food", "exercise", "body", "insights", "coach", "community", "settings"];
   var LOG_TABS = ["sleep", "food", "exercise", "body", "daily"]; // reached via the Log sheet on mobile
 
+  var lastTab = null;
+
   function showTab(name) {
     if (TABS.indexOf(name) === -1) name = "dashboard";
     TABS.forEach(function (t) {
       var section = document.getElementById("tab-" + t);
       if (section) section.classList.toggle("hidden", t !== name);
     });
+    // native-style: switching tabs starts at the top (the scroller is
+    // main.content — the document itself never scrolls)
+    if (name !== lastTab) {
+      lastTab = name;
+      var scroller = document.querySelector("main.content");
+      if (scroller) scroller.scrollTop = 0;
+    }
     document.querySelectorAll(".nav-btn, .header-btn").forEach(function (btn) {
       btn.classList.toggle("active", btn.getAttribute("data-tab") === name);
     });
@@ -131,25 +140,6 @@ OF.app = (function () {
       }, 320);
     });
 
-    // iOS keyboard-pan recovery: WKWebView can leave the page overscrolled
-    // after the keyboard closes (top of the app pushed off-screen, bottom bar
-    // hovering mid-page with content visible below it). When the visual
-    // viewport grows back to full height, clamp the scroll into range.
-    if (window.visualViewport) {
-      var lastVvH = window.visualViewport.height;
-      window.visualViewport.addEventListener("resize", function () {
-        var vv = window.visualViewport;
-        if (vv.height > lastVvH + 60) {          // keyboard just closed
-          setTimeout(function () {
-            var max = Math.max(0, document.documentElement.scrollHeight - window.innerHeight);
-            if (window.scrollY > max || window.scrollY < 0) {
-              window.scrollTo(0, Math.min(Math.max(0, window.scrollY), max));
-            }
-          }, 120);
-        }
-        lastVvH = vv.height;
-      });
-    }
   }
 
   function init() {

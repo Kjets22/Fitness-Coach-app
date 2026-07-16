@@ -52,7 +52,19 @@ OF.intake = (function () {
       save: function (st, v) { st.goal = v; }
     },
     {
+      id: "setup-depth",
+      say: function () {
+        return "Want the quick version or the works? Quick asks only the essentials and builds your plan in about 30 seconds. Full adds your preferences, schedule and recovery for a more tailored plan — you can always fine-tune later either way.";
+      },
+      input: { kind: "chips", options: [
+        { label: "\u26a1 Quick — just the essentials", value: true },
+        { label: "Full — tailor it to me", value: false }
+      ] },
+      save: function (st, v) { st.quick = !!v; }
+    },
+    {
       id: "milestone",
+      when: function (st) { return !st.quick; },
       say: function (st) {
         var m = { muscle: "Love it. Any specific milestone in mind — like “gain 10 lb” or “fill out my shirts”?",
           "fat-loss": "Got it. A specific milestone helps me pace things — like “lose 15 lb by summer”?",
@@ -67,6 +79,7 @@ OF.intake = (function () {
     },
     {
       id: "timeline",
+      when: function (st) { return !st.quick; },
       say: function () { return "And what timeline feels right to you? (I'll be honest if it's not realistic — that's my job.)"; },
       input: { kind: "chips", options: [
         { label: "~3 months", value: 13 }, { label: "~6 months", value: 26 },
@@ -151,7 +164,7 @@ OF.intake = (function () {
     },
     {
       id: "weak-points",
-      when: function (st) { return lvl(st) === "advanced"; },
+      when: function (st) { return lvl(st) === "advanced" && !st.quick; },
       say: function () { return "With 3+ years under the bar you know your body. Which areas feel behind — where do you want extra focus?"; },
       input: { kind: "multi", options: [
         { label: "Chest", value: "Chest" }, { label: "Back", value: "Back" },
@@ -175,6 +188,7 @@ OF.intake = (function () {
     },
     {
       id: "session-length",
+      when: function (st) { return !st.quick; },
       say: function () { return "And how long can a session usually run?"; },
       input: { kind: "chips", options: [
         { label: "~30 min", value: 30 }, { label: "~45 min", value: 45 },
@@ -196,6 +210,7 @@ OF.intake = (function () {
     },
     {
       id: "split",
+      when: function (st) { return !st.quick; },
       say: function (st) {
         var rec = st.days <= 3 ? (st.days <= 2 ? "full-body" : "full-body") : st.days === 4 ? "upper-lower" : "ppl";
         st.recommendedSplit = rec;
@@ -215,6 +230,7 @@ OF.intake = (function () {
     },
     {
       id: "style",
+      when: function (st) { return !st.quick; },
       say: function () {
         return "Last preference: do you like lifting HEAVY (few slow, hard reps), lighter with MORE reps (chasing the burn), or a mix? Both build muscle — this is purely about what you'll enjoy.";
       },
@@ -227,6 +243,7 @@ OF.intake = (function () {
     },
     {
       id: "cardio",
+      when: function (st) { return !st.quick; },
       say: function (st) {
         return st.goal === "fat-loss"
           ? "Cardio: it helps a cut, but your diet and lifting do most of the work. What kind do you not hate?"
@@ -241,14 +258,14 @@ OF.intake = (function () {
     },
     {
       id: "likes",
-      when: function (st) { return lvl(st) !== "beginner"; },
+      when: function (st) { return lvl(st) !== "beginner" && !st.quick; },
       say: function () { return "Which lifts do you LOVE? I'll build around them — enjoying your program is the strongest predictor that you'll stick to it."; },
       input: { kind: "multi", options: COMMON_LIFTS.map(function (n) { return { label: n, value: n }; }), done: "Those are my favorites", skip: "No strong favorites" },
       save: function (st, v) { st.likes = v || []; }
     },
     {
       id: "dislikes",
-      when: function (st) { return lvl(st) !== "beginner"; },
+      when: function (st) { return lvl(st) !== "beginner" && !st.quick; },
       say: function () { return "And which do you HATE or refuse to do? Zero judgment — they'll never appear in your plan."; },
       input: { kind: "multi", options: COMMON_LIFTS.map(function (n) { return { label: n, value: n }; }), done: "That's the blacklist", skip: "Nothing I refuse" },
       save: function (st, v) { st.dislikes = v || []; }
@@ -300,6 +317,7 @@ OF.intake = (function () {
     },
     {
       id: "sleep",
+      when: function (st) { return !st.quick; },
       say: function () { return "Almost done — recovery questions, because that's where the muscle is actually built. How much sleep do you typically get?"; },
       input: { kind: "chips", options: [
         { label: "Under 6h", value: 5.5 }, { label: "6–7h", value: 6.5 },
@@ -309,6 +327,7 @@ OF.intake = (function () {
     },
     {
       id: "stress",
+      when: function (st) { return !st.quick; },
       say: function () { return "Day-to-day stress level? High stress is a real recovery tax — I'll program accordingly, not judge."; },
       input: { kind: "chips", options: [
         { label: "Pretty chill", value: 2 }, { label: "Moderate", value: 3 }, { label: "High", value: 4 }
@@ -317,6 +336,7 @@ OF.intake = (function () {
     },
     {
       id: "job",
+      when: function (st) { return !st.quick; },
       say: function () { return "And your day job, movement-wise?"; },
       input: { kind: "chips", options: [
         { label: "Desk", value: "desk" }, { label: "On my feet", value: "onFeet" }, { label: "Physical work", value: "physical" }
@@ -325,6 +345,7 @@ OF.intake = (function () {
     },
     {
       id: "diet",
+      when: function (st) { return !st.quick; },
       say: function () { return "Last one: any dietary restrictions or styles I should respect in nutrition advice?"; },
       input: { kind: "multi", options: [
         { label: "None", value: null }, { label: "Vegetarian", value: "vegetarian" },

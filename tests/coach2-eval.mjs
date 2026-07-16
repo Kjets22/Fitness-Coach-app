@@ -61,7 +61,7 @@ function runIntake(w, a) {
   const go = (v) => { if (step) step = F.advance(st, step.id, v); };
   // drive the flow BY STEP ID so it survives future flow changes
   const answers = {
-    goal: a.goal, milestone: a.milestone, timeline: a.timeline,
+    goal: a.goal, "setup-depth": false, milestone: a.milestone, timeline: a.timeline,
     age: a.years != null ? a.years : 30,
     conditions: a.conditions || [],
     "training-age": a.age,

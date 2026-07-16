@@ -64,7 +64,8 @@ import { makeWorld, check, section, report } from "./coach2-shim.mjs";
   // beginner path: gets the pep talk, skips weak-points and injury-patterns
   let st = {}, step = F.steps[0];
   const go = v => { step = F.advance(st, step.id, v); };
-  go("muscle"); go("gain 10 lb"); go(26); go(25); go([]); go(0);
+  go("muscle"); go(false); go("gain 10 lb"); go(26); go(25); go([]); go(0);
+  check("setup-depth asked right after goal", true);
   check("beginner gets education step", step.id === "beginner-pep", step.id);
   go(true); go(3); go(45);
   check("bodyweight asked before split", step.id === "bodyweight", step.id);
@@ -80,7 +81,7 @@ import { makeWorld, check, section, report } from "./coach2-shim.mjs";
   // returning-lifter lane
   let stR = {}, sR = F.steps[0];
   const goR = v => { sR = F.advance(stR, sR.id, v); };
-  goR("muscle"); goR(null); goR(null); goR(25); goR([]); goR("returning");
+  goR("muscle"); goR(false); goR(null); goR(null); goR(25); goR([]); goR("returning");
   check("returning lane gets its own pep talk", sR.id === "returning-pep", sR.id);
   check("returning maps to intermediate", F.level(stR) === "intermediate");
   const m = F.toProfilePatch(st);
@@ -91,7 +92,7 @@ import { makeWorld, check, section, report } from "./coach2-shim.mjs";
   // advanced path: weak points asked, injury patterns asked
   let st2 = {}, s2 = F.steps[0];
   const go2 = v => { s2 = F.advance(st2, s2.id, v); };
-  go2("strength"); go2(null); go2(52); go2(52); go2([]); go2(5);
+  go2("strength"); go2(false); go2(null); go2(52); go2(52); go2([]); go2(5);
   check("advanced gets weak-points", s2.id === "weak-points", s2.id);
   go2(["Legs"]); go2(5); go2(60); go2(null); go2("ppl"); go2("heavy"); go2("none");
   go2([]); go2([]); go2("full-gym"); go2(["knee", "shoulder"]);
@@ -104,7 +105,7 @@ import { makeWorld, check, section, report } from "./coach2-shim.mjs";
   // safety lane: a minor + a condition get the safety brief and no deficit
   let st3 = {}, s3 = F.steps[0];
   const go3 = v => { s3 = F.advance(st3, s3.id, v); };
-  go3("fat-loss"); go3(null); go3(null); go3(16); go3(["high blood pressure"]); go3(0);
+  go3("fat-loss"); go3(false); go3(null); go3(null); go3(16); go3(["high blood pressure"]); go3(0);
   check("under-18 + condition triggers the safety brief", s3.id === "safety-brief", s3.id);
   check("safety brief text mentions a doctor", s3.say(st3).toLowerCase().includes("doctor"));
   const m3 = F.toProfilePatch(st3);
@@ -115,8 +116,24 @@ import { makeWorld, check, section, report } from "./coach2-shim.mjs";
   // ...but an adult who asks to cut still cuts
   let st4 = {}, s4 = F.steps[0];
   const go4 = v => { s4 = F.advance(st4, s4.id, v); };
-  go4("fat-loss"); go4(null); go4(null); go4(37); go4([]);
+  go4("fat-loss"); go4(false); go4(null); go4(null); go4(37); go4([]);
   check("an adult who asks to cut still cuts", F.toProfilePatch(st4).appGoalType === "cut");
+
+  // QUICK setup path: essentials only, still builds a valid program
+  let stQ = {}, sQ = F.steps[0], qIds = [];
+  const goQ = v => { qIds.push(sQ.id); sQ = F.advance(stQ, sQ.id, v); };
+  const qAns = { goal: "muscle", "setup-depth": true, age: 25, conditions: [],
+    "training-age": 2, "beginner-pep": true, "returning-pep": true, "safety-brief": true,
+    days: 4, bodyweight: "185", equipment: "full-gym", "injury-area": [], "injury-patterns": [] };
+  let g = 40;
+  while (sQ && g-- > 0) {
+    check("quick path only asks essentials (no " + sQ.id + ")",
+      sQ.id in qAns, sQ.id);
+    goQ(qAns[sQ.id]);
+  }
+  check("quick path is short (<=10 steps)", qIds.length <= 10, qIds.length);
+  check("quick path skips milestone/style/cardio/diet",
+    !qIds.some(id => ["milestone","style","cardio","diet","sleep","stress","job","likes","dislikes"].includes(id)), qIds);
 }
 
 /* ---------------- learning math ---------------- */

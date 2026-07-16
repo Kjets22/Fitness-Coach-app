@@ -18,7 +18,22 @@ OF.app = (function () {
   var TABS = ["dashboard", "daily", "sleep", "food", "exercise", "body", "insights", "coach", "community", "settings"];
   var LOG_TABS = ["sleep", "food", "exercise", "body", "daily"]; // reached via the Log sheet on mobile
 
+  /* Owner-only version marker: shows the app version ONLY to admin accounts
+     (kjets2003), so the owner can confirm at a glance which build is live
+     while normal users never see a debug number. */
+  function updateVersionBadge() {
+    var el = document.getElementById("of-version-badge");
+    if (!el) return;
+    var isAdmin = false;
+    try { isAdmin = OF.entitlements && OF.entitlements.isAdmin && OF.entitlements.isAdmin(); } catch (e) {}
+    if (isAdmin) {
+      el.textContent = "OptimalFit " + (OF.APP_VERSION || "?");
+      el.hidden = false;
+    } else { el.hidden = true; }
+  }
+
   function showTab(name) {
+    try { updateVersionBadge(); } catch (e) {}
     if (TABS.indexOf(name) === -1) name = "dashboard";
     TABS.forEach(function (t) {
       var section = document.getElementById("tab-" + t);
@@ -133,6 +148,8 @@ OF.app = (function () {
   }
 
   function init() {
+    setInterval(updateVersionBadge, 4000);
+    try { if (OF.cloudSync) OF.cloudSync.init(); } catch (e) {}   // reflects sign-in/out without a manual refresh
     // Segmented rating pills replace the <select data-seg> controls
     // BEFORE tracker init so their defaults render onto the pills.
     if (OF.ui) OF.ui.initSegs(document);

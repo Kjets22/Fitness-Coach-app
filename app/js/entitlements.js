@@ -107,8 +107,16 @@ OF.entitlements = (function () {
     });
   }
 
+  /** True only for owner/admin accounts (kjets2003). Used to gate the
+      version marker so ONLY the owner sees it. */
+  function isAdmin() {
+    var p = profile();
+    return !!(p && p.is_admin);
+  }
+
   return {
     isPremium: isPremium,
+    isAdmin: isAdmin,
     trialDaysLeft: trialDaysLeft,
     signedIn: signedIn,
     refresh: refresh,

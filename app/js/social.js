@@ -501,7 +501,9 @@ OF.social = (function () {
       '<button type="button" class="soc-me" data-act="user" data-arg="' + U.esc(p.id || "") + '">' +
       avatarHtml(p.avatar_url, p.username, "") +
       '<span class="soc-me-names"><strong>' + U.esc(displayNameOf(p)) + '</strong>' +
-      '<span class="muted small">@' + U.esc(p.username || "") + '</span></span></button>' +
+      '<span class="muted small">@' + U.esc(p.username || "") +
+        (p.is_admin ? '  \u00b7 version ' + U.esc(OF.APP_VERSION || "?") : "") +
+        '</span></span></button>' +
       '<button type="button" class="btn mini" data-act="compose-open">' + OF.icons.get("plus") + ' Share</button>' +
       '</div>' +
 

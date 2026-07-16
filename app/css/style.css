@@ -2620,3 +2620,19 @@ body.metric-modal-open { overflow: hidden; }
 .sheet-primary-txt { display: flex; flex-direction: column; font-weight: 800; font-size: 1.12rem; }
 .sheet-primary-txt small { font-weight: 500; font-size: 0.8rem; opacity: 0.9; margin-top: 2px; }
 .sheet-ver { text-align: center; font-size: 0.72rem; margin: 8px 0 0; opacity: 0.6; }
+
+/* App-first: kill the double-tap-to-zoom gesture (native feel) */
+html { touch-action: manipulation; }
+* { -webkit-tap-highlight-color: transparent; }
+
+/* Owner-only version badge (only kjets2003/admin ever sees this) */
+#of-version-badge {
+  position: fixed; z-index: 600;
+  left: 50%; transform: translateX(-50%);
+  bottom: calc(4px + env(safe-area-inset-bottom, 0px));
+  font-size: 0.62rem; font-variant-numeric: tabular-nums;
+  color: var(--text-dim); background: color-mix(in srgb, var(--card) 80%, transparent);
+  padding: 2px 8px; border-radius: 999px; pointer-events: none;
+  border: 1px solid var(--card-edge);
+}
+#of-version-badge[hidden] { display: none; }

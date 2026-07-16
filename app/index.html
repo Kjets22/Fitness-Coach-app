@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, interactive-widget=resizes-content">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover, interactive-widget=resizes-content">
 <meta name="color-scheme" content="dark light">
 <meta name="theme-color" content="#0a0e17">
 <title>OptimalFit</title>
@@ -575,7 +575,6 @@
       </a>
     </div>
     <button type="button" class="btn ghost sheet-cancel" data-close-sheet>Cancel</button>
-    <p class="sheet-ver muted">OptimalFit build 14</p>
   </div>
 </div>
 
@@ -588,6 +587,7 @@
 <div class="sheet hidden" id="social-sheet2" role="dialog" aria-modal="true" aria-label="Community options"></div>
 
 <!-- ===== First-run onboarding overlay (onboarding.js) ===== -->
+<div id="of-version-badge" hidden></div>
 <div id="onboarding" class="hidden"></div>
 
 <!-- Plain scripts (NOT modules) loaded in dependency order so the app also works from file:// -->
@@ -627,6 +627,7 @@
 <script src="js/settings.js"></script>
 <script src="js/vendor/supabase.js"></script>
 <script src="js/social-api.js"></script>
+<script src="js/cloud-sync.js"></script>
 <script src="js/entitlements.js"></script>
 <script src="js/social.js"></script>
 <script src="js/social-profile.js"></script>

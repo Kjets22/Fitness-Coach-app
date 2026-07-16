@@ -15,7 +15,7 @@
    ============================================================ */
 
 /* Bump this string when any shell file changes. */
-var VERSION = "v73";
+var VERSION = "v75";
 var CACHE = "optimalfit-shell-" + VERSION;
 
 var SHELL = [
@@ -59,6 +59,7 @@ var SHELL = [
   "./js/settings.js",
   "./js/vendor/supabase.js",
   "./js/social-api.js",
+  "./js/cloud-sync.js",
   "./js/entitlements.js",
   "./js/social.js",
   "./js/social-profile.js",

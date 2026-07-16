@@ -72,9 +72,14 @@ OF.storage = (function () {
    * (quota exceeded, private mode, storage disabled) shows a visible error
    * and returns false — callers must not pretend the write happened.
    */
+  var changeSubs = [];
+  function onChange(fn) { if (typeof fn === "function") changeSubs.push(fn); }
+  function fireChange() { changeSubs.forEach(function (f) { try { f(); } catch (e) {} }); }
+
   function saveAll(type, arr) {
     try {
       localStorage.setItem(key(type), JSON.stringify(arr));
+      fireChange();
       return true;
     } catch (e) {
       console.error("OF.storage.saveAll failed for", type, e);
@@ -527,6 +532,7 @@ OF.storage = (function () {
   }
 
   return {
+    onChange: onChange,
     TYPES: TYPES,
     getAll: getAll,
     get: get,

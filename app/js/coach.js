@@ -670,6 +670,13 @@ OF.coach = (function () {
       renderLog();
       return;
     }
+    // App Review 5.1.1(i): explicit one-time consent BEFORE any data
+    // leaves the device for the AI service. On-device answers above
+    // never need it.
+    if (OF.aiConsent && !OF.aiConsent.granted()) {
+      OF.aiConsent.ensure(function () { send(question); });
+      return;
+    }
 
     pushMsg("user", question);
     els.input.value = "";

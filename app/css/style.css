@@ -1009,7 +1009,8 @@ body.metric-modal-open { overflow: hidden; }
 #coach-status { flex-shrink: 0; overflow-y: auto; max-height: 100%; }
 #coach-chat.coach-card { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; margin-bottom: 0; }
 .coach-disclaimer { flex-shrink: 0; margin: 6px 0 0; font-size: 0.68rem; }
-@media (max-width: 719px) { .coach-disclaimer { display: none; } } /* mobile: every px goes to the chat */
+/* the AI-disclosure line STAYS visible on mobile (App Review 5.1.1(i)) */
+@media (max-width: 719px) { .coach-disclaimer { display: block; font-size: 0.66rem; opacity: 0.85; } }
 
 .coach-log {
   display: flex;
@@ -2775,3 +2776,11 @@ body.kb-open #stepper-strip { bottom: calc(8px + env(safe-area-inset-bottom, 0px
 /* big numbers everywhere match the athletic face */
 #rest-bar strong { font-family: var(--font-display); font-weight: 700; letter-spacing: 0.02em; }
 .recap-line strong, .bubble-user { font-variant-numeric: tabular-nums; }
+/* AI consent sheet */
+#ai-consent .sheet-panel { max-height: 86vh; overflow-y: auto; }
+#ai-consent .sheet-title { margin: 4px 0 10px; font-size: 1.05rem; }
+.ai-consent-p { margin: 8px 0; font-size: 0.88rem; line-height: 1.5; }
+.ai-consent-list { list-style: none; margin: 8px 0; padding: 0 0 0 4px; font-size: 0.88rem; }
+.ai-consent-list li { margin: 4px 0; }
+.ai-consent-url { color: var(--accent); word-break: break-all; font-size: 0.8rem; }
+#ai-consent .btn.primary { width: 100%; margin: 10px 0 6px; }

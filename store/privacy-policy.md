@@ -55,8 +55,8 @@ We do **not** sell your data, share it with data brokers or advertisers, or give
 
 Even with a community account:
 
-- **Your raw logs** — sleep, food, workout, weight, and body-fat history never leave your device. Only the summary numbers on a Receipt card you chose to post are shared.
-- **Photos you don't post** — coach photo analysis (meals, physique) stays on your own machines; only images you explicitly attach to a post are uploaded.
+- **Your raw log history** — your full sleep, food, workout, weight, and body-fat records are not collected for any product purpose. They leave your device only in two cases you control: the compact stats summary sent with an AI request you make (see "The AI features" below), and the private account backup if you sign in (see "Optional account backup").
+- **Photos you don't submit** — the camera roll is never scanned. A photo leaves your device only when you explicitly submit it for meal/physique analysis (processed transiently, never stored — see below) or attach it to a community post.
 - **No analytics or telemetry** — the app does not phone home, count usage, or report crashes to us. We added none in this update.
 - **No advertising and no ad SDKs.**
 - **No tracking and no sale of data** — ever, for any user.
@@ -67,16 +67,37 @@ Even with a community account:
 
 You can optionally import an Apple Health export file or Samsung Health CSV files. These files are read and processed **entirely inside the app on your device**. The file contents are never uploaded anywhere.
 
-## The optional AI Coach (self-hosted, your own computer)
+## The AI features (coach, photo macros, physique analysis)
 
-The optional "Coach" feature is unchanged: it only works if **you** run a small companion program on **your own personal computer** and pair your device to it over your own local network. Coach questions and photo analysis go only to your own machine — never to our servers. If you have a community account, the coach can additionally **fetch** anonymous aggregate benchmark percentiles from our server to enrich its advice (a download of cohort statistics, not an upload of your logs).
+The AI Coach, photo meal analysis, and physique analysis are powered by the **OptimalFit coach service** — a server operated by the developer — where requests are processed by **Anthropic's Claude AI** to generate the answer.
+
+**What is sent (and nothing more):**
+- your question or request,
+- a compact summary of your recent stats (averages and trends — never your raw log history), and
+- a photo, only when you explicitly choose photo meal analysis or physique analysis.
+
+**What is never sent:** your name, email, account identity, raw log history, or anything you didn't ask about.
+
+**How it is handled:** requests are processed transiently to produce your answer and are **not stored** by the coach service. Anthropic processes the request under its commercial API terms, which prohibit using the data to train models.
+
+**Your permission is asked first:** before your first AI request, the app shows a consent notice explaining exactly this, and no data is sent unless you agree. Declining leaves every non-AI feature fully usable. If you have a community account, the coach can additionally **fetch** anonymous aggregate benchmark percentiles from our server (a download of cohort statistics, not an upload of your logs).
+
+## Optional account backup (cross-device sync)
+
+If — and only if — you sign in to an account, the app keeps an encrypted-in-transit backup of your app data (logs, preferences, training program and progress) in your account's **private row** in our Supabase database, so that reinstalling the app or signing in on a new device restores your data. This backup:
+
+- is accessible only to your account (row-level security),
+- is never shared, sold, analyzed, or used for anything except restoring your data to you, and
+- is **deleted when you delete your account** in-app.
+
+If you never sign in, nothing is backed up and all data stays only on your device.
 
 ## Your data, your control
 
 - **Export:** you can export all of your local data to a file at any time from Settings.
 - **Delete local data:** erase everything on-device anytime from Settings ("Clear all data") or by uninstalling the app.
 - **Delete community data:** delete individual posts anytime, or delete your whole account in-app — the cascade described above removes everything server-side.
-- **Backup responsibility:** we hold no copy of your local logs, so we cannot restore them. Please use the export feature.
+- **Backup:** without an account we hold no copy of your data (use Settings → Export). With an account, your private backup restores your data when you sign in, and is deleted with your account.
 
 ## Data security
 
@@ -106,4 +127,4 @@ Questions about this policy or the app:
 
 ---
 
-*Summary you can quote: OptimalFit is local by default — all tracking and coaching stays on your device with no account, no analytics, and no ads. The optional community stores only your account (email), profile, and the posts, likes, comments, and check-ins you explicitly publish, hosted with Supabase in the US, deletable in-app with a full cascade. Your raw logs and unposted photos never leave your device, and community benchmarks are k-anonymous aggregates.*
+*Summary you can quote: OptimalFit is local by default — tracking works with no account, no analytics, and no ads. AI answers are generated by sending only your question, a compact stats summary, and any photo you submit to the developer-operated coach service (processed transiently by Anthropic's Claude, never stored) — and only after you consent in-app. Signing in adds an optional private backup of your data and the opt-in community, both deletable in-app with a full cascade.*

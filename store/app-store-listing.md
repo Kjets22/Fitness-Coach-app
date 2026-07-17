@@ -107,11 +107,13 @@ sleep,calorie,macro,workout,offline,private,tracker,social,receipts,gym,log,diet
 | User Content | **Photos or Videos** (avatar + images attached to posts) | Linked | App Functionality |
 | User Content | **Other User Content** (posts, Receipt stat cards, comments, bio, gym check-ins [name+date only]) | Linked | App Functionality |
 | Identifiers | **User ID** (account ID / username) | Linked | App Functionality |
+| Health & Fitness | **Fitness** (the signed-in user's app data backup: logs, preferences, program — for cross-device restore) | Linked | App Functionality |
 
-**Everything else: Not Collected.** In particular: Health & Fitness (raw logs never leave the device — only user-published Receipt card numbers travel, declared under User Content), Location (none — check-ins have no GPS), Contacts, Browsing/Search History, Purchases, Financial Info, Diagnostics, Usage Data, Analytics (none exist).
+**Everything else: Not Collected.** In particular: Location (none — check-ins have no GPS), Contacts, Browsing/Search History, Purchases, Financial Info, Diagnostics, Usage Data, Analytics (none exist).
 
+- Health & Fitness is collected ONLY for signed-in users (private per-account backup, deleted with the account). Never-signed-in users: nothing is collected at all.
+- AI requests (coach questions, photo meal/physique analysis) send the question, a compact stats summary, and any submitted photo to the developer-operated coach service, processed transiently by Anthropic's Claude and NOT retained — disclosed and consented in-app before first use (5.1.1(i)/5.1.2(i)), described in the privacy policy. Not declared as a collected data type because it is ephemeral processing (not retained beyond servicing the request).
 - No HealthKit APIs are used (file import only) — no HealthKit privacy strings or entitlements involved.
-- The self-hosted AI Coach still transmits only to the user's own computer — not collection.
 
 ⚠️ If a future version adds analytics, crash reporting, or new server-bound data, update this label BEFORE release.
 
@@ -135,38 +137,61 @@ sleep,calorie,macro,workout,offline,private,tracker,social,receipts,gym,log,diet
 ## Review notes (App Review Information)
 
 ```
-LOCAL BY DEFAULT: all fitness data is stored on-device — no account is needed
-for any tracking or coaching feature. To see the app populated with data, open
-Settings (gear icon, top right) → "Load demo data".
+RESUBMISSION NOTES (addresses the July 16 rejection of 1.0 (3)):
 
-OPT-IN COMMUNITY (new in this version): a social feed is available ONLY after
-the user explicitly creates a free account (email + password, in-app). Nothing
-is uploaded unless the user explicitly publishes a post. A demo account is
-provided in the sign-in fields below — sign in to review the community.
+1) Guideline 2.1(a) — "app failed to load the AI Coach": in 1.0 (3) the
+coach required a companion program on the user's own computer, so it could
+not work on a review device. The AI Coach is now a HOSTED service: open the
+Coach tab, sign in with the demo account below, and it works immediately —
+no setup. (Signed out, the tab shows an explanatory access card — expected,
+not a bug.) Verified on iPhone and iPad (compatibility mode).
 
-UGC MODERATION (Guideline 1.2): sign-up requires acknowledging the Terms
-(which define objectionable content); every post, comment, and user can be
-reported; users can block other users (hides content both directions); posts
-reported by 3+ distinct users are auto-hidden pending review; moderation
-contact: Qualixo22@gmail.com.
+2) Guidelines 5.1.1(i)/5.1.2(i) — AI data sharing: the app now shows an
+explicit consent notice BEFORE the first AI request. It discloses exactly
+what is sent (the question, a compact stats summary, and any photo the user
+submits), to whom (the developer-operated OptimalFit coach service, where
+requests are processed by Anthropic's Claude AI), that processing is
+transient with nothing stored, and requires the user to agree before any
+data is sent. Declining keeps all non-AI features fully usable. The privacy
+policy (URL below) has a dedicated "AI features" section with the same
+disclosure. To see the consent sheet: Coach tab → ask anything (or Food →
+Estimate from photo) — it appears before the first request.
 
-ACCOUNT DELETION (Guideline 5.1.1(v)): the account can be deleted inside the
-app (Community → Profile → Settings → Delete account). Deletion cascades:
-profile, posts, images, likes, comments, check-ins, follows, and benchmark
-contributions are all removed.
+ABOUT PREMIUM: AI features (coach, photo macros, physique analysis) are an
+access-gated tier. There is NO purchase flow anywhere in the app or outside
+it — the tier is not yet on sale (no price shown, no external purchase
+links; new accounts currently receive a free trial). When it goes on sale
+it will use Apple In-App Purchase. The demo account below is pre-upgraded
+so every feature can be reviewed.
 
-The "Coach" tab is an optional feature that pairs with a companion program the
-user runs on their own personal computer over their own Wi-Fi. Without it, the
-tab shows a friendly explanation card — expected behavior, not a bug.
+LOCAL BY DEFAULT: all tracking works with no account. To see the app
+populated: Settings (gear icon) → "Load demo data".
+
+ACCOUNT BACKUP: signing in enables a private, per-account backup of the
+user's own data for cross-device restore (row-level security; deleted with
+the account) — declared under Health & Fitness in App Privacy.
+
+UGC MODERATION (Guideline 1.2): Terms acknowledged at sign-up; every post,
+comment and user can be reported; users can block users; posts reported by
+3+ distinct users auto-hide pending review; moderation contact:
+Qualixo22@gmail.com.
+
+ACCOUNT DELETION (5.1.1(v)): in-app (Community → Profile → Settings →
+Delete account); deletion cascades through profile, posts, images, likes,
+comments, check-ins, follows, benchmarks, and the account backup.
 ```
 
-- **Sign-in required?** For the community only (everything else — tracking, insights, the coach engine — works with no account). A ready-to-use reviewer demo account has been created and pre-confirmed on the backend; its Home feed is already populated (it follows active users and shows a verified Receipt) so the reviewer sees a working community immediately. **The email + password are in the gitignored local file `.env.reviewer`** (never committed to the public repo) — paste them into the App Store Connect "Sign-in required → User name / Password" review fields. Username: `optimalfit_demo`.
-- **Contact:** Qualixo22@gmail.com (add your name + phone in App Store Connect — Apple requires all three for the review contact).
+- **Sign-in required: YES for review.** Paste the demo account from the local
+  file `.env.reviewer` (gitignored — never in the public repo) into
+  App Store Connect → App Review Information → Sign-In Information. The
+  account is pre-upgraded (all AI features unlocked) and already has data.
+- **Contact:** Qualixo22@gmail.com (add name + phone in App Store Connect).
 
 ## URLs
 
-- **Privacy Policy URL (required):** hosted copy of the **updated** `privacy-policy.html` — re-host before submitting; the old hosted copy claims zero collection and no longer matches the app.
-- **Support URL (required):** can be the same site's index or a GitHub repo page — FILL
+- **Privacy Policy URL (required):** https://kjets22.github.io/Fitness-Coach-app/store/privacy-policy.html (LIVE — updated 2026-07-17 with the AI-features + account-backup sections)
+- **Support URL (required):** https://github.com/Kjets22/Fitness-Coach-app
+- **Terms of Service:** https://kjets22.github.io/Fitness-Coach-app/store/terms-of-service.html
 
 ## Screenshots
 
@@ -188,8 +213,14 @@ tab shows a friendly explanation card — expected behavior, not a bug.
 
 Hero = #5 (the Receipt differentiator). If uploading fewer than 8, keep #1, #2, #5 at minimum. A matching Google Play set (1080×2160, 2:1) exists at `play-1080x2160-*.png`.
 
-## What's New (Phase 3 update)
+## What's New (1.4.1 resubmission)
 
 ```
-New: the OptimalFit community (100% opt-in). Share Receipts — proof-backed stat cards from your on-device coach — plus workout, meal and photo posts. Follow friends, like, comment, and check in at the gym. Your raw logs still never leave your phone; only what you explicitly post is shared, and you can delete your account (and everything with it) in-app anytime.
+A big one. New AI coach experience: a real onboarding interview that builds
+your personalized program (with the reasoning behind it), a chat that knows
+your logs, and free-text preferences the coach actually respects. New
+athletic dark design. One-tap logging everywhere: repeat meals, steps,
+water, usual night's sleep. Your account now backs up your data privately —
+delete the app, sign back in, everything returns. Plus dozens of fixes from
+hands-on device testing.
 ```

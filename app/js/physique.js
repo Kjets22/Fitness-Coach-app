@@ -120,7 +120,7 @@ OF.physique = (function () {
       els.area.innerHTML = OF.entitlements.paywallHtml({
         compact: true,
         title: (OF.icons ? OF.icons.get("bodyscan") + " " : "") + "Physique analysis",
-        blurb: "AI estimates body composition and muscle development from a photo (analyzed on your device, never stored)."
+        blurb: "AI estimates body composition and muscle development from a photo (processed transiently by the coach service, never stored)."
       });
       OF.entitlements.bindPaywall(els.area, renderButton);
       return;
@@ -186,7 +186,7 @@ OF.physique = (function () {
 
   var PRIVACY_LINE =
     '<p class="muted small phys-privacy">' + OF.icons.get("check") +
-    ' Your photo is analyzed on your own computer and deleted right after — ' +
+    ' Your photo is processed transiently by the OptimalFit coach service and never stored — ' +
     'it is sent only to your own OptimalFit computer for the analysis and is deleted right after — never stored, never sent anywhere else. Only the written analysis ' +
     'can be saved.</p>';
 
@@ -511,7 +511,10 @@ OF.physique = (function () {
     renderButton();
 
     els.area.addEventListener("click", function (e) {
-      if (e.target.closest("#physique-open")) openModal();
+      if (e.target.closest("#physique-open")) {
+        if (OF.aiConsent && !OF.aiConsent.granted()) { OF.aiConsent.ensure(openModal); return; }
+        openModal();
+      }
     });
 
     els.modal.addEventListener("click", function (e) {

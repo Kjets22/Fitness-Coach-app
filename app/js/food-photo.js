@@ -506,7 +506,10 @@ OF.foodPhoto = (function () {
     renderButton();
 
     els.area.addEventListener("click", function (e) {
-      if (e.target.closest("#photo-open")) openModal();
+      if (e.target.closest("#photo-open")) {
+        if (OF.aiConsent && !OF.aiConsent.granted()) { OF.aiConsent.ensure(openModal); return; }
+        openModal();
+      }
     });
 
     els.modal.addEventListener("click", function (e) {

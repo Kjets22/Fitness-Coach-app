@@ -177,8 +177,27 @@ OF.dashboard = (function () {
   }
 
   /** One coached sentence for the hero. */
+  /** Days since the newest record of any type (null = no data). */
+  function daysSinceLastLog() {
+    var newest = null;
+    ["sleep", "food", "exercise", "body", "water", "steps"].forEach(function (t) {
+      S.getAll(t).forEach(function (r) {
+        if (r.date && (!newest || r.date > newest)) newest = r.date;
+      });
+    });
+    if (!newest) return null;
+    var d = (new Date(U.todayISO()) - new Date(newest)) / 86400000;
+    return isFinite(d) ? Math.round(d) : null;
+  }
+
   function dailyBrief(readiness) {
     var parts = [];
+    var away = daysSinceLastLog();
+    if (away != null && away >= 21) {
+      // long gap: greet the comeback instead of pretending nothing happened
+      return "Welcome back \u2014 it's been " + Math.round(away / 7) +
+        " weeks. Your coach can retune your plan in 30 seconds (Coach tab \u2192 check-in).";
+    }
     var ns = null; try { ns = OF.trainer && OF.trainer.nextSession ? OF.trainer.nextSession() : null; } catch (e) {}
     if (ns) parts.push(ns.name + " day");
     if (readiness && readiness.status === "ok") parts.push("readiness " + readiness.score);

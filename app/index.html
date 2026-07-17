@@ -251,6 +251,13 @@
           <label>Fat (g)
             <input type="number" inputmode="decimal" id="food-fat" min="0" max="1000" step="0.1">
           </label>
+          <div class="serv-row" id="food-serv-row" hidden>
+            <span class="serv-lbl">Servings</span>
+            <button type="button" class="btn mini" id="food-serv-minus" aria-label="Half a serving less">&minus;</button>
+            <strong id="food-serv-val">1</strong>
+            <button type="button" class="btn mini" id="food-serv-plus" aria-label="Half a serving more">+</button>
+            <span class="muted small">macros scale automatically</span>
+          </div>
           <label class="grow">Notes
             <input type="text" id="food-notes" maxlength="300" placeholder="optional">
           </label>

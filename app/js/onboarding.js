@@ -111,7 +111,7 @@ OF.onboarding = (function () {
       '</ul>' + dots() +
       '<div class="ob-actions">' +
       '<button type="button" class="btn primary big" id="ob-done">Start tracking</button>' +
-      '<button type="button" class="btn" id="ob-demo">Explore with demo data</button>' +
+      '<button type="button" class="btn big" id="ob-demo">\ud83d\udc40 See it filled in first (demo data)</button>' +
       '<p class="muted small ob-demo-note">Demo data loads ~60 days of realistic fake entries so you ' +
       'can see the dashboard and insights in action. Clear it any time in Settings.</p>' +
       '</div></div>';

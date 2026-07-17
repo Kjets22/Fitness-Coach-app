@@ -2784,3 +2784,29 @@ body.kb-open #stepper-strip { bottom: calc(8px + env(safe-area-inset-bottom, 0px
 .ai-consent-list li { margin: 4px 0; }
 .ai-consent-url { color: var(--accent); word-break: break-all; font-size: 0.8rem; }
 #ai-consent .btn.primary { width: 100%; margin: 10px 0 6px; }
+/* servings stepper (appears once macros are autofilled) */
+.serv-row { display: flex; align-items: center; gap: 10px; margin: 6px 0 2px; font-size: 0.85rem; }
+.serv-row strong { min-width: 28px; text-align: center; font-variant-numeric: tabular-nums; }
+.serv-row .btn.mini { min-width: 40px; }
+/* workout depth: reorder, swap, RPE */
+.ex-move { min-width: 40px; min-height: 40px; padding: 4px 8px; font-size: 0.95rem; }
+.ex-move:disabled { opacity: 0.3; }
+.ex-swap { min-height: 40px; padding: 6px 10px; font-size: 0.78rem; }
+.ex-swap-row { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin: 4px 0 8px; }
+.set-reps-wrap { position: relative; display: flex; min-width: 0; }
+.set-reps-wrap input { width: 100%; min-width: 0; }
+.set-rpe { position: absolute; top: -7px; right: 2px; font-size: 0.62rem; font-weight: 800;
+  color: var(--accent); background: var(--card); padding: 0 4px; border-radius: 6px;
+  border: 1px solid var(--card-edge); pointer-events: none; }
+#stepper-strip { flex-direction: column; gap: 6px; border-radius: var(--r-md); }
+.stepper-main { display: flex; align-items: center; gap: 14px; }
+.stepper-rpe { display: flex; align-items: center; gap: 6px; }
+.stepper-rpe .rpe-lbl { font-size: 0.7rem; font-weight: 700; color: var(--text-dim); }
+.stepper-rpe button { width: 44px; height: 36px; font-size: 0.8rem; font-weight: 800;
+  background: var(--card); border: 1px solid var(--card-edge); border-radius: var(--r-sm);
+  color: var(--text-dim); cursor: pointer; }
+.stepper-rpe button.rpe-on { color: var(--accent); border-color: var(--accent); }
+/* v27 fix: the head row now holds 5 controls — the name takes its own full
+   line and controls wrap beneath (was: name squeezed to 1ch per line) */
+.ex-item-head { flex-wrap: wrap; row-gap: 6px; }
+.ex-item-head .ex-item-name { flex: 1 1 100%; min-width: 0; overflow-wrap: break-word; }

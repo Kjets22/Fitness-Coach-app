@@ -590,14 +590,17 @@ OF.insights = (function () {
     }
     var heading = '<h2 class="list-heading">Strength &amp; lifting</h2>';
     if (st.status !== "ok") {
-      return heading + needCard("Strength & lifting", st.message, null, "dumbbell");
+      return { actions: "", rest: heading + needCard("Strength & lifting", st.message, null, "dumbbell") };
     }
-    return heading +
-      strengthVolumeCard(st) +
-      liftRowsCard(st) +
-      muscleBalanceCard(st) +
-      repRangeCard(st) +
-      strengthCalloutsCard(st);
+    // callouts + balance are the "do this next" cards — the caller hoists
+    // them to the top of the tab (user testing: they were buried 9th)
+    return {
+      actions: strengthCalloutsCard(st) + muscleBalanceCard(st),
+      rest: heading +
+        strengthVolumeCard(st) +
+        liftRowsCard(st) +
+        repRangeCard(st)
+    };
   }
 
   /* ---------- refresh ---------- */
@@ -648,17 +651,30 @@ OF.insights = (function () {
       });
     }
 
-    container.innerHTML =
-      planCard(r, gi) +
-      readinessCard(r) +
+    var strength = strengthCards(data, gi);
+    if (typeof strength === "string") strength = { actions: "", rest: strength };
+    // Priority order (user-panel redesign): what needs ACTION first, then
+    // today's plan/readiness — visible immediately. Everything else folds
+    // behind one tap so the tab reads as an answer, not homework.
+    var top = strength.actions + planCard(r, gi) + readinessCard(r);
+    var more = foodCard(r, gi, intake) +
+      sleepCard(r) +
       gymTimeCard(r) +
       bestDaysCard(r) +
       restCard(r) +
-      sleepCard(r) +
-      foodCard(r, gi, intake) +
       trendsCard(r, gi) +
-      strengthCards(data, gi) +
+      strength.rest +
       physiqueCard();
+    container.innerHTML = top +
+      '<div id="insights-more" class="insights-more" hidden>' + more + '</div>' +
+      '<button type="button" class="btn ghost list-more" id="insights-more-btn">Show all insights</button>';
+    var moreBtn = document.getElementById("insights-more-btn");
+    if (moreBtn) moreBtn.addEventListener("click", function () {
+      var m = document.getElementById("insights-more");
+      var open = m.hidden;
+      m.hidden = !open;
+      moreBtn.textContent = open ? "Show less" : "Show all insights";
+    });
 
     // Community benchmark lines fill in asynchronously (cached per session)
     // — insights rendering NEVER waits on the network.

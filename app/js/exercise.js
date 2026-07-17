@@ -336,9 +336,10 @@ OF.exercise = (function () {
         'value="' + U.esc(s.wRaw) + '" data-ex="' + i + '" data-set="' + j + '" data-field="w" ' +
         'placeholder="bodyweight" aria-label="Set ' + (j + 1) + ' weight (' + unit + ')">' +
       '<span class="set-x">' + U.esc(unit) + ' &times;</span>' +
-      '<input type="number" inputmode="numeric" step="1" min="1" max="100" ' +
+      '<span class="set-reps-wrap"><input type="number" inputmode="numeric" step="1" min="1" max="100" ' +
         'value="' + U.esc(s.rRaw) + '" data-ex="' + i + '" data-set="' + j + '" data-field="r" ' +
-        'placeholder="reps" aria-label="Set ' + (j + 1) + ' reps">' +
+        'placeholder="reps" aria-label="Set ' + (j + 1) + ' reps' + (s.rpe ? ', RPE ' + s.rpe : '') + '">' +
+        (s.rpe ? '<span class="set-rpe">@' + s.rpe + '</span>' : '') + '</span>' +
       '<button type="button" class="btn set-done' + (s.done ? ' on' : '') + '" data-act="done-set" data-ex="' + i +
         '" data-set="' + j + '" aria-label="Mark set ' + (j + 1) + (s.done ? ' not done' : ' done') +
         '" aria-pressed="' + (s.done ? 'true' : 'false') + '">✓</button>' +
@@ -356,15 +357,25 @@ OF.exercise = (function () {
     }
     builderHost.innerHTML = exList.map(function (ex, i) {
       var rows = ex.sets.map(function (s, j) { return setRowHtml(i, j, s, unit); }).join("");
+      var mv = exList.length > 1
+        ? '<button type="button" class="btn ex-move" data-act="move-ex" data-dir="-1" data-ex="' + i +
+            '" aria-label="Move ' + U.esc(ex.name) + ' up"' + (i === 0 ? ' disabled' : '') + '>\u2191</button>' +
+          '<button type="button" class="btn ex-move" data-act="move-ex" data-dir="1" data-ex="' + i +
+            '" aria-label="Move ' + U.esc(ex.name) + ' down"' + (i === exList.length - 1 ? ' disabled' : '') + '>\u2193</button>'
+        : '';
       return '<div class="ex-item">' +
         '<div class="ex-item-head">' +
           '<span class="ex-item-name">' + U.esc(ex.name) + '</span>' +
+          mv +
           '<button type="button" class="btn ex-rest-chip" data-act="ex-rest" data-ex="' + i +
             '" aria-label="Rest after ' + U.esc(ex.name) + ' sets — tap to change">⏱ ' +
             fmtRest(restSecFor(ex.name)) + '</button>' +
+          '<button type="button" class="btn ex-swap" data-act="swap-ex" data-ex="' + i +
+            '" aria-label="Swap ' + U.esc(ex.name) + ' for a similar exercise">Swap</button>' +
           '<button type="button" class="btn set-del" data-act="del-ex" data-ex="' + i +
             '" aria-label="Remove ' + U.esc(ex.name) + '">Remove</button>' +
         '</div>' +
+        '<div class="ex-swap-row" id="ex-swap-row-' + i + '" hidden></div>' +
         (ex.rx ? '<div class="ex-rx">Target: ' + U.esc(ex.rx) + '</div>' : '') +
         (ex.prefilled ? '<div class="ex-prefill-hint">' +
           (ex.rx ? 'From your plan — log what you actually do.'   // plan session: don't claim a "last session" that may never have happened
@@ -377,6 +388,29 @@ OF.exercise = (function () {
         '</div>' +
         '</div>';
     }).join("");
+  }
+
+  /** Inline same-muscle-group alternatives for a TODAY-ONLY swap (the
+      program itself is untouched — this is "my knee hurts right now"). */
+  function toggleSwapRow(i) {
+    var ex = exList[i];
+    var row = document.getElementById("ex-swap-row-" + i);
+    if (!ex || !row) return;
+    if (!row.hidden) { row.hidden = true; return; }
+    var group = OF.exerciseLibrary ? OF.exerciseLibrary.muscleGroupFor(ex.name) : null;
+    var names = [];
+    if (group && OF.exerciseLibrary) {
+      OF.exerciseLibrary.all().forEach(function (e) {
+        var g = OF.exerciseLibrary.muscleGroupFor(e.name);
+        if (g === group && e.name !== ex.name && names.length < 6) names.push(e.name);
+      });
+    }
+    if (!names.length && OF.exerciseLibrary) names = OF.exerciseLibrary.names().slice(0, 6);
+    row.innerHTML = '<span class="muted small">Swap for:</span>' + names.map(function (n) {
+      return '<button type="button" class="btn mini" data-act="swap-pick" data-ex="' + i +
+        '" data-name="' + U.esc(n) + '">' + U.esc(n) + '</button>';
+    }).join("");
+    row.hidden = false;
   }
 
   /* One tap builds the ramp lifters compute in their heads: empty bar x10,
@@ -420,6 +454,35 @@ OF.exercise = (function () {
     var act = btn.getAttribute("data-act");
     if (act === "warmup") { addWarmup(parseInt(btn.getAttribute("data-ex"), 10)); return true; }
     if (act === "ex-rest") { cycleExRest(parseInt(btn.getAttribute("data-ex"), 10)); return true; }
+    if (act === "move-ex") {
+      // superset-friendly reordering — before this, reordering meant
+      // remove-and-retype (user-panel finding)
+      var mi = parseInt(btn.getAttribute("data-ex"), 10);
+      var dir = parseInt(btn.getAttribute("data-dir"), 10);
+      var mj = mi + dir;
+      if (exList[mi] && exList[mj]) {
+        var tmp = exList[mi]; exList[mi] = exList[mj]; exList[mj] = tmp;
+        saveActive(); renderBuilder();
+      }
+      return true;
+    }
+    if (act === "swap-ex") { toggleSwapRow(parseInt(btn.getAttribute("data-ex"), 10)); return true; }
+    if (act === "swap-pick") {
+      var si = parseInt(btn.getAttribute("data-ex"), 10);
+      var to = btn.getAttribute("data-name");
+      var sx = exList[si];
+      if (sx && to) {
+        var from = sx.name;
+        sx.name = to;
+        // last-session weights for the NEW lift if we have them, else keep
+        // the rows (weights editable) — never lose set count mid-workout
+        var prev = lastSetsFor(to);
+        if (prev && prev.length) { sx.sets = prev.map(function (ps) { return { w: ps.w, r: ps.r, done: false }; }); sx.prefilled = true; }
+        saveActive(); renderBuilder();
+        U.toast("Swapped " + from + " \u2192 " + to + " for today.", "ok");
+      }
+      return true;
+    }
     if (act !== "add-set" && act !== "del-set" && act !== "del-ex" && act !== "done-set") return false;
     var i = parseInt(btn.getAttribute("data-ex"), 10);
     var ex = exList[i];
@@ -512,7 +575,9 @@ OF.exercise = (function () {
             return { err: ex.name + ", set " + (j + 1) + ": weight must be between 0 and " + U.fmtWeight(500, 0) + "." };
           }
         }
-        sets.push({ weightKg: kg, reps: s.reps });
+        var savedSet = { weightKg: kg, reps: s.reps };
+        if (s.rpe >= 6 && s.rpe <= 10) savedSet.rpe = s.rpe;
+        sets.push(savedSet);
       }
       if (sets.length) out.push({ name: ex.name.trim().slice(0, 80), sets: sets });
     }
@@ -647,15 +712,27 @@ OF.exercise = (function () {
     if (!el) {
       el = document.createElement("div");
       el.id = "stepper-strip";
-      el.innerHTML = '<button type="button" data-step="-1" aria-label="Decrease">−</button>' +
+      el.innerHTML = '<div class="stepper-main">' +
+        '<button type="button" data-step="-1" aria-label="Decrease">−</button>' +
         '<span class="stepper-lbl"></span>' +
-        '<button type="button" data-step="1" aria-label="Increase">+</button>';
+        '<button type="button" data-step="1" aria-label="Increase">+</button></div>' +
+        '<div class="stepper-rpe" hidden><span class="rpe-lbl">RPE</span>' +
+          [7, 8, 9, 10].map(function (n) {
+            return '<button type="button" data-rpe="' + n + '" aria-label="Rate set RPE ' + n + '">@' + n + '</button>';
+          }).join("") + '</div>';
       // mousedown (not click) + preventDefault so the input keeps focus
       el.addEventListener("mousedown", function (ev) {
         var b = ev.target.closest("[data-step]");
-        if (!b) return;
-        ev.preventDefault();
-        applyStep(parseInt(b.getAttribute("data-step"), 10));
+        if (b) {
+          ev.preventDefault();
+          applyStep(parseInt(b.getAttribute("data-step"), 10));
+          return;
+        }
+        var rb = ev.target.closest("[data-rpe]");
+        if (rb) {
+          ev.preventDefault();
+          applyRpe(parseInt(rb.getAttribute("data-rpe"), 10));
+        }
       });
       document.body.appendChild(el);
     }
@@ -709,7 +786,44 @@ OF.exercise = (function () {
     el.querySelector(".stepper-lbl").textContent = isReps
       ? "± 1 rep"
       : "± " + stepSizeFor(inp) + " " + U.weightUnit() + plateHint(U.numOrNull(inp.value));
+    // powerlifters rate their top sets: RPE chips ride the strip when a
+    // reps field is focused (no room in the 375px set grid itself)
+    var rpeRow = el.querySelector(".stepper-rpe");
+    if (rpeRow) {
+      rpeRow.hidden = !isReps;
+      if (isReps) {
+        var ex = exList[parseInt(inp.getAttribute("data-ex"), 10)];
+        var st = ex && ex.sets[parseInt(inp.getAttribute("data-set"), 10)];
+        rpeRow.querySelectorAll("[data-rpe]").forEach(function (b) {
+          b.classList.toggle("rpe-on", !!(st && st.rpe === parseInt(b.getAttribute("data-rpe"), 10)));
+        });
+      }
+    }
     el.hidden = false;
+  }
+
+  /** Tap @N on the strip: stamp/unstamp the focused set's RPE. */
+  function applyRpe(n) {
+    if (!stepperTarget) return;
+    var ex = exList[parseInt(stepperTarget.getAttribute("data-ex"), 10)];
+    var st = ex && ex.sets[parseInt(stepperTarget.getAttribute("data-set"), 10)];
+    if (!st) return;
+    st.rpe = st.rpe === n ? null : n;
+    saveActive();
+    updateStepper(stepperTarget);
+    // badge in the row updates without a full re-render (keeps focus)
+    var row = stepperTarget.closest(".set-row");
+    if (row) {
+      var badge = row.querySelector(".set-rpe");
+      if (st.rpe) {
+        if (!badge) {
+          badge = document.createElement("span");
+          badge.className = "set-rpe";
+          stepperTarget.parentNode && stepperTarget.parentNode.appendChild(badge);
+        }
+        badge.textContent = "@" + st.rpe;
+      } else if (badge) badge.remove();
+    }
   }
 
   /* ---------------- rest countdown (auto-starts when a set is marked done) ----------------

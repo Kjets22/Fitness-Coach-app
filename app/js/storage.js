@@ -300,7 +300,10 @@ OF.storage = (function () {
           if (w < 0) w = 0;
           if (w > 500) w = 500;
         }
-        sets.push({ weightKg: w, reps: reps });
+        var normSet = { weightKg: w, reps: reps };
+        var rpe = coerceNum(s.rpe);                    // optional effort rating
+        if (rpe != null && rpe >= 6 && rpe <= 10) normSet.rpe = Math.round(rpe * 2) / 2;
+        sets.push(normSet);
       }
       if (sets.length) out.push({ name: name, sets: sets });
     }

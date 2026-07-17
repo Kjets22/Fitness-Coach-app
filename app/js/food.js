@@ -43,6 +43,9 @@ OF.food = (function () {
     els.name.setAttribute("list", "food-name-options");
     els.name.addEventListener("input", onNameInput);
     els.name.addEventListener("change", onNameInput);
+    var sm = document.getElementById("food-serv-minus"), sp = document.getElementById("food-serv-plus");
+    if (sm) sm.addEventListener("click", function () { servStep(-0.5); });
+    if (sp) sp.addEventListener("click", function () { servStep(0.5); });
     refreshNameOptions();
     if (els.summary) {
       els.summary.setAttribute("title", "Tap to edit your latest meal");
@@ -135,6 +138,7 @@ OF.food = (function () {
         return;
       }
       setDefaults();
+      servReset();
       U.toast("Meal logged.", "ok");
     }
     renderList();
@@ -286,26 +290,74 @@ OF.food = (function () {
       if ((hist[i].foodName || "").trim().toLowerCase() === k) { hit = hist[i]; break; }
     }
     if (!hit && OF.foodDB) hit = OF.foodDB.find(k);
-    if (!hit) { if (autoFilled) { els.calories.value = ""; els.protein.value = ""; els.carbs.value = ""; els.fat.value = ""; autoFilled = false; } return; }
+    // no exact match: a UNIQUE substring match is safe to autofill (user
+    // testing: exact-only meant "spelled slightly differently = retype all
+    // four macros"). Ambiguous matches stay blank on purpose.
+    if (!hit && k.length >= 3) {
+      var subs = [], seenN = Object.create(null);
+      for (var j = 0; j < hist.length; j++) {
+        var n = (hist[j].foodName || "").trim().toLowerCase();
+        if (n.indexOf(k) !== -1 && !seenN[n]) { seenN[n] = true; subs.push(hist[j]); }
+      }
+      if (OF.foodDB) OF.foodDB.all().forEach(function (f) {
+        var n = f.name.toLowerCase();
+        if (n.indexOf(k) !== -1 && !seenN[n]) { seenN[n] = true; subs.push(f); }
+      });
+      if (subs.length === 1) hit = subs[0];
+    }
+    if (!hit) { if (autoFilled) { els.calories.value = ""; els.protein.value = ""; els.carbs.value = ""; els.fat.value = ""; autoFilled = false; } servReset(); return; }
     els.calories.value = hit.calories != null ? hit.calories : "";
     els.protein.value = hit.protein != null ? hit.protein : "";
     els.carbs.value = hit.carbs != null ? hit.carbs : "";
     els.fat.value = hit.fat != null ? hit.fat : "";
     autoFilled = true;
+    servShow();
+  }
+
+  /* ---- servings stepper: scales the four macro fields (base x N) ---- */
+  var servN = 1, servBase = null;
+
+  function servCapture() {
+    servBase = {
+      calories: U.numOrNull(els.calories.value), protein: U.numOrNull(els.protein.value),
+      carbs: U.numOrNull(els.carbs.value), fat: U.numOrNull(els.fat.value)
+    };
+  }
+  function servShow() { servN = 1; servCapture(); servRender(); var row = document.getElementById("food-serv-row"); if (row) row.hidden = false; }
+  function servReset() { servN = 1; servBase = null; servRender(); var row = document.getElementById("food-serv-row"); if (row) row.hidden = true; }
+  function servRender() { var v = document.getElementById("food-serv-val"); if (v) v.textContent = (servN % 1 ? servN.toFixed(1) : String(servN)); }
+  function servApply() {
+    if (!servBase) return;
+    ["calories", "protein", "carbs", "fat"].forEach(function (kk) {
+      var b = servBase[kk];
+      els[kk].value = b != null ? Math.round(b * servN * 10) / 10 : "";
+    });
+    autoFilled = true;   // scaled values are still "ours" to replace on a new pick
+  }
+  function servStep(d) {
+    if (!servBase) servCapture();
+    servN = Math.min(10, Math.max(0.5, Math.round((servN + d) * 2) / 2));
+    servRender(); servApply();
   }
 
   function renderRecent() {
     var host = document.getElementById("food-recent");
     if (!host) return;
-    var seen = Object.create(null), chips = [];
+    // rank by HOW OFTEN you eat it (last 30 days), newest as tiebreak — a
+    // daily staple must never fall off the row just because today was varied
+    var cutoff = U.todayISO(-30);
+    var counts = Object.create(null), newestOf = Object.create(null);
     var arr = S.getAll("food").slice().sort(U.byNewest);
-    for (var i = 0; i < arr.length && chips.length < 8; i++) {
-      var r = arr[i];
+    arr.forEach(function (r) {
       var k = (r.foodName || "").trim().toLowerCase();
-      if (!k || seen[k]) continue;
-      seen[k] = true;
-      chips.push(r);
-    }
+      if (!k) return;
+      if (r.date >= cutoff) counts[k] = (counts[k] || 0) + 1;
+      if (!newestOf[k]) newestOf[k] = r;
+    });
+    var chips = Object.keys(newestOf)
+      .sort(function (a, b) { return (counts[b] || 0) - (counts[a] || 0); })
+      .slice(0, 8)
+      .map(function (k) { return newestOf[k]; });
     // "Copy yesterday": when today is unlogged and yesterday wasn't, one tap
     // re-logs the whole day — most days eat like the day before.
     var today = U.todayISO(), yday = U.todayISO(-1);

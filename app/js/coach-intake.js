@@ -38,6 +38,7 @@ OF.intake = (function () {
   var STEPS = [
     {
       id: "goal",
+      when: function (st) { return st.goal == null; },   // onboarding may have answered this already — never ask twice
       say: function () {
         return "Let's set up your coaching — quick setup takes about 30 seconds, the full version 3\u20134 minutes, and everything you tell me shapes your plan. First: what's the main thing you want your body to do?";
       },
@@ -53,8 +54,11 @@ OF.intake = (function () {
     },
     {
       id: "setup-depth",
-      say: function () {
-        return "Want the quick version or the works? Quick asks only the essentials and builds your plan in about 30 seconds. Full adds your preferences, schedule and recovery for a more tailored plan — you can always fine-tune later either way.";
+      say: function (st) {
+        var hello = st.goal && !history.length
+          ? "Let's set up your coaching \u2014 I already know your goal from setup, so this is even faster. "
+          : "";
+        return hello + "Want the quick version or the works? Quick asks only the essentials and builds your plan in about 30 seconds. Full adds your preferences, schedule and recovery for a more tailored plan — you can always fine-tune later either way.";
       },
       input: { kind: "chips", options: [
         { label: "\u26a1 Quick — just the essentials", value: true },
@@ -706,6 +710,16 @@ OF.intake = (function () {
   function start() {
     state = {};
     history = [];
+    // seed the goal from what the app already knows (onboarding's goal card)
+    // so the interview opens on question 2 instead of re-asking — the #1
+    // "asked me twice" complaint from first-run testing
+    try {
+      var gi = OF.goals ? OF.goals.info() : null;
+      var t = gi && gi.goal ? gi.goal.type : null;
+      var rev = { "lean-bulk": "muscle", cut: "fat-loss", performance: "strength",
+        recomp: "recomp", maintain: "health" };
+      if (t && rev[t]) state.goal = rev[t];
+    } catch (e) {}
     lastFocus = document.activeElement;
     var o = overlay();
     o.classList.add("open");

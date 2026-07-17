@@ -1,4 +1,8 @@
-# OptimalFit 1.4.1 (build 24) — App Store resubmission kit
+# OptimalFit — App Store resubmission kit (UPLOAD 1.6.0 build 28)
+
+> **Upload the newest archive: `OptimalFit-1.6.0-build28`** — it contains the
+> compliance fixes (consent, privacy manifest) PLUS the redesign, widgets,
+> haptics, and the full user-ready sprint. The 1.4.x archives are superseded.
 
 Everything for the resubmission after the July 16 rejection of 1.0 (3).
 All copy-paste text lives in `store/app-store-listing.md` (updated 2026-07-17).
@@ -13,10 +17,10 @@ All copy-paste text lives in `store/app-store-listing.md` (updated 2026-07-17).
 ## Submission steps (your ~20 minutes)
 
 1. **Upload the build** — Xcode → Window → **Organizer** → Archives → select
-   **OptimalFit-1.4.1-build24** (already there, dated today) → **Distribute App**
+   **OptimalFit-1.6.0-build28** (newest in the list) → **Distribute App**
    → App Store Connect → Upload → accept defaults (this creates the missing
    Distribution certificate with your Apple ID; approve any keychain prompt).
-2. **App Store Connect → OptimalFit → + Version 1.4.1**
+2. **App Store Connect → OptimalFit → + Version 1.6.0**
    - Paste **What's New**, description, promotional text from `app-store-listing.md`.
    - Select the uploaded build 24 once it finishes processing (~15 min).
 3. **App Privacy** — re-answer using the updated table in `app-store-listing.md`

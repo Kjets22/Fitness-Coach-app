@@ -309,6 +309,15 @@ OF.goals = (function () {
           "/week target) — no calorie change needed right now.") + '</p>';
     }
 
+    // one-tap goal switch — flipping cut<->bulk used to mean digging into
+    // the full edit form past height/age/sex (user-panel finding)
+    var SWITCH = [["cut", "Cut"], ["maintain", "Maintain"], ["lean-bulk", "Lean bulk"], ["recomp", "Recomp"]];
+    html += '<div class="goal-switch-row"><span class="muted small">Switch:</span>' +
+      SWITCH.map(function (t) {
+        var on = (goal.type || "") === t[0];
+        return '<button type="button" class="btn mini goal-switch' + (on ? ' goal-switch-on' : '') +
+          '" data-goal-switch="' + t[0] + '"' + (on ? ' disabled' : '') + '>' + t[1] + '</button>';
+      }).join("") + '</div>';
     html += '<div class="form-actions">' +
       '<button type="button" class="btn mini" id="goal-edit">Edit goal</button>' +
       '<button type="button" class="btn mini danger" id="goal-delete">Remove goal</button>' +
@@ -478,12 +487,14 @@ OF.goals = (function () {
       activity: activity
     };
 
-    var ok;
+    var ok, typeChanged = false;
     if (existing) {
-      // Changing goal TYPE resets the adaptation history (old calorie
-      // nudges belonged to the old goal) and restarts progress from today.
+      // Changing goal TYPE restarts progress display from today but KEEPS
+      // the adaptation history: those nudges correct the MAINTENANCE
+      // estimate, which is goal-independent — wiping them made every
+      // cut<->bulk flip forget weeks of learned truth (user-panel finding).
       if (existing.type !== type) {
-        clearAdjustments();
+        typeChanged = true;
         rec.date = U.todayISO();
       }
       ok = S.update("goal", existing.id, rec);
@@ -492,10 +503,38 @@ OF.goals = (function () {
     }
     if (!ok) { showFormError("Could not save — browser storage is full or blocked."); return; }
 
+    // SINGLE SOURCE OF TRUTH: the goal record is canonical; mirror the type
+    // into the coach profile so the coach never nags about a "changed goal"
+    // it wasn't told about (the two stores used to drift apart).
+    syncProfileGoal(type);
+
     editing = false;
     refresh();
     if (OF.insights) OF.insights.refresh();
     if (OF.dashboard) OF.dashboard.refresh();
+
+    // the program's rep schemes were built for the OLD goal — offer the
+    // one-tap rebuild instead of leaving cut-style programming on a bulk
+    if (typeChanged && OF.trainer && OF.trainer.hasProgram && OF.trainer.hasProgram()) {
+      U.toast("Goal switched. Rebuild your training program to match it?", "ok", {
+        label: "Rebuild",
+        fn: function () {
+          try {
+            OF.trainer.regenerate();
+            if (OF.trainer.refresh) OF.trainer.refresh();
+            if (OF.dashboard) OF.dashboard.refresh();
+            U.toast("Program rebuilt for your new goal.", "ok");
+          } catch (e) { U.toast("Could not rebuild — open the Coach tab and use the check-in.", "warn"); }
+        }
+      });
+    }
+  }
+
+  /** Mirror the canonical goal type into the coach profile (quietly). */
+  function syncProfileGoal(type) {
+    try {
+      if (OF.profile && OF.profile.update) OF.profile.update({ goals: { appGoalType: type } }, "goal-card");
+    } catch (e) { /* profile module absent on some builds — non-fatal */ }
   }
 
   function clearAdjustments() {
@@ -503,6 +542,42 @@ OF.goals = (function () {
   }
 
   function onAreaClick(evt) {
+    var sw = evt.target.closest("[data-goal-switch]");
+    if (sw) {
+      var g0 = activeGoal();
+      var newType = sw.getAttribute("data-goal-switch");
+      if (g0 && newType && g0.type !== newType) {
+        var rec0 = Object.assign({}, g0, { type: newType, date: U.todayISO() });
+        delete rec0.id;
+        // amount only makes sense for cut/lean-bulk; keep it when still valid
+        if (newType !== "cut" && newType !== "lean-bulk") rec0.amountKg = null;
+        if (S.update("goal", g0.id, rec0)) {
+          syncProfileGoal(newType);
+          refresh();
+          if (OF.insights) OF.insights.refresh();
+          if (OF.dashboard) OF.dashboard.refresh();
+          if (OF.haptics) OF.haptics.light();
+          if (OF.trainer && OF.trainer.hasProgram && OF.trainer.hasProgram()) {
+            U.toast("Goal switched. Rebuild your training program to match it?", "ok", {
+              label: "Rebuild",
+              fn: function () {
+                try {
+                  OF.trainer.regenerate();
+                  if (OF.trainer.refresh) OF.trainer.refresh();
+                  if (OF.dashboard) OF.dashboard.refresh();
+                  U.toast("Program rebuilt for your new goal.", "ok");
+                } catch (e) { U.toast("Could not rebuild — open the Coach tab and use the check-in.", "warn"); }
+              }
+            });
+          } else {
+            U.toast("Goal switched — targets updated instantly.", "ok");
+          }
+        } else {
+          U.toast("Could not switch the goal — storage is full or blocked.", "warn");
+        }
+      }
+      return;
+    }
     var tgt = evt.target;
     if (tgt.id === "goal-edit") {
       editing = true;

@@ -173,6 +173,7 @@ OF.app = (function () {
 
   function init() {
     try { if (OF.cloudSync) OF.cloudSync.init(); } catch (e) {}   // reflects sign-in/out without a manual refresh
+    try { if (OF.widgetSync) OF.widgetSync.init(); } catch (e) {}  // home-screen widgets (water quick-log + today overview)
     // Segmented rating pills replace the <select data-seg> controls
     // BEFORE tracker init so their defaults render onto the pills.
     if (OF.ui) OF.ui.initSegs(document);

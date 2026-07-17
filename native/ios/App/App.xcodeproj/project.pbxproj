@@ -7,7 +7,6 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		7F9C0FF22E0000020000AB02 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 7F9C0FF12E0000010000AB01 /* PrivacyInfo.xcprivacy */; };
 		2FAD9763203C412B000D30F8 /* config.xml in Resources */ = {isa = PBXBuildFile; fileRef = 2FAD9762203C412B000D30F8 /* config.xml */; };
 		4D22ABE92AF431CB00220026 /* CapApp-SPM in Frameworks */ = {isa = PBXBuildFile; productRef = 4D22ABE82AF431CB00220026 /* CapApp-SPM */; };
 		50379B232058CBB4000EE86E /* capacitor.config.json in Resources */ = {isa = PBXBuildFile; fileRef = 50379B222058CBB4000EE86E /* capacitor.config.json */; };
@@ -16,9 +15,40 @@
 		504EC30F1FED79650016851F /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 504EC30E1FED79650016851F /* Assets.xcassets */; };
 		504EC3121FED79650016851F /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 504EC3101FED79650016851F /* LaunchScreen.storyboard */; };
 		50B271D11FEDC1A000F3C39B /* public in Resources */ = {isa = PBXBuildFile; fileRef = 50B271D01FEDC1A000F3C39B /* public */; };
+		5186788D5437F1F3E6D9FF44 /* OptimalFitWidgets.swift in Sources */ = {isa = PBXBuildFile; fileRef = B35127CC553AA13A88BCA1AE /* OptimalFitWidgets.swift */; };
+		5E95F29336B99DDA2F85AF34 /* MainViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 75FC1A891EFC4E07911AE9E1 /* MainViewController.swift */; };
+		7F9C0FF22E0000020000AB02 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 7F9C0FF12E0000010000AB01 /* PrivacyInfo.xcprivacy */; };
+		C22E2ADC1A3E6777C6C18A44 /* WidgetBridgePlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = F215239354BB2ED1F01834CB /* WidgetBridgePlugin.swift */; };
+		E843470814FDA2A4C1E628E6 /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 9C34B66EBB15E14EE6054877 /* Foundation.framework */; };
+		EE731B44E48BDCD108A6E423 /* OptimalFitWidgets.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = D6CEFC1796FE0A24D653BA84 /* OptimalFitWidgets.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 /* End PBXBuildFile section */
 
+/* Begin PBXContainerItemProxy section */
+		604C3C0A76EF0A3EC076F56D /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 504EC2FC1FED79650016851F /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = AD7A81E56EB16EA5585F114B;
+			remoteInfo = OptimalFitWidgets;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		E42576FC462F9A431BF36511 /* Embed Foundation Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				EE731B44E48BDCD108A6E423 /* OptimalFitWidgets.appex in Embed Foundation Extensions */,
+			);
+			name = "Embed Foundation Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
+
 /* Begin PBXFileReference section */
+		10338DFDD6A5F67C0D74DBA1 /* OptimalFitWidgets.entitlements */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.entitlements; path = OptimalFitWidgets.entitlements; sourceTree = "<group>"; };
 		2FAD9762203C412B000D30F8 /* config.xml */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = config.xml; sourceTree = "<group>"; };
 		50379B222058CBB4000EE86E /* capacitor.config.json */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.json; path = capacitor.config.json; sourceTree = "<group>"; };
 		504EC3041FED79650016851F /* App.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = App.app; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -27,9 +57,16 @@
 		504EC30E1FED79650016851F /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		504EC3111FED79650016851F /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; name = Base; path = Base.lproj/LaunchScreen.storyboard; sourceTree = "<group>"; };
 		504EC3131FED79650016851F /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
-		7F9C0FF12E0000010000AB01 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		50B271D01FEDC1A000F3C39B /* public */ = {isa = PBXFileReference; lastKnownFileType = folder; path = public; sourceTree = "<group>"; };
+		551EB3E8EB80F60A82BD25E4 /* App.entitlements */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.entitlements; path = App.entitlements; sourceTree = "<group>"; };
+		75FC1A891EFC4E07911AE9E1 /* MainViewController.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = MainViewController.swift; sourceTree = "<group>"; };
+		7F9C0FF12E0000010000AB01 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
+		80541F5B4FD29E368CD7E380 /* Info.plist */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		958DCC722DB07C7200EA8C5F /* debug.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; name = debug.xcconfig; path = ../debug.xcconfig; sourceTree = SOURCE_ROOT; };
+		9C34B66EBB15E14EE6054877 /* Foundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Foundation.framework; path = Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS26.0.sdk/System/Library/Frameworks/Foundation.framework; sourceTree = DEVELOPER_DIR; };
+		B35127CC553AA13A88BCA1AE /* OptimalFitWidgets.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = OptimalFitWidgets.swift; sourceTree = "<group>"; };
+		D6CEFC1796FE0A24D653BA84 /* OptimalFitWidgets.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = OptimalFitWidgets.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		F215239354BB2ED1F01834CB /* WidgetBridgePlugin.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = WidgetBridgePlugin.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -41,15 +78,33 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		E61580A777E805B32E7372D5 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				E843470814FDA2A4C1E628E6 /* Foundation.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		34FC39480092DBC50A8DA49B /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				7BE39C3C1FBE6EC01180275B /* iOS */,
+			);
+			name = Frameworks;
+			sourceTree = "<group>";
+		};
 		504EC2FB1FED79650016851F = {
 			isa = PBXGroup;
 			children = (
 				958DCC722DB07C7200EA8C5F /* debug.xcconfig */,
 				504EC3061FED79650016851F /* App */,
 				504EC3051FED79650016851F /* Products */,
+				34FC39480092DBC50A8DA49B /* Frameworks */,
+				B0067845460F51E3F1F5088A /* OptimalFitWidgets */,
 			);
 			sourceTree = "<group>";
 		};
@@ -57,6 +112,7 @@
 			isa = PBXGroup;
 			children = (
 				504EC3041FED79650016851F /* App.app */,
+				D6CEFC1796FE0A24D653BA84 /* OptimalFitWidgets.appex */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -73,8 +129,30 @@
 				7F9C0FF12E0000010000AB01 /* PrivacyInfo.xcprivacy */,
 				2FAD9762203C412B000D30F8 /* config.xml */,
 				50B271D01FEDC1A000F3C39B /* public */,
+				F215239354BB2ED1F01834CB /* WidgetBridgePlugin.swift */,
+				75FC1A891EFC4E07911AE9E1 /* MainViewController.swift */,
+				551EB3E8EB80F60A82BD25E4 /* App.entitlements */,
 			);
 			path = App;
+			sourceTree = "<group>";
+		};
+		7BE39C3C1FBE6EC01180275B /* iOS */ = {
+			isa = PBXGroup;
+			children = (
+				9C34B66EBB15E14EE6054877 /* Foundation.framework */,
+			);
+			name = iOS;
+			sourceTree = "<group>";
+		};
+		B0067845460F51E3F1F5088A /* OptimalFitWidgets */ = {
+			isa = PBXGroup;
+			children = (
+				B35127CC553AA13A88BCA1AE /* OptimalFitWidgets.swift */,
+				80541F5B4FD29E368CD7E380 /* Info.plist */,
+				10338DFDD6A5F67C0D74DBA1 /* OptimalFitWidgets.entitlements */,
+			);
+			name = OptimalFitWidgets;
+			path = OptimalFitWidgets;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -87,10 +165,12 @@
 				504EC3001FED79650016851F /* Sources */,
 				504EC3011FED79650016851F /* Frameworks */,
 				504EC3021FED79650016851F /* Resources */,
+				E42576FC462F9A431BF36511 /* Embed Foundation Extensions */,
 			);
 			buildRules = (
 			);
 			dependencies = (
+				31FB21692F63EB26AE705950 /* PBXTargetDependency */,
 			);
 			name = App;
 			packageProductDependencies = (
@@ -99,6 +179,23 @@
 			productName = App;
 			productReference = 504EC3041FED79650016851F /* App.app */;
 			productType = "com.apple.product-type.application";
+		};
+		AD7A81E56EB16EA5585F114B /* OptimalFitWidgets */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 629F1C1111F3CFA705168860 /* Build configuration list for PBXNativeTarget "OptimalFitWidgets" */;
+			buildPhases = (
+				660C938BD02971BEFB105585 /* Sources */,
+				E61580A777E805B32E7372D5 /* Frameworks */,
+				6083A63DE116701C23831B71 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = OptimalFitWidgets;
+			productName = OptimalFitWidgets;
+			productReference = D6CEFC1796FE0A24D653BA84 /* OptimalFitWidgets.appex */;
+			productType = "com.apple.product-type.app-extension";
 		};
 /* End PBXNativeTarget section */
 
@@ -133,6 +230,7 @@
 			projectRoot = "";
 			targets = (
 				504EC3031FED79650016851F /* App */,
+				AD7A81E56EB16EA5585F114B /* OptimalFitWidgets */,
 			);
 		};
 /* End PBXProject section */
@@ -152,6 +250,13 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		6083A63DE116701C23831B71 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
@@ -160,10 +265,29 @@
 			buildActionMask = 2147483647;
 			files = (
 				504EC3081FED79650016851F /* AppDelegate.swift in Sources */,
+				C22E2ADC1A3E6777C6C18A44 /* WidgetBridgePlugin.swift in Sources */,
+				5E95F29336B99DDA2F85AF34 /* MainViewController.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		660C938BD02971BEFB105585 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				5186788D5437F1F3E6D9FF44 /* OptimalFitWidgets.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		31FB21692F63EB26AE705950 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			name = OptimalFitWidgets;
+			target = AD7A81E56EB16EA5585F114B /* OptimalFitWidgets */;
+			targetProxy = 604C3C0A76EF0A3EC076F56D /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
 
 /* Begin PBXVariantGroup section */
 		504EC30B1FED79650016851F /* Main.storyboard */ = {
@@ -299,6 +423,7 @@
 			baseConfigurationReference = 958DCC722DB07C7200EA8C5F /* debug.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = App/App.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 20;
 				DEVELOPMENT_TEAM = F62L7PL2GA;
@@ -322,6 +447,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = App/App.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 20;
 				DEVELOPMENT_TEAM = F62L7PL2GA;
@@ -337,6 +463,53 @@
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "";
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Release;
+		};
+		9C0DA335D9DFB30486007669 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = "";
+				CLANG_ENABLE_OBJC_WEAK = NO;
+				CODE_SIGN_ENTITLEMENTS = OptimalFitWidgets/OptimalFitWidgets.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 25;
+				DEVELOPMENT_TEAM = F62L7PL2GA;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = OptimalFitWidgets/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				MARKETING_VERSION = 1.4.2;
+				PRODUCT_BUNDLE_IDENTIFIER = com.optimalfit.app.widgets;
+				PRODUCT_MODULE_NAME = OptimalFitWidgets;
+				PRODUCT_NAME = OptimalFitWidgets;
+				SDKROOT = iphoneos;
+				SKIP_INSTALL = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		CE1525A6B5A0C04E5756DA86 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = "";
+				CLANG_ENABLE_OBJC_WEAK = NO;
+				CODE_SIGN_ENTITLEMENTS = OptimalFitWidgets/OptimalFitWidgets.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 25;
+				DEVELOPMENT_TEAM = F62L7PL2GA;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = OptimalFitWidgets/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				MARKETING_VERSION = 1.4.2;
+				PRODUCT_BUNDLE_IDENTIFIER = com.optimalfit.app.widgets;
+				PRODUCT_MODULE_NAME = OptimalFitWidgets;
+				PRODUCT_NAME = OptimalFitWidgets;
+				SDKROOT = iphoneos;
+				SKIP_INSTALL = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				VALIDATE_PRODUCT = YES;
 			};
 			name = Release;
 		};
@@ -357,6 +530,15 @@
 			buildConfigurations = (
 				504EC3171FED79650016851F /* Debug */,
 				504EC3181FED79650016851F /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		629F1C1111F3CFA705168860 /* Build configuration list for PBXNativeTarget "OptimalFitWidgets" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				CE1525A6B5A0C04E5756DA86 /* Release */,
+				9C0DA335D9DFB30486007669 /* Debug */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;

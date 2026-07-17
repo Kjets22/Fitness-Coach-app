@@ -6,6 +6,13 @@
 	<string>$(CAPACITOR_DEBUG)</string>
 	<key>CFBundleDevelopmentRegion</key>
 	<string>en</string>
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleURLName</key><string>com.optimalfit.app</string>
+			<key>CFBundleURLSchemes</key><array><string>optimalfit</string></array>
+		</dict>
+	</array>
 	<key>CFBundleDisplayName</key>
 	<string>OptimalFit</string>
 	<key>CFBundleExecutable</key>

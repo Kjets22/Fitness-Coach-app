@@ -15,7 +15,7 @@
    ============================================================ */
 
 /* Bump this string when any shell file changes. */
-var VERSION = "v85";
+var VERSION = "v86";
 var CACHE = "optimalfit-shell-" + VERSION;
 
 var SHELL = [
@@ -64,6 +64,7 @@ var SHELL = [
   "./js/cloud-sync.js",
   "./js/ai-consent.js",
   "./js/haptics.js",
+  "./js/widget-sync.js",
   "./js/entitlements.js",
   "./js/social.js",
   "./js/social-profile.js",

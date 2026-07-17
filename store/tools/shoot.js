@@ -209,9 +209,13 @@ async function seedDemo(page) {
   // introSeen BEFORE load so onboarding never fires for the data shots.
   await page.evaluateOnNewDocument(() => {
     try {
-      if (!localStorage.getItem("optimalfit.prefs")) {
-        localStorage.setItem("optimalfit.prefs", JSON.stringify({ introSeen: true }));
-      }
+      // MERGE unconditionally: the persistent Chrome profile carries prefs
+      // from older runs — an if-absent guard left aiConsent forever unset
+      var p = {};
+      try { p = JSON.parse(localStorage.getItem("optimalfit.prefs") || "{}") || {}; } catch (e2) {}
+      p.introSeen = true;
+      p.aiConsent = true;
+      localStorage.setItem("optimalfit.prefs", JSON.stringify(p));
     } catch (e) { /* ignore */ }
   });
   await page.goto(BASE + "/#dashboard", { waitUntil: "load", timeout: 30000 });
@@ -281,11 +285,21 @@ async function captureSize(browser, size) {
   await gotoTab(page, "food");
   await shot(page, size, 3, "food-tracker");
 
-  // 4. Coach — mocked local chat (fetch shim), zero real LLM calls
+  // 4. Coach — mocked local chat (fetch shim), zero real LLM calls.
+  // The tab is premium-gated since Coach 2.0: portray the unlocked
+  // experience (what a trial/premium user sees) by stubbing the check.
+  await page.evaluate(() => {
+    if (OF.entitlements) {
+      OF.entitlements.isPremium = () => true;
+      OF.entitlements.trialDaysLeft = () => null;
+    }
+  });
   await gotoTab(page, "coach");
   await page.waitForSelector(".coach-chip, #coach-input", { timeout: 10000 });
   const clicked = await page.evaluate(() => {
-    const chip = document.querySelector(".coach-chip");
+    // [data-q] = an actual question chip — the first chip can be the
+    // interview/check-in CTA, which opens an overlay instead of chatting
+    const chip = document.querySelector(".coach-chip[data-q]");
     if (chip) { chip.click(); return true; }
     return false;
   });
@@ -296,10 +310,24 @@ async function captureSize(browser, size) {
       document.getElementById("coach-form").dispatchEvent(new Event("submit", { cancelable: true }));
     }, CHIP_QUESTION_FALLBACK);
   }
-  await page.waitForFunction(() => {
-    const b = document.querySelectorAll(".bubble-coach:not(.bubble-thinking)");
-    return b.length > 0;
-  }, { timeout: 15000 });
+  try {
+    await page.waitForFunction(() => {
+      const b = document.querySelectorAll(".bubble-coach:not(.bubble-thinking)");
+      return b.length > 0;
+    }, { timeout: 15000 });
+  } catch (e) {
+    const dbg = await page.evaluate(() => ({
+      consent: !!document.getElementById("ai-consent"),
+      chatHidden: document.getElementById("coach-chat")?.classList.contains("hidden"),
+      status: (document.getElementById("coach-status")?.textContent || "").slice(0, 160),
+      chips: document.querySelectorAll(".coach-chip").length,
+      qChips: document.querySelectorAll(".coach-chip[data-q]").length,
+      thinking: document.querySelectorAll(".bubble-thinking").length,
+      logHtml: (document.getElementById("coach-log")?.textContent || "").slice(0, 160)
+    }));
+    console.log("COACH DEBUG:", JSON.stringify(dbg));
+    throw e;
+  }
   await sleep(400);
   await shot(page, size, 4, "coach-chat");
 

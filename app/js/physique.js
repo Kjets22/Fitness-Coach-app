@@ -119,7 +119,7 @@ OF.physique = (function () {
     if (OF.entitlements && !OF.entitlements.isPremium()) {
       els.area.innerHTML = OF.entitlements.paywallHtml({
         compact: true,
-        title: "\ud83d\udcaa Physique analysis",
+        title: (OF.icons ? OF.icons.get("bodyscan") + " " : "") + "Physique analysis",
         blurb: "AI estimates body composition and muscle development from a photo (analyzed on your device, never stored)."
       });
       OF.entitlements.bindPaywall(els.area, renderButton);

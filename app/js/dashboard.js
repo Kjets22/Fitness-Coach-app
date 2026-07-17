@@ -605,9 +605,9 @@ OF.dashboard = (function () {
       var todayBits = [];
       try {
         var wml = OF.daily && OF.daily.waterTodayMl ? OF.daily.waterTodayMl() : 0;
-        if (wml > 0) todayBits.push("\ud83d\udca7 " + U.esc(U.fmtWater(wml)));
+        if (wml > 0) todayBits.push(OF.icons.get("droplet") + " " + U.esc(U.fmtWater(wml)));
         var sRec = OF.daily && OF.daily.stepsRecordFor ? OF.daily.stepsRecordFor(U.todayISO()) : null;
-        if (sRec && Number(sRec.count) > 0) todayBits.push("\ud83d\udc5f " + Number(sRec.count).toLocaleString() + " steps");
+        if (sRec && Number(sRec.count) > 0) todayBits.push(OF.icons.get("activity") + " " + Number(sRec.count).toLocaleString() + " steps");
       } catch (e) {}
       targetsEl.innerHTML =
         '<div class="card placeholder-card"><h2>Today vs targets</h2>' +

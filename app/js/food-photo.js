@@ -122,7 +122,7 @@ OF.foodPhoto = (function () {
     if (OF.entitlements && !OF.entitlements.isPremium()) {
       els.area.innerHTML = OF.entitlements.paywallHtml({
         compact: true,
-        title: "\ud83d\udcf7 Photo macros",
+        title: (OF.icons ? OF.icons.get("camera") + " " : "") + "Photo macros",
         blurb: "Snap a meal and AI estimates the calories and macros for you."
       });
       OF.entitlements.bindPaywall(els.area, renderButton);

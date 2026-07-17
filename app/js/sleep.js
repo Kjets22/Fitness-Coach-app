@@ -64,7 +64,7 @@ OF.sleep = (function () {
       return d.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
     };
     host.innerHTML = '<div class="recent-chips"><button type="button" class="btn mini" id="sleep-usual">' +
-      "\u26a1 Log usual night: " + U.esc(t12(last.bedTime)) + "\u2192" + U.esc(t12(last.wakeTime)) +
+      (OF.icons ? OF.icons.get("zap") : "") + " Log usual night: " + U.esc(t12(last.bedTime)) + "\u2192" + U.esc(t12(last.wakeTime)) +
       " \u00b7 quality " + (last.quality || 3) + '</button></div>';
     host.querySelector("#sleep-usual").addEventListener("click", function () {
       var dur = U.sleepDurationMin(last.bedTime, last.wakeTime);

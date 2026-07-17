@@ -21,6 +21,10 @@ OF.icons = (function () {
       '<rect x="13.5" y="3.5" width="7" height="7" rx="2"/>' +
       '<rect x="3.5" y="13.5" width="7" height="7" rx="2"/>' +
       '<rect x="13.5" y="13.5" width="7" height="7" rx="2"/>',
+    pencil:
+      '<path d="M17 3a2.85 2.85 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3Z"/>',
+    zap:
+      '<path d="M13 2 3 14h9l-1 8 10-12h-9l1-8Z"/>',
     droplet:
       '<path d="M12 3.2s6 6.2 6 10a6 6 0 1 1-12 0c0-3.8 6-10 6-10Z"/>' +
       '<path d="M9.5 13.5a2.6 2.6 0 0 0 2 2.6"/>',

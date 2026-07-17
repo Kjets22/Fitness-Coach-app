@@ -15,7 +15,7 @@
   /* spacing scale */
   --sp-1: 4px; --sp-2: 8px; --sp-3: 12px; --sp-4: 16px; --sp-5: 24px; --sp-6: 32px;
   /* type scale */
-  --fs-1: 12px; --fs-2: 14px; --fs-3: 16px; --fs-4: 20px; --fs-5: 24px; --fs-6: 32px;
+  --fs-1: 0.75rem; --fs-2: 0.875rem; --fs-3: 1rem; --fs-4: 1.25rem; --fs-5: 1.5rem; --fs-6: 2rem;  /* rem: honors the user's text-size setting */
   /* radius */
   --r-sm: 8px; --r-md: 12px; --r-lg: 16px; --r-full: 999px;
   --radius: var(--r-md); /* legacy alias */
@@ -65,7 +65,7 @@
     --g2: #0891b2;
     --accent: #5851d8;
     --accent-soft: rgba(88, 81, 216, 0.10);
-    --accent-2: #059669;
+    --accent-2: #047857;   /* 4.5:1+ on white (was #059669 at 3.8:1) */
     --accent-2-soft: rgba(5, 150, 105, 0.10);
     --warn: #b45309;
     --warn-soft: rgba(180, 83, 9, 0.10);
@@ -81,13 +81,18 @@
 /* ---------- 2. Base ---------- */
 * { box-sizing: border-box; }
 
+/* Dynamic Type: -apple-system-body makes 1rem track the iOS text-size
+   setting inside WKWebView; the family/line-height are overridden below,
+   only the (dynamic) size survives. */
+@supports (font: -apple-system-body) {
+  html { font: -apple-system-body; }
+}
 html, body {
   margin: 0;
   padding: 0;
   background: var(--bg);
   color: var(--text);
   font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
-  font-size: var(--fs-3);
   line-height: 1.5;
   -webkit-text-size-adjust: 100%;
   /* App-shell layout: the DOCUMENT never scrolls — main.content scrolls
@@ -99,7 +104,7 @@ html, body {
   overflow: hidden;
   overscroll-behavior-y: none;
 }
-body { display: flex; flex-direction: column; }
+body { display: flex; flex-direction: column; font-size: var(--fs-3); }
 body.ob-open { overflow: hidden; }
 
 h1 { font-size: var(--fs-5); font-weight: 750; letter-spacing: -0.02em; margin: var(--sp-2) 0 var(--sp-4); }
@@ -337,7 +342,7 @@ input, select, textarea {
   border-radius: var(--r-sm);
   padding: 10px 12px;
   /* 16px stops iOS Safari/WKWebView from auto-zooming the page on focus */
-  font-size: 16px;
+  font-size: max(16px, 1rem);
   font-weight: 500;
   font-family: inherit;
   width: 100%;
@@ -1097,7 +1102,7 @@ body.metric-modal-open { overflow: hidden; }
 .coach-input-row textarea {
   flex: 1; min-width: 0;
   border-radius: 22px; padding: 12px 16px;
-  font-size: 16px; line-height: 1.4;       /* 16px: iOS won't zoom-jump the focus */
+  font-size: max(16px, 1rem); line-height: 1.4;       /* 16px: iOS won't zoom-jump the focus */
   min-height: 46px; max-height: 132px;      /* grows with the message, ~5 lines */
   resize: none; overflow-y: auto;
   field-sizing: content;                    /* native auto-grow where supported */
@@ -1615,7 +1620,7 @@ body.metric-modal-open { overflow: hidden; }
     border-radius: var(--r-md);
   }
   .nav-btn.active { background: transparent; }
-  .nav-lbl { font-size: 0.62rem; font-weight: 650; letter-spacing: 0.01em; }
+  .nav-lbl { font-size: 0.72rem; font-weight: 650; letter-spacing: 0.01em; }
   .nav-ico { width: auto; }
 
   /* Log = the centered raised circular FAB (the focal "do" action). Lift the
@@ -2707,3 +2712,18 @@ body.kb-open #stepper-strip { bottom: calc(8px + env(safe-area-inset-bottom, 0px
 /* live rest countdown pill: the loudest timer on screen while resting */
 #rest-bar { font-size: 1.05rem; padding: 12px 20px; box-shadow: var(--e3); }
 #rest-bar strong { font-size: 1.25rem; font-variant-numeric: tabular-nums; }
+
+/* ui-ux-pro-max audit: universal reduced-motion (specific rules above stay) */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+/* small inline icons inside chips/buttons follow the text color + size */
+.sheet-quick .ico { width: 18px; height: 18px; vertical-align: -3px; margin-right: 4px; }
+.recent-edit .ico, .recent-chips .ico { width: 13px; height: 13px; vertical-align: -2px; }
+.dash-today-line .ico { width: 14px; height: 14px; vertical-align: -2px; }
+.ent-paywall-mini .ico { width: 15px; height: 15px; vertical-align: -2px; }

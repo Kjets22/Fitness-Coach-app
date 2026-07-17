@@ -314,7 +314,7 @@ OF.food = (function () {
     var yCount = all.filter(function (r) { return r.date === yday; }).length;
     var copyBtn = (!todayHas && yCount > 0)
       ? '<div class="recent-chips"><button type="button" class="btn mini" data-copy-yday>' +
-        "\u26a1 Copy yesterday's meals (" + yCount + ')</button></div>'
+        (OF.icons ? OF.icons.get("zap") : "") + " Copy yesterday's meals (" + yCount + ')</button></div>'
       : "";
     host.innerHTML = copyBtn + (chips.length
       ? '<div class="recent-chips recent-scroll"><span class="recent-lbl">Tap to log again:</span>' +
@@ -322,7 +322,7 @@ OF.food = (function () {
           var nm = U.esc((r.foodName || "").slice(0, 24));
           return '<span class="recent-chip-wrap">' +
             '<button type="button" class="btn mini recent-log" data-recent="' + U.esc(r.id) + '">' + nm + '</button>' +
-            '<button type="button" class="btn mini recent-edit" data-recent-edit="' + U.esc(r.id) + '" aria-label="Edit ' + nm + ' before logging" title="Edit before logging">✎ edit</button>' +
+            '<button type="button" class="btn mini recent-edit" data-recent-edit="' + U.esc(r.id) + '" aria-label="Edit ' + nm + ' before logging" title="Edit before logging">' + (OF.icons ? OF.icons.get("pencil") : "") + ' edit</button>' +
             '</span>';
         }).join("") + '</div>'
       : "");

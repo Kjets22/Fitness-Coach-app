@@ -628,6 +628,7 @@ OF.exercise = (function () {
       cancelRestNotif();   // foreground cue wins — never double-alarm
       if (remainMs >= -3000) {
         playBeep();
+        if (OF.haptics) OF.haptics.medium();
         try { if (navigator.vibrate) navigator.vibrate([120, 80, 120]); } catch (e) { /* iOS ignores */ }
       }
     }
@@ -748,6 +749,7 @@ OF.exercise = (function () {
     restStart = Date.now();
     restDur = restSecFor(exName);        // exercise override, else the timer-card preset
     restCued = false;
+    if (OF.haptics) OF.haptics.light();   // set ticked off — native-feel feedback
     scheduleRestNotif();
   }
 
@@ -1081,6 +1083,7 @@ OF.exercise = (function () {
   }
 
   function showRecap(rec, prs, planResult) {
+    if (OF.haptics) { if (prs && prs.length) OF.haptics.success(); else OF.haptics.light(); }
     var hasPR = prs && prs.length;
     var hasChange = planResult && planResult.changes &&
       planResult.changes.some(function (c) { return c.kind === "added" || c.kind === "deloaded" || c.kind === "seeded"; });
@@ -1665,6 +1668,7 @@ OF.exercise = (function () {
   }
   function finishCue() {
     T.finished = true; playBeep();
+    if (OF.haptics) OF.haptics.medium();
     try { if (navigator.vibrate) navigator.vibrate([120, 80, 120]); } catch (e) { /* iOS ignores */ }
     updateDisplay();
   }

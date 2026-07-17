@@ -155,6 +155,7 @@ OF.body = (function () {
       setDefaults();
     }
     if (r.warn) {
+      if (OF.haptics) OF.haptics.warning();
       // suspected typo: saved, but hand the user the Undo right in the warning
       U.toast(r.warn, "warn", added ? {
         label: "Undo",

@@ -15,7 +15,7 @@
    ============================================================ */
 
 /* Bump this string when any shell file changes. */
-var VERSION = "v82";
+var VERSION = "v83";
 var CACHE = "optimalfit-shell-" + VERSION;
 
 var SHELL = [
@@ -23,6 +23,8 @@ var SHELL = [
   "./index.html",
   "./manifest.webmanifest",
   "./css/style.css",
+  "./fonts/barlow-condensed-600.woff2",
+  "./fonts/barlow-condensed-700.woff2",
   "./js/util.js",
   "./js/icons.js",
   "./js/ui.js",

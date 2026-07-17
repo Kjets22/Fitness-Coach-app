@@ -15,17 +15,18 @@
   /* spacing scale */
   --sp-1: 4px; --sp-2: 8px; --sp-3: 12px; --sp-4: 16px; --sp-5: 24px; --sp-6: 32px;
   /* type scale */
+  --font-display: "Barlow Condensed", "Avenir Next Condensed", "Arial Narrow", system-ui, sans-serif;
   --fs-1: 0.75rem; --fs-2: 0.875rem; --fs-3: 1rem; --fs-4: 1.25rem; --fs-5: 1.5rem; --fs-6: 2rem;  /* rem: honors the user's text-size setting */
   /* radius */
   --r-sm: 8px; --r-md: 12px; --r-lg: 16px; --r-full: 999px;
   --radius: var(--r-md); /* legacy alias */
 
   /* dark theme (hero) */
-  --bg: #0a0e17;
-  --bg-2: #10182a;
-  --card: #131c30;
-  --card-2: #182339;
-  --card-edge: rgba(148, 163, 184, 0.14);
+  --bg: #05070f;         /* cinema-deep, not pure black (OLED smear) */
+  --bg-2: #0b1120;
+  --card: #0f1627;       /* indigo-cast surfaces */
+  --card-2: #16203a;
+  --card-edge: rgba(148, 163, 184, 0.17);
   --text: #e9eef8;
   --text-dim: #8d9bb2;
   --g1: #8b5cf6;              /* gradient start: violet */
@@ -81,6 +82,20 @@
 /* ---------- 2. Base ---------- */
 * { box-sizing: border-box; }
 
+/* Athletic display face (ui-ux-pro-max: Sports/Fitness pairing) — bundled
+   locally, the app stays fully offline. Used for headlines + big numbers;
+   body text stays system-ui for native feel and Dynamic Type. */
+@font-face {
+  font-family: "Barlow Condensed";
+  src: url("../fonts/barlow-condensed-600.woff2") format("woff2");
+  font-weight: 600; font-style: normal; font-display: swap;
+}
+@font-face {
+  font-family: "Barlow Condensed";
+  src: url("../fonts/barlow-condensed-700.woff2") format("woff2");
+  font-weight: 700; font-style: normal; font-display: swap;
+}
+
 /* Dynamic Type: -apple-system-body makes 1rem track the iOS text-size
    setting inside WKWebView; the family/line-height are overridden below,
    only the (dynamic) size survives. */
@@ -107,7 +122,7 @@ html, body {
 body { display: flex; flex-direction: column; font-size: var(--fs-3); }
 body.ob-open { overflow: hidden; }
 
-h1 { font-size: var(--fs-5); font-weight: 750; letter-spacing: -0.02em; margin: var(--sp-2) 0 var(--sp-4); }
+h1 { font-family: var(--font-display); font-size: calc(var(--fs-5) * 1.25); font-weight: 700; letter-spacing: 0.01em; text-transform: uppercase; margin: var(--sp-2) 0 var(--sp-4); }
 h2 { font-size: var(--fs-3); font-weight: 700; letter-spacing: -0.01em; margin: 0 0 var(--sp-3); }
 .muted { color: var(--text-dim); }
 .small { font-size: 0.82rem; }
@@ -297,7 +312,7 @@ h2 { font-size: var(--fs-3); font-weight: 700; letter-spacing: -0.01em; margin: 
   border-radius: var(--r-lg);
   padding: var(--sp-4) 18px;
   margin-bottom: var(--sp-4);
-  box-shadow: var(--e1);
+  box-shadow: var(--e1), inset 0 1px 0 rgba(255, 255, 255, 0.035);
 }
 
 .placeholder-card { border-style: dashed; box-shadow: none; background: transparent; }
@@ -631,11 +646,12 @@ input[type="checkbox"], input[type="radio"] { -webkit-appearance: auto; appearan
   margin: var(--sp-2) 0 var(--sp-5);
 }
 .hero-greet {
-  font-size: clamp(1.35rem, 5vw, var(--fs-6));
-  font-weight: 800;
-  letter-spacing: -0.025em;
+  font-family: var(--font-display);
+  font-size: clamp(1.7rem, 7vw, calc(var(--fs-6) * 1.15));
+  font-weight: 700;
+  letter-spacing: 0.005em;
   margin: 0;
-  line-height: 1.15;
+  line-height: 1.05;
 }
 .hero-date { color: var(--text-dim); font-size: 0.9rem; margin: 4px 0 0; font-weight: 500; }
 .hero-main { min-width: 0; }
@@ -696,7 +712,7 @@ input[type="checkbox"], input[type="radio"] { -webkit-appearance: auto; appearan
 .stat-card:hover { border-color: color-mix(in srgb, var(--accent) 35%, var(--card-edge)); transform: translateY(-1px); box-shadow: var(--e2); }
 .stat-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 .stat-label { color: var(--text-dim); font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; }
-.stat-value { font-size: 1.55rem; font-weight: 750; letter-spacing: -0.02em; margin-top: 4px; }
+.stat-value { font-family: var(--font-display); font-size: 1.9rem; font-weight: 700; letter-spacing: 0.01em; margin-top: 4px; }
 .stat-sub { color: var(--text-dim); font-size: 0.79rem; margin-top: 2px; }
 .stat-value .unit { font-size: 0.9rem; color: var(--text-dim); font-weight: 550; }
 
@@ -1853,7 +1869,8 @@ body.metric-modal-open { overflow: hidden; }
 }
 .wo-elapsed {
   font-variant-numeric: tabular-nums;
-  font-weight: 800; font-size: 1.9rem; letter-spacing: -0.02em;
+  font-family: var(--font-display);
+  font-weight: 700; font-size: 2.3rem; letter-spacing: 0.01em;
   background: var(--grad); -webkit-background-clip: text; background-clip: text; color: transparent;
 }
 .wo-type { min-height: 40px; max-width: 46%; }
@@ -1980,8 +1997,9 @@ body.metric-modal-open { overflow: hidden; }
   background: var(--bg-2);
 }
 .rt-time {
-  font-size: clamp(2.6rem, 14vw, 3.6rem);
-  font-weight: 800;
+  font-family: var(--font-display);
+  font-size: clamp(3rem, 16vw, 4.2rem);
+  font-weight: 700;
   line-height: 1;
   letter-spacing: 0.01em;
   font-variant-numeric: tabular-nums;
@@ -2727,3 +2745,33 @@ body.kb-open #stepper-strip { bottom: calc(8px + env(safe-area-inset-bottom, 0px
 .recent-edit .ico, .recent-chips .ico { width: 13px; height: 13px; vertical-align: -2px; }
 .dash-today-line .ico { width: 14px; height: 14px; vertical-align: -2px; }
 .ent-paywall-mini .ico { width: 15px; height: 15px; vertical-align: -2px; }
+
+/* ===== ui-ux-pro-max redesign: cinema-dark atmosphere ===== */
+/* ambient indigo bloom behind the hero (skill: "ambient light, glow") */
+#dash-hero {
+  position: relative;
+  background:
+    radial-gradient(90% 130% at 88% -10%, rgba(139, 92, 246, 0.18), transparent 62%),
+    radial-gradient(70% 110% at 0% 110%, rgba(34, 211, 238, 0.07), transparent 55%);
+  border-radius: var(--r-lg);
+}
+@media (prefers-color-scheme: light) {
+  #dash-hero { background:
+    radial-gradient(90% 130% at 88% -10%, rgba(139, 92, 246, 0.08), transparent 62%),
+    radial-gradient(70% 110% at 0% 110%, rgba(34, 211, 238, 0.05), transparent 55%); }
+}
+/* primary CTAs carry a soft brand glow (depth without layout shift) */
+.btn.primary, .sheet-primary, .wo-start {
+  box-shadow: 0 4px 18px rgba(124, 98, 245, 0.32), inset 0 1px 0 rgba(255, 255, 255, 0.12);
+}
+.btn.primary:active, .sheet-primary:active, .wo-start:active {
+  box-shadow: 0 2px 8px rgba(124, 98, 245, 0.24);
+}
+/* frosted chrome: slightly stronger glass on the fixed bars */
+@media (max-width: 719px) {
+  .nav { -webkit-backdrop-filter: blur(18px); backdrop-filter: blur(18px); }
+}
+.app-header { -webkit-backdrop-filter: blur(18px); backdrop-filter: blur(18px); }
+/* big numbers everywhere match the athletic face */
+#rest-bar strong { font-family: var(--font-display); font-weight: 700; letter-spacing: 0.02em; }
+.recap-line strong, .bubble-user { font-variant-numeric: tabular-nums; }

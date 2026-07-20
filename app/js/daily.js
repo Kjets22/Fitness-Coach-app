@@ -177,9 +177,19 @@ OF.daily = (function () {
     var todayCount = todayRec && isFinite(Number(todayRec.count)) ? Number(todayRec.count) : 0;
     var frac = t.steps ? todayCount / t.steps : 0;
 
+    // Health-synced active energy: promised by the connect card, so it must
+    // actually appear somewhere — shown here beside the day's movement.
+    var ae = null;
+    try {
+      S.getAll("activeEnergy").forEach(function (r) {
+        if (r.date === U.todayISO() && isFinite(Number(r.kcal))) ae = Math.round(Number(r.kcal));
+      });
+    } catch (e) {}
     els.stepsProgress.innerHTML =
       '<p class="daily-progress-line"><strong>' + todayCount.toLocaleString() + '</strong> of ' +
-      t.steps.toLocaleString() + ' steps today (' + Math.round(frac * 100) + '%)</p>' +
+      t.steps.toLocaleString() + ' steps today (' + Math.round(frac * 100) + '%)' +
+      (ae != null ? ' <span class="muted">&middot; ' + ae.toLocaleString() + ' kcal active (Health)</span>' : '') +
+      '</p>' +
       U.progressBar(frac, frac >= 1 ? "var(--accent-2)" : "var(--accent)");
 
     // Prefill today's count for quick editing.

@@ -525,8 +525,10 @@ OF.exercise = (function () {
       st.done = !st.done;
       ex.touched = true;
       // superset: no rest after the first of a pair — the partner is next;
-      // rest fires after a set of an UNflagged exercise (chains included)
+      // rest fires after a set of an UNflagged exercise (chains included).
+      // Keep the set-ticked haptic that normally lives inside startRest.
       if (st.done && !(ex.superset && exList[i + 1])) startRest(ex.name);
+      else if (st.done && OF.haptics) OF.haptics.light();
       saveActive();
       renderBuilder();
       renderRestBar();
@@ -1455,6 +1457,7 @@ OF.exercise = (function () {
     exList = (Array.isArray(rec.exercises) ? rec.exercises : []).map(function (ex) {
       return {
         name: typeof ex.name === "string" ? ex.name : "",
+        superset: !!ex.superset,   // editing a typo must not strip the pairing
         sets: (Array.isArray(ex.sets) ? ex.sets : []).map(function (s) { return seedSet(s, true); })
       };
     }).filter(function (ex) { return ex.name; });
@@ -1577,7 +1580,10 @@ OF.exercise = (function () {
       if (reps == null || isNaN(reps) || reps < 1) return;   // nothing entered — just close the keyboard
       st.done = true;
       ex.touched = true;
-      startRest(ex.name);
+      // same superset rule as the tap path: no rest after the first of a
+      // pair (the keyboard Go flow must not disagree with the ✓ button)
+      if (!(ex.superset && exList[ei + 1])) startRest(ex.name);
+      else if (OF.haptics) OF.haptics.light();
       saveActive();
       renderBuilder();
       renderRestBar();

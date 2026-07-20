@@ -213,14 +213,18 @@ comments, check-ins, follows, benchmarks, and the account backup.
 
 Hero = #5 (the Receipt differentiator). If uploading fewer than 8, keep #1, #2, #5 at minimum. A matching Google Play set (1080×2160, 2:1) exists at `play-1080x2160-*.png`.
 
-## What's New (1.4.1 resubmission)
+## What's New (1.6.0 resubmission)
 
 ```
 A big one. New AI coach experience: a real onboarding interview that builds
 your personalized program (with the reasoning behind it), a chat that knows
 your logs, and free-text preferences the coach actually respects. New
-athletic dark design. One-tap logging everywhere: repeat meals, steps,
-water, usual night's sleep. Your account now backs up your data privately —
-delete the app, sign back in, everything returns. Plus dozens of fixes from
-hands-on device testing.
+athletic dark design. Home-screen widgets: see today at a glance and log a
+glass of water without opening the app. Supersets in the live workout —
+pair two lifts and the rest timer runs the way you actually train. RPE
+effort tracking, one-tap logging everywhere (repeat meals and workouts,
+steps, water, usual night's sleep), and Apple Health active energy on your
+Daily tab. Your account privately backs up your data — delete the app, sign
+back in, everything returns. Plus dozens of fixes from hands-on testing on
+iPhone and iPad.
 ```

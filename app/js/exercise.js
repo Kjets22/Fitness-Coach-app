@@ -223,7 +223,9 @@ OF.exercise = (function () {
     var kg = v === null ? null : (isNaN(v) ? NaN : U.fromDisplayWeight(v));
     var r = U.numOrNull(rRaw);
     var reps = r === null ? null : (isNaN(r) ? NaN : Math.round(r));
-    return { kg: kg, reps: reps, wRaw: wRaw, rRaw: rRaw, done: !!(s && s.done) };
+    var out = { kg: kg, reps: reps, wRaw: wRaw, rRaw: rRaw, done: !!(s && s.done) };
+    if (s && s.rpe >= 6 && s.rpe <= 10) out.rpe = s.rpe;  // else a restart wipes stamped RPE
+    return out;
   }
 
   /* ============================================================
@@ -279,10 +281,14 @@ OF.exercise = (function () {
     return v == null ? "" : String(v);
   }
 
-  function seedSet(s) {
+  function seedSet(s, keepRpe) {
     var kg = (s && s.weightKg != null && isFinite(Number(s.weightKg))) ? Number(s.weightKg) : null;
     var reps = (s && s.reps != null && isFinite(Number(s.reps))) ? Math.round(Number(s.reps)) : null;
-    return { kg: kg, reps: reps, wRaw: kgToRaw(kg), rRaw: reps == null ? "" : String(reps) };
+    var out = { kg: kg, reps: reps, wRaw: kgToRaw(kg), rRaw: reps == null ? "" : String(reps) };
+    // prefills deliberately drop rpe (new session, effort not yet rated) —
+    // the EDIT path must keep it or saving deletes it from history
+    if (keepRpe && s && s.rpe >= 6 && s.rpe <= 10) out.rpe = s.rpe;
+    return out;
   }
 
   /** Most recent past session's stored sets for a name (for prefill). */
@@ -1418,7 +1424,7 @@ OF.exercise = (function () {
     exList = (Array.isArray(rec.exercises) ? rec.exercises : []).map(function (ex) {
       return {
         name: typeof ex.name === "string" ? ex.name : "",
-        sets: (Array.isArray(ex.sets) ? ex.sets : []).map(seedSet)
+        sets: (Array.isArray(ex.sets) ? ex.sets : []).map(function (s) { return seedSet(s, true); })
       };
     }).filter(function (ex) { return ex.name; });
     els.title.textContent = "Edit workout";

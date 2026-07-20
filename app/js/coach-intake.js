@@ -398,42 +398,45 @@ OF.intake = (function () {
     // SAFETY (evidence.js safety layer): never put an under-18 into a calorie
     // deficit — at that age food fuels growth. Training is still encouraged.
     if (st.age != null && st.age < 18 && appGoal === "cut") appGoal = "maintain";
+    // Only patch what THIS interview actually answered. profile.update
+    // deletes fields set to null (and undefined dies in JSON.stringify), so
+    // emitting unanswered keys would make a quick re-interview wipe notes,
+    // split, style and recovery data saved by an earlier full interview or
+    // hand-edited in Settings. Arrays: `undefined` = not asked (keep old),
+    // `[]` = answered "none" (intentional clear).
+    var goals = { primary: st.goal, appGoalType: appGoal };
+    if (st.milestone) goals.milestones = [st.milestone];
+    if (st.timelineWeeks) goals.timelineWeeks = st.timelineWeeks;
+    var prefs = {};
+    if (st.split) prefs.split = st.split;
+    if (st.days != null) prefs.daysPerWeek = st.days;
+    if (st.sessionMinutes != null) prefs.sessionMinutes = st.sessionMinutes;
+    if (st.style) prefs.style = st.style;
+    if (st.cardio) prefs.cardio = st.cardio;
+    if (st.likes !== undefined) prefs.likes = st.likes || [];
+    if (st.dislikes !== undefined) prefs.dislikes = st.dislikes || [];
+    if (st.freeNotes) prefs.notes = st.freeNotes;
+    var experience = {};
+    if (st.trainingAge != null) {
+      experience.trainingAgeYears = st.trainingAge;
+      experience.level = lvl(st);
+    }
+    if (st.age != null) experience.age = st.age;
+    if (st.weakPoints !== undefined) {
+      experience.weakPoints = st.weakPoints && st.weakPoints.length ? st.weakPoints : null;
+    }
+    var constraints = {};
+    if (st.equipment !== undefined) constraints.equipment = st.equipment;
+    if (st.injuries !== undefined) constraints.injuries = st.injuries || [];
+    if (st.conditions !== undefined) constraints.conditions = st.conditions || [];
+    var recovery = {};
+    if (st.sleepH != null) recovery.sleepTypicalH = st.sleepH;
+    if (st.stress != null) recovery.stress = st.stress;
+    if (st.job != null) recovery.jobActivity = st.job;
+    if (st.restrictions !== undefined) recovery.restrictions = st.restrictions || [];
     return {
-      patch: {
-        goals: {
-          primary: st.goal,
-          milestones: st.milestone ? [st.milestone] : [],
-          timelineWeeks: st.timelineWeeks || null,
-          appGoalType: appGoal
-        },
-        prefs: {
-          split: st.split || null,
-          daysPerWeek: st.days,
-          sessionMinutes: st.sessionMinutes,
-          style: st.style || null,
-          cardio: st.cardio || null,
-          likes: st.likes || [],
-          dislikes: st.dislikes || [],
-          notes: st.freeNotes || null
-        },
-        experience: {
-          trainingAgeYears: st.trainingAge,
-          level: lvl(st),
-          age: st.age != null ? st.age : null,
-          weakPoints: st.weakPoints && st.weakPoints.length ? st.weakPoints : null
-        },
-        constraints: {
-          equipment: st.equipment,
-          injuries: st.injuries || [],
-          conditions: st.conditions && st.conditions.length ? st.conditions : []
-        },
-        recovery: {
-          sleepTypicalH: st.sleepH,
-          stress: st.stress,
-          jobActivity: st.job,
-          restrictions: st.restrictions || []
-        }
-      },
+      patch: { goals: goals, prefs: prefs, experience: experience,
+               constraints: constraints, recovery: recovery },
       appGoalType: appGoal
     };
   }
@@ -736,7 +739,10 @@ OF.intake = (function () {
     var input = document.getElementById("intake-input");
     input.removeEventListener("click", onInputClick);
     input.addEventListener("click", onInputClick);
-    ask(STEPS[0]);
+    // honor `when` on the first step too — with a seeded goal, STEPS[0]
+    // (the goal question) must be skipped or the seeding above is inert
+    var s0 = nextIdx(state, 0);
+    ask(STEPS[s0 === -1 ? 0 : s0]);
   }
 
   function close() {

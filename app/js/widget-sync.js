@@ -76,7 +76,11 @@ OF.widgetSync = (function () {
       b.drain().then(function (r) {
         var ml = r && Number(r.pendingWaterMl);
         if (!ml || !isFinite(ml) || ml <= 0) { syncNow(); return; }
-        S.add("water", { date: U.todayISO(), amountMl: Math.round(ml) });
+        // the widget stamps the day of the first undrained tap — a glass at
+        // 11:55pm must land on THAT day, not the morning the app reopens
+        var d = r && /^\d{4}-\d{2}-\d{2}$/.test(String(r.pendingWaterDate || ""))
+          ? r.pendingWaterDate : U.todayISO();
+        S.add("water", { date: d, amountMl: Math.round(ml) });
         if (OF.daily && OF.daily.refresh) { try { OF.daily.refresh(); } catch (e) {} }
         if (OF.dashboard && OF.dashboard.refresh) { try { OF.dashboard.refresh(); } catch (e) {} }
         var glasses = Math.round(ml / 237);

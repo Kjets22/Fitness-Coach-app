@@ -43,6 +43,17 @@ OF.food = (function () {
     els.name.setAttribute("list", "food-name-options");
     els.name.addEventListener("input", onNameInput);
     els.name.addEventListener("change", onNameInput);
+    // a hand-edited macro is the user's number now: autofill must stop
+    // treating the four fields as "ours to overwrite", and the servings
+    // stepper must rebase on the edited values as 1 serving
+    ["calories", "protein", "carbs", "fat"].forEach(function (f) {
+      els[f].addEventListener("input", function () {
+        autoFilled = false;
+        servBase = null;
+        servN = 1;
+        servRender();
+      });
+    });
     var sm = document.getElementById("food-serv-minus"), sp = document.getElementById("food-serv-plus");
     if (sm) sm.addEventListener("click", function () { servStep(-0.5); });
     if (sp) sp.addEventListener("click", function () { servStep(0.5); });
@@ -67,6 +78,9 @@ OF.food = (function () {
     els.carbs.value = "";
     els.fat.value = "";
     els.notes.value = "";
+    // a stale flag here lets the NEXT entry's hand-typed macros be clobbered
+    autoFilled = false;
+    servReset();
   }
 
   /** Sensible default meal type from the current hour. */
@@ -138,11 +152,9 @@ OF.food = (function () {
         return;
       }
       setDefaults();
-      servReset();
       U.toast("Meal logged.", "ok");
     }
-    renderList();
-    OF.dashboard && OF.dashboard.refresh();
+    refreshAfterWrite();   // incl. datalist — a new custom meal name must autocomplete
   }
 
   function enterEditMode(rec) {
@@ -156,6 +168,8 @@ OF.food = (function () {
     els.carbs.value = rec.carbs != null ? rec.carbs : "";
     els.fat.value = rec.fat != null ? rec.fat : "";
     els.notes.value = rec.notes || "";
+    autoFilled = false;   // these are the record's own macros, never "ours"
+    servReset();
     els.title.textContent = "Edit meal";
     els.submit.textContent = "Save changes";
     els.cancel.classList.remove("hidden");
@@ -249,6 +263,14 @@ OF.food = (function () {
       so one tap prefills the whole form instead of retyping name + 4 macros. */
   var autoFilled = false;   // macros last set by autocomplete → safe to overwrite
 
+  /** Dietary restrictions from the coach profile (halal/vegan/… tags). */
+  function dietRestrictions() {
+    try {
+      var d = OF.profile && OF.profile.get ? OF.profile.get() : null;
+      return (d && d.recovery && d.recovery.restrictions) || [];
+    } catch (e) { return []; }
+  }
+
   /** History + built-in DB into the <datalist> (history wins, deduped). */
   function refreshNameOptions() {
     var dl = document.getElementById("food-name-options");
@@ -263,12 +285,7 @@ OF.food = (function () {
     if (OF.foodDB) {
       // respect the diet the interview collected (a halal tester was offered
       // pork and beer; a vegan was offered dairy)
-      var restrictions = [];
-      try {
-        var d = OF.profile && OF.profile.get ? OF.profile.get() : null;
-        restrictions = (d && d.recovery && d.recovery.restrictions) || [];
-      } catch (e) {}
-      OF.foodDB.all(restrictions).forEach(function (f) {
+      OF.foodDB.all(dietRestrictions()).forEach(function (f) {
         var k = f.name.toLowerCase();
         if (seen[k]) return;
         seen[k] = true;
@@ -289,7 +306,15 @@ OF.food = (function () {
     for (var i = 0; i < hist.length; i++) {
       if ((hist[i].foodName || "").trim().toLowerCase() === k) { hit = hist[i]; break; }
     }
-    if (!hit && OF.foodDB) hit = OF.foodDB.find(k);
+    // DB lookups go through the SAME restriction filter as the dropdown —
+    // otherwise a banned food autofills by name, and its hidden presence
+    // breaks uniqueness for the one candidate the user can actually see
+    var db = OF.foodDB ? OF.foodDB.all(dietRestrictions()) : [];
+    if (!hit) {
+      for (var d0 = 0; d0 < db.length; d0++) {
+        if (db[d0].name.toLowerCase() === k) { hit = db[d0]; break; }
+      }
+    }
     // no exact match: a UNIQUE substring match is safe to autofill (user
     // testing: exact-only meant "spelled slightly differently = retype all
     // four macros"). Ambiguous matches stay blank on purpose.
@@ -299,7 +324,7 @@ OF.food = (function () {
         var n = (hist[j].foodName || "").trim().toLowerCase();
         if (n.indexOf(k) !== -1 && !seenN[n]) { seenN[n] = true; subs.push(hist[j]); }
       }
-      if (OF.foodDB) OF.foodDB.all().forEach(function (f) {
+      db.forEach(function (f) {
         var n = f.name.toLowerCase();
         if (n.indexOf(k) !== -1 && !seenN[n]) { seenN[n] = true; subs.push(f); }
       });
@@ -323,7 +348,17 @@ OF.food = (function () {
       carbs: U.numOrNull(els.carbs.value), fat: U.numOrNull(els.fat.value)
     };
   }
-  function servShow() { servN = 1; servCapture(); servRender(); var row = document.getElementById("food-serv-row"); if (row) row.hidden = false; }
+  function servShow() {
+    servN = 1; servCapture();
+    // nothing scalable (name-only history entry) → stepper would erase typed
+    // numbers by scaling from a null base; keep it hidden instead
+    var has = servBase && (servBase.calories != null || servBase.protein != null ||
+                           servBase.carbs != null || servBase.fat != null);
+    var row = document.getElementById("food-serv-row");
+    if (!has) { servBase = null; if (row) row.hidden = true; return; }
+    servRender();
+    if (row) row.hidden = false;
+  }
   function servReset() { servN = 1; servBase = null; servRender(); var row = document.getElementById("food-serv-row"); if (row) row.hidden = true; }
   function servRender() { var v = document.getElementById("food-serv-val"); if (v) v.textContent = (servN % 1 ? servN.toFixed(1) : String(servN)); }
   function servApply() {
@@ -383,11 +418,12 @@ OF.food = (function () {
   function copyYesterday() {
     var today = U.todayISO(), yday = U.todayISO(-1);
     var all = S.getAll("food").filter(function (r) { return r.date === yday; })
-      .sort(function (a, b) { return String(a.time).localeCompare(String(b.time)); });
+      .sort(function (a, b) { return U.padTime(a.time).localeCompare(U.padTime(b.time)); });
     // only meals already "eaten" by this time of day — copying tonight's
-    // dinner at 1pm inflated today's total and double-counted at dinner time
-    var now = U.nowTime();
-    var meals = all.filter(function (r) { return String(r.time || "") <= now; });
+    // dinner at 1pm inflated today's total and double-counted at dinner time.
+    // padTime: imported backups carry "9:30", which string-compares > "14:05"
+    var now = U.padTime(U.nowTime());
+    var meals = all.filter(function (r) { return U.padTime(r.time) <= now; });
     var skipped = all.length - meals.length;
     if (!meals.length) { U.toast("Yesterday's meals are all later in the day — they'll be one tap away tonight.", "ok"); return; }
     var added = [];
@@ -416,7 +452,11 @@ OF.food = (function () {
   }
 
   function onRecentClick(e) {
-    if (e.target.closest("[data-copy-yday]")) { copyYesterday(); return; }
+    if (e.target.closest("[data-copy-yday]")) {
+      if (Date.now() - lastSaveAt < 800) return;   // double-tap = whole day twice
+      lastSaveAt = Date.now();
+      copyYesterday(); return;
+    }
     var editBtn = e.target.closest("[data-recent-edit]");
     if (editBtn) {
       // long-press / "edit" affordance: prefill the form instead of logging,
@@ -429,14 +469,20 @@ OF.food = (function () {
       els.carbs.value = er.carbs != null ? er.carbs : "";
       els.fat.value = er.fat != null ? er.fat : "";
       if (er.mealType) els.mealType.value = er.mealType;
+      // rebase the servings stepper on THIS meal's macros (a leftover base
+      // from an earlier autofill would scale the wrong food's numbers)
+      autoFilled = false;
+      servShow();
       els.form.scrollIntoView({ behavior: "smooth", block: "start" });
       els.name.focus();
       return;
     }
     var b = e.target.closest("[data-recent]");
     if (!b) return;
+    if (Date.now() - lastSaveAt < 800) return;   // double-tap logs the meal twice
     var r = S.get("food", b.getAttribute("data-recent"));
     if (!r) return;
+    lastSaveAt = Date.now();
     // ONE TAP = logged. The #1 ask across user testing: a "Log again" chip
     // should save the meal, not just fill the form. Guess the meal type from
     // the current hour (breakfast tap at dinner = dinner), keep the food +

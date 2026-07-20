@@ -14,6 +14,12 @@ import AppIntents
 let kSuite = "group.com.optimalfit.app"
 let kGlassMl = 237.0
 
+func localDayString(_ date: Date = .now) -> String {
+    let f = DateFormatter()
+    f.dateFormat = "yyyy-MM-dd"
+    return f.string(from: date)
+}
+
 struct TodayState {
     var waterMl: Double, waterGoalMl: Double
     var steps: Double, stepsGoal: Double
@@ -22,14 +28,18 @@ struct TodayState {
 
     static func load() -> TodayState {
         let d = UserDefaults(suiteName: kSuite)
-        let base = d?.double(forKey: "waterMl") ?? 0
+        // the app stamps which day its totals belong to; past midnight they
+        // are yesterday's numbers and a "Today" widget must show a fresh day
+        let appDay = d?.string(forKey: "today") ?? ""
+        let stale = !appDay.isEmpty && appDay != localDayString()
+        let base = stale ? 0 : (d?.double(forKey: "waterMl") ?? 0)
         let pending = d?.double(forKey: "pendingWaterMl") ?? 0
         return TodayState(
             waterMl: base + pending,
             waterGoalMl: max(d?.double(forKey: "waterGoalMl") ?? 2500, 1),
-            steps: d?.double(forKey: "steps") ?? 0,
+            steps: stale ? 0 : (d?.double(forKey: "steps") ?? 0),
             stepsGoal: max(d?.double(forKey: "stepsGoal") ?? 8000, 1),
-            kcal: d?.double(forKey: "kcal") ?? 0,
+            kcal: stale ? 0 : (d?.double(forKey: "kcal") ?? 0),
             kcalGoal: max(d?.double(forKey: "kcalGoal") ?? 2000, 1),
             streak: Int(d?.double(forKey: "streak") ?? 0)
         )
@@ -45,6 +55,9 @@ struct LogWaterIntent: AppIntent {
     func perform() async throws -> some IntentResult {
         let d = UserDefaults(suiteName: kSuite)
         let pending = d?.double(forKey: "pendingWaterMl") ?? 0
+        // first tap of a batch: remember WHICH day it happened — the app may
+        // not drain until tomorrow, and a 11:55pm glass belongs to today
+        if pending == 0 { d?.set(localDayString(), forKey: "pendingWaterDate") }
         d?.set(pending + kGlassMl, forKey: "pendingWaterMl")
         WidgetCenter.shared.reloadAllTimelines()
         return .result()
@@ -67,7 +80,10 @@ struct TodayProvider: TimelineProvider {
     }
     func getTimeline(in context: Context, completion: @escaping (Timeline<TodayEntry>) -> Void) {
         let entry = TodayEntry(date: .now, state: TodayState.load())
-        completion(Timeline(entries: [entry], policy: .after(.now.addingTimeInterval(30 * 60))))
+        // refresh at midnight (so stale-day zeroing shows on time), else 30 min
+        let midnight = Calendar.current.startOfDay(for: .now.addingTimeInterval(86400))
+        let next = min(Date.now.addingTimeInterval(30 * 60), midnight.addingTimeInterval(2))
+        completion(Timeline(entries: [entry], policy: .after(next)))
     }
 }
 

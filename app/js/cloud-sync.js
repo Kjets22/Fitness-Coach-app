@@ -25,6 +25,16 @@ OF.cloudSync = (function () {
   var U = OF.util, S = OF.storage;
   var api = function () { return OF.socialApi || OF.social && OF.social.api || null; };
   var lastUid = null, pushTimer = null, restoring = false;
+  // No push may run before this session's pull has completed: pushing an
+  // empty/half store over a backup that simply hasn't arrived yet (reinstall
+  // + slow network + user backgrounds the app) would destroy the backup.
+  var pulled = false, pullAttempts = 0;
+
+  // whose data lives on this device — guards against merging user A's local
+  // history into user B's backup when accounts switch on one phone
+  var OWNER_KEY = "optimalfit.ownerUid";
+  function ownerUid() { try { return localStorage.getItem(OWNER_KEY); } catch (e) { return null; } }
+  function setOwner(uid) { try { localStorage.setItem(OWNER_KEY, uid); } catch (e) {} }
 
   function signedInUid() {
     try { var a = OF.socialApi; return a && a.uid ? a.uid() : null; } catch (e) { return null; }
@@ -38,6 +48,7 @@ OF.cloudSync = (function () {
   function pushNow() {
     var a = OF.socialApi;
     if (!a || !a.pushBackup || !signedInUid()) return;
+    if (!pulled) return;   // never overwrite a backup we haven't seen yet
     var snap = snapshot();
     if (!snap) return;
     a.pushBackup(snap).catch(function () { /* offline: try again later */ });
@@ -45,9 +56,22 @@ OF.cloudSync = (function () {
 
   /** Debounced push — called after writes so we don't spam the network. */
   function schedulePush() {
-    if (!signedInUid() || restoring) return;
+    if (!signedInUid() || restoring || !pulled) return;
     if (pushTimer) clearTimeout(pushTimer);
     pushTimer = setTimeout(pushNow, 4000);
+  }
+
+  /** Previous account's local data must not leak into this account: wipe
+      (its own copy is safe in ITS cloud backup, pushed while it was
+      signed in). Mirrors the Settings "clear" wipe, minus the sign-out. */
+  function wipeForeignData() {
+    restoring = true;
+    try {
+      Object.keys(localStorage)
+        .filter(function (k) { return k.indexOf("optimalfit.") === 0; })
+        .forEach(function (k) { localStorage.removeItem(k); });
+    } catch (e) { /* best effort */ }
+    restoring = false;
   }
 
   /** Run once when a user becomes signed-in: merge the account's data in
@@ -58,9 +82,14 @@ OF.cloudSync = (function () {
   function onSignIn() {
     var a = OF.socialApi;
     if (!a || !a.pullBackup) return;
-    var before = 0;
-    try { before = S.countAll(); } catch (e) {}
+    var uid = signedInUid();
+    if (!uid) return;
     a.pullBackup().then(function (backup) {
+      pullAttempts = 0;
+      var owner = ownerUid();
+      if (owner && owner !== uid) wipeForeignData();
+      var before = 0;
+      try { before = S.countAll(); } catch (e) {}
       if (backup && backup.data) {
         restoring = true;
         try {
@@ -79,29 +108,44 @@ OF.cloudSync = (function () {
               : "Synced " + added + " item" + (added === 1 ? "" : "s") + " from your other device.", "ok");
             if (OF.settings && OF.settings.refreshAll) { try { OF.settings.refreshAll(); } catch (e) {} }
           }
-        } catch (e) { /* corrupt backup: leave local untouched */ }
+        } catch (e) {
+          // corrupt/unreadable backup: leave local untouched AND keep pushes
+          // disabled — uploading local state now would overwrite the cloud
+          // copy we just failed to import
+          restoring = false;
+          return;
+        }
         restoring = false;
       }
-      // always make the cloud copy the union of what we now hold
+      pulled = true;
+      setOwner(uid);
+      // make the cloud copy the union of what we now hold
       pushNow();
-    }).catch(function () { /* offline — nothing to do */ });
+    }).catch(function () {
+      // transient failure (timeout/5xx): retry with backoff — a missed
+      // restore would otherwise silently skip for the whole session
+      pullAttempts += 1;
+      if (pullAttempts <= 3) setTimeout(onSignIn, pullAttempts * 5000);
+    });
   }
 
   /** Poll for auth changes (sign-in/out) without hard-coupling to social-api. */
   function watchAuth() {
     setInterval(function () {
       var uid = signedInUid();
-      if (uid && uid !== lastUid) { lastUid = uid; onSignIn(); }
-      else if (!uid) { lastUid = null; }
+      if (uid && uid !== lastUid) { lastUid = uid; pulled = false; pullAttempts = 0; onSignIn(); }
+      else if (!uid && lastUid) { lastUid = null; pulled = false; }
     }, 3000);
   }
 
   function init() {
     watchAuth();
-    // push on app-hide (backgrounding) so the cloud copy is current even if
-    // the debounce hasn't fired
     document.addEventListener("visibilitychange", function () {
+      // app-hide: push so the cloud copy is current even if the debounce
+      // hasn't fired. App-show: if this session's restore never succeeded
+      // (offline sign-in), try again now.
       if (document.visibilityState === "hidden") pushNow();
+      else if (document.visibilityState === "visible" && signedInUid() && !pulled) onSignIn();
     });
     // any storage write nudges a debounced push (storage.js calls this hook)
     if (S && S.onChange) S.onChange(schedulePush);

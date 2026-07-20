@@ -34,10 +34,15 @@ public class WidgetBridgePlugin: CAPPlugin, CAPBridgedPlugin {
     }
 
     /// Widget -> app: hand over quick-logged water (and zero it out).
+    /// pendingWaterDate = the day the FIRST undrained tap happened, so a
+    /// glass tapped at 11:55pm lands on the right day even if the app only
+    /// opens tomorrow morning.
     @objc func drain(_ call: CAPPluginCall) {
         guard let d = store else { call.reject("app group unavailable"); return }
         let pending = d.double(forKey: "pendingWaterMl")
+        let date = d.string(forKey: "pendingWaterDate") ?? ""
         d.set(0.0, forKey: "pendingWaterMl")
-        call.resolve(["pendingWaterMl": pending])
+        d.removeObject(forKey: "pendingWaterDate")
+        call.resolve(["pendingWaterMl": pending, "pendingWaterDate": date])
     }
 }

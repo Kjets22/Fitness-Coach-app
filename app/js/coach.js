@@ -602,6 +602,12 @@ OF.coach = (function () {
           }
         } else if (!j.claude) {
           health = "no-claude";
+        } else if (j.claudeVerified === false) {
+          // the route EXISTS but the server's own end-to-end probe failed
+          // (e.g. CLI logged out) — asking would just hang and error; show
+          // the honest unavailable card instead. null/undefined = not
+          // probed yet, treated as fine.
+          health = "no-claude";
         } else {
           pairError = "";
           health = "ok";

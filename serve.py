@@ -294,6 +294,52 @@ def llm_available() -> bool:
     return llm_config()["mode"] == "api" or find_claude() is not None
 
 
+# ---- background LLM liveness probe --------------------------------------
+# "claude": true only proves a route EXISTS (binary on disk / key present).
+# A logged-out CLI fails every real request while health stays green — a
+# silent outage no watchdog can see. This probe makes a real end-to-end LLM
+# call periodically and caches the verdict; /api/health exposes it as
+# "claudeVerified"/"claudeVerifiedAt" WITHOUT touching ok/claude semantics,
+# so existing watchdog greps ('"ok": true') are unaffected.
+PROBE_INTERVAL_S = 30 * 60
+_PROBE = {"ok": None, "at": None}
+_PROBE_LOCK = threading.Lock()
+
+
+def _probe_set(ok: bool) -> None:
+    with _PROBE_LOCK:
+        _PROBE["ok"] = bool(ok)
+        _PROBE["at"] = time.strftime("%Y-%m-%dT%H:%M:%S")
+
+
+def _probe_snapshot() -> dict:
+    with _PROBE_LOCK:
+        return dict(_PROBE)
+
+
+def _probe_once() -> None:
+    guard = _LLMGuard()
+    if not guard.acquire():
+        return  # a real request is in flight; its outcome refreshes the cache
+    try:
+        _answer, err = run_coach("Reply with the single word OK.", {})
+    finally:
+        guard.release()
+    _probe_set(err is None)
+
+
+def start_probe_thread() -> None:
+    def loop() -> None:
+        time.sleep(20)          # don't slow startup / first health poll
+        while True:
+            try:
+                _probe_once()
+            except Exception:
+                pass            # the probe must never kill the server
+            time.sleep(PROBE_INTERVAL_S)
+    threading.Thread(target=loop, name="llm-probe", daemon=True).start()
+
+
 def call_anthropic_api(prompt: str, cfg: dict, image_b64: str | None = None,
                        media_type: str | None = None,
                        max_tokens: int = 1024):
@@ -1173,6 +1219,12 @@ class Handler(SimpleHTTPRequestHandler):
             # "llmMode" tells the owner which one is active right now.
             info = {"ok": True, "claude": llm_available(),
                     "llmMode": llm_config()["mode"], "phoneMode": PHONE_MODE}
+            pv = _probe_snapshot()
+            # null until the first probe completes; the app only reacts to
+            # an explicit false (verified-dead route)
+            info["claudeVerified"] = pv["ok"]
+            if pv["at"]:
+                info["claudeVerifiedAt"] = pv["at"]
             if PHONE_MODE:
                 info["lanUrls"] = LAN_URLS
                 # lets the app verify a pairing code without a coach call
@@ -1286,6 +1338,8 @@ class Handler(SimpleHTTPRequestHandler):
             return
         try:
             answer, err = run_coach(question, context)
+            if err is None:
+                _probe_set(True)   # a real success is the freshest liveness proof
         finally:
             guard.release()
 
@@ -1554,6 +1608,8 @@ def main() -> int:
 
     if args.open:
         webbrowser.open(url)
+
+    start_probe_thread()   # verified-liveness cache behind /api/health
 
     try:
         server.serve_forever()

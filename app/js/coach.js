@@ -667,6 +667,10 @@ OF.coach = (function () {
   function send(question) {
     question = (question || "").trim();
     if (!question || busy) return;
+    // Defense in depth: the paywall in renderStatus only HIDES the chat — a
+    // UI-state desync (stale cached profile, synthetic submit) must not let
+    // a non-premium client reach the production coach endpoint.
+    if (OF.entitlements && !OF.entitlements.isPremium()) { renderStatus(); return; }
     // Offline but usable: answer on-device instead of doing nothing.
     if (health !== "ok") {
       if (!offlineUsable()) return;

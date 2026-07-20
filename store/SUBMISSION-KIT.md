@@ -1,6 +1,6 @@
-# OptimalFit — App Store resubmission kit (UPLOAD 1.6.0 build 33)
+# OptimalFit — App Store resubmission kit (UPLOAD 1.6.0 build 34)
 
-> **Upload the newest archive: `OptimalFit-1.6.0-build33`** — it contains the
+> **Upload the newest archive: `OptimalFit-1.6.0-build34`** — it contains the
 > compliance fixes (consent, privacy manifest) PLUS the redesign, widgets,
 > haptics, and the full user-ready sprint. The 1.4.x archives are superseded.
 
@@ -17,7 +17,7 @@ All copy-paste text lives in `store/app-store-listing.md` (updated 2026-07-17).
 ## Submission steps (your ~20 minutes)
 
 1. **Upload the build** — Xcode → Window → **Organizer** → Archives → select
-   **OptimalFit-1.6.0-build33** (newest in the list) → **Distribute App**
+   **OptimalFit-1.6.0-build34** (newest in the list) → **Distribute App**
    → App Store Connect → Upload → accept defaults (this creates the missing
    Distribution certificate with your Apple ID; approve any keychain prompt).
 2. **App Store Connect → OptimalFit → + Version 1.6.0**

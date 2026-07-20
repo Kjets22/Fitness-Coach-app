@@ -190,6 +190,7 @@ OF.exercise = (function () {
           prefilled: !!ex.prefilled,
           rx: typeof ex.rx === "string" ? ex.rx : null,   // keep the prescription across app restarts
           touched: !!ex.touched,                          // "actually worked on" survives restarts too
+          superset: !!ex.superset,                        // pairing survives restarts
           sets: (Array.isArray(ex.sets) ? ex.sets : []).map(reviveSet)
         };
       }).filter(function (ex) { return ex.name; });
@@ -369,19 +370,33 @@ OF.exercise = (function () {
           '<button type="button" class="btn ex-move" data-act="move-ex" data-dir="1" data-ex="' + i +
             '" aria-label="Move ' + U.esc(ex.name) + ' down"' + (i === exList.length - 1 ? ' disabled' : '') + '>\u2193</button>'
         : '';
-      return '<div class="ex-item">' +
+      // superset pairing: a flag on exercise i means "alternate with i+1 —
+      // no rest between them; rest fires after the partner". Chains (A+B+C)
+      // fall out naturally: rest only after an UNflagged exercise's set.
+      var paired = !!(ex.superset && exList[i + 1]);
+      var pairedInto = !!(i > 0 && exList[i - 1].superset);
+      var pairBtn = exList[i + 1]
+        ? '<button type="button" class="btn ex-pair' + (paired ? ' on' : '') + '" data-act="pair-ex" data-ex="' + i +
+            '" aria-pressed="' + (paired ? 'true' : 'false') +
+            '" aria-label="Superset ' + U.esc(ex.name) + ' with the next exercise">' +
+            (paired ? '⇄ Superset ✓' : '⇄ Superset') + '</button>'
+        : '';
+      return '<div class="ex-item' + (paired ? ' ss-a' : '') + (pairedInto ? ' ss-b' : '') + '">' +
         '<div class="ex-item-head">' +
           '<span class="ex-item-name">' + U.esc(ex.name) + '</span>' +
           mv +
           '<button type="button" class="btn ex-rest-chip" data-act="ex-rest" data-ex="' + i +
             '" aria-label="Rest after ' + U.esc(ex.name) + ' sets — tap to change">⏱ ' +
             fmtRest(restSecFor(ex.name)) + '</button>' +
+          pairBtn +
           '<button type="button" class="btn ex-swap" data-act="swap-ex" data-ex="' + i +
             '" aria-label="Swap ' + U.esc(ex.name) + ' for a similar exercise">Swap</button>' +
           '<button type="button" class="btn set-del" data-act="del-ex" data-ex="' + i +
             '" aria-label="Remove ' + U.esc(ex.name) + '">Remove</button>' +
         '</div>' +
         '<div class="ex-swap-row" id="ex-swap-row-' + i + '" hidden></div>' +
+        (paired ? '<div class="ss-hint">Superset with ' + U.esc(exList[i + 1].name) +
+          ' — alternate sets; the rest timer starts after its sets.</div>' : '') +
         (ex.rx ? '<div class="ex-rx">Target: ' + U.esc(ex.rx) + '</div>' : '') +
         (ex.prefilled ? '<div class="ex-prefill-hint">' +
           (ex.rx ? 'From your plan — log what you actually do.'   // plan session: don't claim a "last session" that may never have happened
@@ -472,6 +487,15 @@ OF.exercise = (function () {
       }
       return true;
     }
+    if (act === "pair-ex") {
+      var pxi = parseInt(btn.getAttribute("data-ex"), 10);
+      if (exList[pxi] && exList[pxi + 1]) {
+        exList[pxi].superset = !exList[pxi].superset;
+        if (OF.haptics) OF.haptics.light();
+        saveActive(); renderBuilder();
+      }
+      return true;
+    }
     if (act === "swap-ex") { toggleSwapRow(parseInt(btn.getAttribute("data-ex"), 10)); return true; }
     if (act === "swap-pick") {
       var si = parseInt(btn.getAttribute("data-ex"), 10);
@@ -500,7 +524,9 @@ OF.exercise = (function () {
       if (!st) return true;
       st.done = !st.done;
       ex.touched = true;
-      if (st.done) startRest(ex.name);   // marking done auto-starts the rest countdown
+      // superset: no rest after the first of a pair — the partner is next;
+      // rest fires after a set of an UNflagged exercise (chains included)
+      if (st.done && !(ex.superset && exList[i + 1])) startRest(ex.name);
       saveActive();
       renderBuilder();
       renderRestBar();
@@ -586,7 +612,11 @@ OF.exercise = (function () {
         if (s.rpe >= 6 && s.rpe <= 10) savedSet.rpe = s.rpe;
         sets.push(savedSet);
       }
-      if (sets.length) out.push({ name: ex.name.trim().slice(0, 80), sets: sets });
+      if (sets.length) {
+        var savedEx = { name: ex.name.trim().slice(0, 80), sets: sets };
+        if (ex.superset) savedEx.superset = true;   // pairs survive into history → repeat-last rebuilds them
+        out.push(savedEx);
+      }
     }
     return { list: out.length ? out : null, skippedPrescribed: skippedPrescribed };
   }
@@ -1322,6 +1352,7 @@ OF.exercise = (function () {
       .slice(0, MAX_EXERCISES)
       .map(function (ex) {
         return { name: ex.name, prefilled: true,
+          superset: !!ex.superset,   // repeat-last recreates yesterday's pairs
           sets: (Array.isArray(ex.sets) ? ex.sets : []).slice(0, MAX_SETS).map(seedSet) };
       });
     mode = "active";

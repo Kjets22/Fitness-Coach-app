@@ -1948,6 +1948,28 @@ body.metric-modal-open { overflow: hidden; }
   margin: -2px 0 8px;
 }
 
+/* superset pairing: the two cards read as one visual block */
+.ex-item.ss-a {
+  border-left: 3px solid var(--accent);
+  border-bottom-left-radius: 4px;
+  margin-bottom: 4px;
+}
+.ex-item.ss-b {
+  border-left: 3px solid var(--accent);
+  border-top-left-radius: 4px;
+}
+.ex-pair.on {
+  color: var(--accent);
+  border-color: var(--accent);
+  font-weight: 700;
+}
+.ss-hint {
+  font-size: 0.76rem;
+  font-weight: 600;
+  color: var(--accent);
+  margin: 2px 0 6px;
+}
+
 /* history: per-exercise set-summary lines */
 .entry-sets { margin-top: 4px; }
 .set-line { font-size: 0.8rem; color: var(--text); }

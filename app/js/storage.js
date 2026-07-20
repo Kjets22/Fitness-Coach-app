@@ -307,7 +307,11 @@ OF.storage = (function () {
         if (rpe != null && rpe >= 6 && rpe <= 10) normSet.rpe = Math.round(rpe * 2) / 2;
         sets.push(normSet);
       }
-      if (sets.length) out.push({ name: name, sets: sets });
+      if (sets.length) {
+        var normEx = { name: name, sets: sets };
+        if (ex.superset === true) normEx.superset = true;   // pairing survives backup round-trips
+        out.push(normEx);
+      }
     }
     return out.length ? out : undefined;
   }

@@ -68,6 +68,11 @@ OF.sleep = (function () {
       " \u00b7 quality " + (last.quality || 3) + '</button></div>';
     host.querySelector("#sleep-usual").addEventListener("click", function () {
       var dur = U.sleepDurationMin(last.bedTime, last.wakeTime);
+      if (dur == null) {   // malformed imported times: fall back to the form
+        U.toast("Couldn't read last night's times — log it below.", "warn");
+        host.innerHTML = "";
+        return;
+      }
       var rec = S.add("sleep", { date: today, bedTime: last.bedTime, wakeTime: last.wakeTime,
         quality: last.quality || 3, durationMin: dur, notes: "" });
       if (!rec) return;
@@ -82,13 +87,20 @@ OF.sleep = (function () {
     });
   }
 
+  /** <input type="time"> rejects "9:30" (imported backups carry one-digit
+      hours) and silently blanks the field — always pad before assigning. */
+  function padHM(t) {
+    var m = /^(\d{1,2}):(\d{2})$/.exec(String(t || ""));
+    return m ? (m[1].length < 2 ? "0" : "") + m[1] + ":" + m[2] : null;
+  }
+
   function setDefaults() {
     els.date.value = U.todayISO();
     // default to the user's OWN usual times (last logged night), not a
     // hardcoded 23:00/07:00 they have to correct every day
     var last = S.getAll("sleep").slice().sort(U.byNewest)[0];
-    els.bed.value = (last && /^\d{1,2}:\d{2}$/.test(last.bedTime || "")) ? last.bedTime : "23:00";
-    els.wake.value = (last && /^\d{1,2}:\d{2}$/.test(last.wakeTime || "")) ? last.wakeTime : "07:00";
+    els.bed.value = (last && padHM(last.bedTime)) || "23:00";
+    els.wake.value = (last && padHM(last.wakeTime)) || "07:00";
     els.quality.value = "3";
     els.notes.value = "";
     if (OF.ui) OF.ui.syncSegs(); // reflect onto the rating pills
@@ -173,8 +185,8 @@ OF.sleep = (function () {
   function enterEditMode(rec) {
     els.editId.value = rec.id;
     els.date.value = rec.date;
-    els.bed.value = rec.bedTime;
-    els.wake.value = rec.wakeTime;
+    els.bed.value = padHM(rec.bedTime) || rec.bedTime || "";
+    els.wake.value = padHM(rec.wakeTime) || rec.wakeTime || "";
     els.quality.value = String(rec.quality);
     els.notes.value = rec.notes || "";
     if (OF.ui) OF.ui.syncSegs();

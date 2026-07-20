@@ -693,7 +693,16 @@ OF.coach = (function () {
       body: JSON.stringify({ question: question, context: buildContext() }),
       signal: ctrl ? ctrl.signal : undefined
     })
-      .then(function (res) { httpStatus = res.status; return res.json(); })
+      .then(function (res) {
+        httpStatus = res.status;
+        // a 5xx from the tunnel edge carries an HTML body — res.json() would
+        // throw into the network-failure catch and lie "check your internet"
+        return res.json().catch(function () {
+          return { ok: false, error: res.ok
+            ? "The coach returned an unreadable response — try again."
+            : "The coach server hit an error (HTTP " + res.status + "). Try again in a minute." };
+        });
+      })
       .then(function (j) {
         if (httpStatus === 401) {
           if (OF.coachApi && OF.coachApi.remote()) {

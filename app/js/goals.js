@@ -550,7 +550,7 @@ OF.goals = (function () {
         var rec0 = Object.assign({}, g0, { type: newType, date: U.todayISO() });
         delete rec0.id;
         // amount only makes sense for cut/lean-bulk; keep it when still valid
-        if (newType !== "cut" && newType !== "lean-bulk") rec0.amountKg = null;
+        if (newType !== "cut" && newType !== "lean-bulk") rec0.targetAmountKg = null;
         if (S.update("goal", g0.id, rec0)) {
           syncProfileGoal(newType);
           refresh();

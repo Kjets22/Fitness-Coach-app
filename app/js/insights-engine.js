@@ -31,8 +31,13 @@ OF.engine = (function () {
     return m ? new Date(+m[1], +m[2] - 1, +m[3]) : null;
   }
   function dayNum(iso) {
-    var d = parseISO(iso);
-    return d ? Math.round(d.getTime() / 86400000) : null;
+    // UTC-noon form — identical to strength-engine/targets-engine so it is a
+    // true inverse of isoFromDayNum in every timezone (the local-midnight +
+    // Math.round form was a day off in UTC+13/+14, breaking the last-night
+    // sleep lookup for readiness)
+    var m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(iso || ""));
+    if (!m) return null;
+    return Math.floor(Date.UTC(+m[1], +m[2] - 1, +m[3], 12) / 86400000);
   }
   function weekdayOf(iso) {
     var d = parseISO(iso);
@@ -644,7 +649,13 @@ OF.engine = (function () {
     });
     var proteinDays = Object.keys(dailyProtein).map(function (k) { return dailyProtein[k]; });
     var latestWeight = null;
-    (body || []).slice().sort(function (a, b) { return (a.date || "") < (b.date || "") ? -1 : 1; })
+    (body || []).slice().sort(function (a, b) {
+        // date then createdAt — same-day re-weighs must resolve to the LATEST
+        // (mirrors targets-engine.latestWeightKg); the old asymmetric
+        // comparator resolved them in engine-dependent order
+        var d = String(a.date || "").localeCompare(String(b.date || ""));
+        return d || String(a.createdAt || "").localeCompare(String(b.createdAt || ""));
+      })
       .forEach(function (r) { if (num(r.weightKg) != null) latestWeight = num(r.weightKg); });
 
     var protein;

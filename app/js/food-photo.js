@@ -380,7 +380,13 @@ OF.foodPhoto = (function () {
       }),
       signal: ctrl ? ctrl.signal : undefined
     })
-      .then(function (res) { httpStatus = res.status; return res.json(); })
+      .then(function (res) {
+        httpStatus = res.status;
+        // 5xx HTML bodies must not masquerade as "no internet"
+        return res.json().catch(function () {
+          return { ok: false, error: "The server hit an error (HTTP " + res.status + "). Try again in a minute." };
+        });
+      })
       .then(function (j) {
         server = "ok";         // we reached it — keep the status hint truthful
         renderButton();        // ...including the Food-tab hint under the button

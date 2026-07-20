@@ -130,9 +130,15 @@ OF.daily = (function () {
       : OF.charts.empty("No water logged in the last 14 days.");
   }
 
+  var lastWaterAt = 0;   // jitter guard: 400ms blocks a double-fire but not an
+                         // intentional quick second glass (house guard is 800ms
+                         // elsewhere; water is the one place two fast taps are
+                         // a plausible real intent)
   function onQuickClick(evt) {
     var btn = evt.target.closest("button[data-ml]");
     if (!btn) return;
+    if (Date.now() - lastWaterAt < 400) return;
+    lastWaterAt = Date.now();
     addWater(Number(btn.getAttribute("data-ml")));
   }
 
@@ -235,9 +241,12 @@ OF.daily = (function () {
     });
   }
 
+  var lastStepsAt = 0;
   function onStepsQuickClick(evt) {
     var btn = evt.target.closest("button[data-steps]");
     if (!btn) return;
+    if (Date.now() - lastStepsAt < 800) return;   // double-tap = +2k and a lying Undo
+    lastStepsAt = Date.now();
     bumpSteps(Number(btn.getAttribute("data-steps")));
   }
 
@@ -269,8 +278,16 @@ OF.daily = (function () {
 
   /* ---------------- lifecycle ---------------- */
 
+  var autoStepsDate = null;   // what WE last put in the date field
   function renderAll() {
     if (!els.waterProgress) return;
+    // day rollover with the app left open: refresh the steps date, but only
+    // if the user hasn't picked a different date themselves
+    var today = U.todayISO();
+    if (els.stepsDate && els.stepsDate.value === autoStepsDate && autoStepsDate !== today) {
+      autoStepsDate = today;
+      els.stepsDate.value = today;
+    }
     renderWater();
     renderSteps();
   }
@@ -292,7 +309,8 @@ OF.daily = (function () {
     els.stepsChart = document.getElementById("steps-chart");
     els.stepsQuick = document.getElementById("steps-quick");
 
-    els.stepsDate.value = U.todayISO();
+    autoStepsDate = U.todayISO();
+    els.stepsDate.value = autoStepsDate;
     els.waterQuick.addEventListener("click", onQuickClick);
     els.waterForm.addEventListener("submit", onCustomSubmit);
     els.waterToday.addEventListener("click", onWaterListClick);

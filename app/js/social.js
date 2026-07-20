@@ -1101,13 +1101,15 @@ OF.social = (function () {
     var row = getPost(id);
     if (!row) return;
     var was = !!row.liked_by_me;
+    var countBefore = Math.max(0, Number(row.like_count || 0));   // snapshot — a ±1 revert drifts when taps overlap
     row.liked_by_me = !was;
-    row.like_count = Math.max(0, Number(row.like_count || 0) + (was ? -1 : 1));
+    row.like_count = countBefore + (was ? -1 : 1);
+    if (row.like_count < 0) row.like_count = 0;
     updateLikeUi(id);
     (was ? A.unlike(id) : A.like(id)).catch(function (e) {
       if (e && e.conflict) return; // idempotent — state already right
       row.liked_by_me = was;
-      row.like_count = Math.max(0, Number(row.like_count || 0) + (was ? 1 : -1));
+      row.like_count = countBefore;
       updateLikeUi(id);
       handleErr(e, "Couldn't update that like.");
     });
@@ -1131,6 +1133,7 @@ OF.social = (function () {
   }
 
   function submitComment(id, input) {
+    if (input.disabled) return;   // in flight — a second Post tap would duplicate the comment
     var body = (input.value || "").trim().slice(0, 500);
     if (!body) return;
     input.disabled = true;

@@ -5,7 +5,7 @@
    ============================================================ */
 
 window.OF = window.OF || {};
-OF.APP_VERSION = "1.6.0 (build 30)";  // bump every build; shown to the owner only
+OF.APP_VERSION = "1.6.0 (build 31)";  // bump every build; shown to the owner only
 
 OF.util = (function () {
   "use strict";
@@ -122,7 +122,8 @@ OF.util = (function () {
       label: "Undo",
       fn: function () {
         var copy = Object.assign({}, rec);
-        delete copy.id; delete copy.createdAt; delete copy.updatedAt;
+        delete copy.id; delete copy.updatedAt;   // keep createdAt: restoring
+        // must not make an old entry the "newest" of its day
         if (OF.storage.add(type, copy)) {
           toast(what + " restored", "ok");
           if (onRestore) onRestore();

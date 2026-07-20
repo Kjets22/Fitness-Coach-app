@@ -374,7 +374,9 @@ OF.dashboard = (function () {
       var byDay = {};
       body.forEach(function (r) {
         var dn2 = dayNum(r.date), v = Number(r.weightKg);
-        if (dn2 != null && isFinite(v) && todayN - dn2 < 30 && todayN - dn2 >= 0) byDay[dn2] = v;
+        // body is newest-first: first write wins = the day's LATEST weigh-in,
+        // matching the card's headline value
+        if (dn2 != null && isFinite(v) && todayN - dn2 < 30 && todayN - dn2 >= 0 && !(dn2 in byDay)) byDay[dn2] = v;
       });
       for (var d2 = todayN - 29; d2 <= todayN; d2++) wVals.push(byDay[d2] != null ? byDay[d2] : null);
       wSpark = sparkline(wVals, "var(--accent)");
@@ -477,7 +479,7 @@ OF.dashboard = (function () {
     var todayN = dayNum(U.todayISO());
     if (metric === "weight") {
       var body = S.getAll("body").filter(function (r) { return isFinite(Number(r.weightKg)); })
-        .sort(function (a, b) { return a.date < b.date ? -1 : 1; });
+        .sort(function (a, b) { return U.byNewest(b, a); });   // oldest→newest with the same-day createdAt tie-break
       if (!body.length) return { title: "Weight trend", tab: "body", statsHtml: "", chartHtml: OF.charts.empty("No weight logged yet — add one on the Body tab.") };
       var pts = body.map(function (r) { return { x: dayNum(r.date), y: Number(U.toDisplayWeight(r.weightKg)) }; });
       var ys = pts.map(function (p) { return p.y; });
@@ -496,7 +498,7 @@ OF.dashboard = (function () {
     }
     if (metric === "sleep") {
       var sleep = S.getAll("sleep").filter(function (r) { return isFinite(Number(r.durationMin)); })
-        .sort(function (a, b) { return a.date < b.date ? -1 : 1; }).slice(-21);
+        .sort(function (a, b) { return U.byNewest(b, a); }).slice(-21);
       if (!sleep.length) return { title: "Sleep trend", tab: "sleep", statsHtml: "", chartHtml: OF.charts.empty("No sleep logged yet — add a night on the Sleep tab.") };
       var qcol = ["var(--danger)", "var(--warn)", "var(--accent)", "var(--g2)", "var(--accent-2)"];
       var bars = sleep.map(function (r) {

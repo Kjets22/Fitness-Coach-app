@@ -94,16 +94,24 @@ OF.insights = (function () {
       '<ul class="factor-list">' + factors + '</ul>', null, "gauge");
   }
 
+  /** The value the RANKING used: sleep-adjusted when the adjuster is active,
+      raw otherwise — printing raw numbers for adjusted winners can show the
+      "best" slot visibly losing to its own comparison. */
+  function rankVal(d, s) {
+    return (d.adjustedForSleep && s.avgAdj != null) ? s.avgAdj : s.avgPerf;
+  }
+
   function gymTimeCard(r) {
     var d = r.timeOfDay;
     if (d.status !== "ok") return needCard("Best gym time", d.message, null, "clock");
     var head = "Your best workouts happen in the " + d.best.label.toLowerCase() +
-      " (" + d.best.range + "h) — avg " + d.best.avgPerf + "/5";
-    if (d.worstEligible) head += " vs " + d.worstEligible.avgPerf + "/5 in the " + d.worstEligible.label.toLowerCase();
+      " (" + d.best.range + "h) — avg " + rankVal(d, d.best) + "/5";
+    if (d.worstEligible) head += " vs " + rankVal(d, d.worstEligible) + "/5 in the " + d.worstEligible.label.toLowerCase();
     head += ".";
     var rows = d.buckets.map(function (b) {
+      var v = rankVal(d, b);
       return '<span class="mini-stat">' + e(b.label) + ": " +
-        (b.avgPerf != null ? b.avgPerf + "/5 (" + b.count + ")" : "no sessions") + '</span>';
+        (v != null ? v + "/5 (" + b.count + ")" : "no sessions") + '</span>';
     }).join("");
     if (d.adjustedForSleep) {
       rows += '<span class="mini-stat">ranking adjusted for prior-night sleep</span>';
@@ -115,9 +123,9 @@ OF.insights = (function () {
     var d = r.weekdays;
     if (d.status !== "ok") return needCard("Best training days", d.message, null, "calendar");
     var top = d.top.map(function (s) { return s.name; }).join(", ");
-    var head = "You perform best on " + top + " — avg " + d.top[0].avgPerf + "/5 on " + d.top[0].name + ".";
+    var head = "You perform best on " + top + " — avg " + rankVal(d, d.top[0]) + "/5 on " + d.top[0].name + ".";
     var rows = d.ranked.map(function (s) {
-      return '<span class="mini-stat">' + e(s.abbr) + ": " + s.avgPerf + "/5 (" + s.count + ")" + '</span>';
+      return '<span class="mini-stat">' + e(s.abbr) + ": " + rankVal(d, s) + "/5 (" + s.count + ")" + '</span>';
     }).join("");
     if (d.adjustedForSleep) {
       rows += '<span class="mini-stat">ranking adjusted for prior-night sleep</span>';
@@ -665,9 +673,15 @@ OF.insights = (function () {
       trendsCard(r, gi) +
       strength.rest +
       physiqueCard();
+    // keep the fold open across re-renders — a goal-switch chip on this same
+    // screen calls refresh(), and snapping the expanded section shut mid-read
+    // yanks the page out from under the user
+    var prevMore = document.getElementById("insights-more");
+    var wasOpen = !!(prevMore && !prevMore.hidden);
     container.innerHTML = top +
-      '<div id="insights-more" class="insights-more" hidden>' + more + '</div>' +
-      '<button type="button" class="btn ghost list-more" id="insights-more-btn">Show all insights</button>';
+      '<div id="insights-more" class="insights-more"' + (wasOpen ? '' : ' hidden') + '>' + more + '</div>' +
+      '<button type="button" class="btn ghost list-more" id="insights-more-btn">' +
+        (wasOpen ? 'Show less' : 'Show all insights') + '</button>';
     var moreBtn = document.getElementById("insights-more-btn");
     if (moreBtn) moreBtn.addEventListener("click", function () {
       var m = document.getElementById("insights-more");

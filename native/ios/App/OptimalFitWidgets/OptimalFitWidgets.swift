@@ -25,6 +25,12 @@ struct TodayState {
     var steps: Double, stepsGoal: Double
     var kcal: Double, kcalGoal: Double
     var streak: Int
+    var waterUnit: String = "oz"
+
+    // display in the user's in-app unit (oz users see oz, ml users see ml)
+    var waterValueText: String {
+        waterUnit == "ml" ? "\(Int(waterMl.rounded()))" : "\(Int((waterMl / 29.5735).rounded()))"
+    }
 
     static func load() -> TodayState {
         let d = UserDefaults(suiteName: kSuite)
@@ -41,7 +47,8 @@ struct TodayState {
             stepsGoal: max(d?.double(forKey: "stepsGoal") ?? 8000, 1),
             kcal: stale ? 0 : (d?.double(forKey: "kcal") ?? 0),
             kcalGoal: max(d?.double(forKey: "kcalGoal") ?? 2000, 1),
-            streak: Int(d?.double(forKey: "streak") ?? 0)
+            streak: Int(d?.double(forKey: "streak") ?? 0),
+            waterUnit: d?.string(forKey: "waterUnit") ?? "oz"
         )
     }
 }
@@ -111,8 +118,8 @@ struct WaterWidgetView: View {
                 EmptyView()
             } currentValueLabel: {
                 VStack(spacing: 0) {
-                    Text("\(Int((s.waterMl / 29.5735).rounded()))").font(.system(size: 20, weight: .heavy, design: .rounded))
-                    Text("oz").font(.system(size: 9, weight: .semibold)).foregroundStyle(.secondary)
+                    Text(s.waterValueText).font(.system(size: 20, weight: .heavy, design: .rounded))
+                    Text(s.waterUnit).font(.system(size: 9, weight: .semibold)).foregroundStyle(.secondary)
                 }
             }
             .gaugeStyle(.accessoryCircularCapacity)
@@ -175,7 +182,7 @@ struct TodayWidgetView: View {
             }
             HStack(spacing: 10) {
                 StatColumn(icon: "drop.fill", tint: ofBlue,
-                           value: "\(Int((s.waterMl / 29.5735).rounded())) oz", label: "water",
+                           value: "\(s.waterValueText) \(s.waterUnit)", label: "water",
                            frac: s.waterMl / s.waterGoalMl)
                 StatColumn(icon: "figure.walk", tint: ofCyan,
                            value: "\(Int(s.steps))", label: "steps",

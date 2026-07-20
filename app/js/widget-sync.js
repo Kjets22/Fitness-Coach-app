@@ -52,8 +52,11 @@ OF.widgetSync = (function () {
     } catch (e) {}
     try { streak = OF.streak ? (OF.streak.compute().current || 0) : 0; } catch (e) {}
     var t = targets();
+    var unit = "oz";
+    try { if (U.waterUnit) unit = U.waterUnit() || "oz"; } catch (e) {}
     return { today: today, waterMl: waterMl, waterGoalMl: t.waterMl, steps: steps,
-      stepsGoal: t.steps, kcal: kcal, kcalGoal: t.kcal, streak: streak };
+      stepsGoal: t.steps, kcal: kcal, kcalGoal: t.kcal, streak: streak,
+      waterUnit: unit };
   }
 
   function syncNow() {

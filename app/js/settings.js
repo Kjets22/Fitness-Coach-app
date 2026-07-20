@@ -185,7 +185,10 @@ OF.settings = (function () {
     var reader = new FileReader();
     reader.onload = function () {
       try {
-        var replace = false;
+        // Empty device: use "replace" so PREFS (units etc.) restore too —
+        // importAll only applies prefs/appState in replace mode, and merge
+        // onto nothing is identical for records anyway.
+        var replace = S.countAll() === 0;
         if (S.countAll() > 0) {
           // default action (OK) is the SAFE one — merge, never destroys.
           var wantMerge = confirm(
@@ -232,6 +235,9 @@ OF.settings = (function () {
   function clearAll() {
     if (!confirm("Delete ALL OptimalFit data from this device? This cannot be undone.")) return;
     if (!confirm("Really sure? Consider exporting a backup first.")) return;
+    // stop cloud pushes BEFORE wiping — a pending debounced push would upload
+    // the freshly-emptied store over the account's cloud backup
+    if (OF.cloudSync && OF.cloudSync.disarm) { try { OF.cloudSync.disarm(); } catch (e) {} }
     S.clearAll();
     // A true device wipe must also drop the community session + cached profile
     // (which carries is_premium/trial) and any prefs/pairing — otherwise the

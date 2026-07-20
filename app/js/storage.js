@@ -105,7 +105,9 @@ OF.storage = (function () {
     var now = new Date().toISOString();
     var rec = Object.assign({}, record, {
       id: OF.util.uid(),
-      createdAt: now,
+      // honor a provided createdAt (undo-restore) — a fresh stamp would flip
+      // byNewest's same-day tie-break and change which entry counts as latest
+      createdAt: record.createdAt || now,
       updatedAt: now
     });
     arr.push(rec);
@@ -516,13 +518,22 @@ OF.storage = (function () {
     if (appState && typeof appState === "object" && !Array.isArray(appState)) {
       APPSTATE_KEYS.forEach(function (k) {
         var v = appState[k];
-        if (v == null || typeof v !== "object") return;
+        if (v == null || typeof v !== "object") {
+          // "Replace ALL" must not keep state the backup doesn't have —
+          // otherwise week-2 records run beside a week-12 trainer program
+          // and a coach chat that postdates the restored data
+          if (replace) { try { localStorage.removeItem(PREFIX + k); } catch (e) {} }
+          return;
+        }
         // a malformed trainerProgram would crash every render that touches it
         if (k === "trainerProgram") {
           var okShape = !Array.isArray(v) && Array.isArray(v.days) && v.days.length > 0 &&
             typeof v.pointer === "number" &&
             v.days.every(function (d) { return d && Array.isArray(d.slots); });
-          if (!okShape) return;
+          if (!okShape) {
+            if (replace) { try { localStorage.removeItem(PREFIX + k); } catch (e) {} }
+            return;
+          }
         }
         var existing = null;
         try { existing = localStorage.getItem(PREFIX + k); } catch (e) {}

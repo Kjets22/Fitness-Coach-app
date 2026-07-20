@@ -45,13 +45,31 @@ OF.cloudSync = (function () {
     try { return JSON.parse(S.exportAll()); } catch (e) { return null; }
   }
 
+  var warnedAuth = false;
   function pushNow() {
     var a = OF.socialApi;
     if (!a || !a.pushBackup || !signedInUid()) return;
     if (!pulled) return;   // never overwrite a backup we haven't seen yet
     var snap = snapshot();
     if (!snap) return;
-    a.pushBackup(snap).catch(function () { /* offline: try again later */ });
+    a.pushBackup(snap).catch(function (e) {
+      // offline: fine, try again later. Revoked token: every future push
+      // will 401 too — tell the user ONCE instead of failing silently until
+      // a restore comes up empty months later.
+      if (e && e.authExpired && !warnedAuth && U.toast) {
+        warnedAuth = true;
+        U.toast("Cloud backup paused — sign in again on the Community tab to keep it running.", "warn");
+      }
+    });
+  }
+
+  /** Stop all pushes immediately (Settings "clear all data" calls this BEFORE
+      wiping so a pending debounce can't upload the freshly-emptied store over
+      the account's cloud backup). */
+  function disarm() {
+    if (pushTimer) { clearTimeout(pushTimer); pushTimer = null; }
+    pulled = false;
+    lastUid = null;
   }
 
   /** Debounced push — called after writes so we don't spam the network. */
@@ -67,8 +85,13 @@ OF.cloudSync = (function () {
   function wipeForeignData() {
     restoring = true;
     try {
+      // NOT wiped: the NEW user's just-persisted Supabase session + cached
+      // profile (deleting them silently signs B out / paywalls a premium B on
+      // the next offline launch) and the coach LAN pairing (device-scoped,
+      // not account data).
+      var KEEP = { "optimalfit.social": 1, "optimalfit.social.auth": 1, "optimalfit.pairKey": 1 };
       Object.keys(localStorage)
-        .filter(function (k) { return k.indexOf("optimalfit.") === 0; })
+        .filter(function (k) { return k.indexOf("optimalfit.") === 0 && !KEEP[k]; })
         .forEach(function (k) { localStorage.removeItem(k); });
     } catch (e) { /* best effort */ }
     restoring = false;
@@ -151,5 +174,5 @@ OF.cloudSync = (function () {
     if (S && S.onChange) S.onChange(schedulePush);
   }
 
-  return { init: init, pushNow: pushNow, schedulePush: schedulePush };
+  return { init: init, pushNow: pushNow, schedulePush: schedulePush, disarm: disarm };
 })();

@@ -27,6 +27,7 @@ public class WidgetBridgePlugin: CAPPlugin, CAPBridgedPlugin {
             if let v = call.getDouble(key) { d.set(v, forKey: key) }
         }
         if let today = call.getString("today") { d.set(today, forKey: "today") }
+        if let unit = call.getString("waterUnit") { d.set(unit, forKey: "waterUnit") }
         #if canImport(WidgetKit)
         if #available(iOS 14.0, *) { WidgetCenter.shared.reloadAllTimelines() }
         #endif

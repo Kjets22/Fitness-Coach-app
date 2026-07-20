@@ -233,14 +233,18 @@ OF.body = (function () {
       (extra.length ? '<span>' + U.esc(extra.join(" · ")) + '</span>' : '');
   }
 
+  var lastRenderUnit = null;
   function renderList() {
     applyUnits(); // keep the form label/bounds in sync with the unit pref
-    // If an edit is in progress, RE-PREFILL its number fields from the stored
-    // kg values: a unit switch in Settings re-renders this tab, and numbers
-    // left in the OLD unit would be silently reinterpreted in the NEW unit on
-    // save (165 lb -> "165" -> saved as 165 kg, a 2.2x corruption).
+    // If an edit is in progress AND the unit pref changed, RE-PREFILL its
+    // number fields from the stored kg values: numbers left in the OLD unit
+    // would be silently reinterpreted in the NEW unit on save (165 lb ->
+    // "165" -> saved as 165 kg, a 2.2x corruption). Only on a real unit
+    // switch — other re-renders (deleting a row, an Undo) must not revert
+    // digits the user has typed mid-edit.
+    var unitNow = U.weightUnit();
     var editingId = els.editId && els.editId.value;
-    if (editingId) {
+    if (editingId && lastRenderUnit && lastRenderUnit !== unitNow) {
       var editingRec = S.get("body", editingId);
       if (editingRec) {
         els.weight.value = editingRec.weightKg != null ? U.toDisplayWeight(editingRec.weightKg) : "";
@@ -248,6 +252,7 @@ OF.body = (function () {
         els.muscle.value = em != null ? U.toDisplayWeight(em) : "";
       }
     }
+    lastRenderUnit = unitNow;
     renderSummary();
     var arr = S.getAll("body").slice().sort(U.byNewest);
     if (!arr.length) {

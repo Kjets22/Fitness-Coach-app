@@ -704,6 +704,7 @@ OF.goals = (function () {
     adjTotal: adjTotal,
     calorieAdjs: calorieAdjs,
     runAdaptation: runAdaptation,
-    coachContext: coachContext
+    coachContext: coachContext,
+    syncProfileGoal: syncProfileGoal   // onboarding reuses the same mirror
   };
 })();

@@ -1262,9 +1262,17 @@ class Handler(SimpleHTTPRequestHandler):
         if not isinstance(context, dict):
             context = {}
 
-        # ---- one coach request at a time
+        # ---- one coach request at a time. Busy check FIRST: retries against
+        # a busy server must not burn rate-limit slots (a retry loop during
+        # one 120s call could exhaust the shared daily budget with zero work).
+        guard = _LLMGuard()
+        if not guard.acquire():
+            self._fail(429, "The coach is already answering another question — "
+                            "wait for it to finish and try again.")
+            return
         allowed, retry = RATE_LIMITER.allow()
         if not allowed:
+            guard.release()
             self.send_response(429)
             self.send_header("Retry-After", str(retry))
             self._cors_headers()
@@ -1275,11 +1283,6 @@ class Handler(SimpleHTTPRequestHandler):
             self.send_header("Content-Length", str(len(body)))
             self.end_headers()
             self.wfile.write(body)
-            return
-        guard = _LLMGuard()
-        if not guard.acquire():
-            self._fail(429, "The coach is already answering another question — "
-                            "wait for it to finish and try again.")
             return
         try:
             answer, err = run_coach(question, context)
@@ -1334,8 +1337,14 @@ class Handler(SimpleHTTPRequestHandler):
             return
 
         # ---- one CLI call at a time (shared with the coach)
+        guard = _LLMGuard()
+        if not guard.acquire():
+            self._fail(429, "The AI is busy with another request — wait for "
+                            "it to finish and try again.")
+            return
         allowed, retry = RATE_LIMITER.allow()
         if not allowed:
+            guard.release()
             self.send_response(429)
             self.send_header("Retry-After", str(retry))
             self._cors_headers()
@@ -1346,11 +1355,6 @@ class Handler(SimpleHTTPRequestHandler):
             self.send_header("Content-Length", str(len(body)))
             self.end_headers()
             self.wfile.write(body)
-            return
-        guard = _LLMGuard()
-        if not guard.acquire():
-            self._fail(429, "The AI is busy with another request — wait for "
-                            "it to finish and try again.")
             return
         try:
             estimate, err = run_estimate(image_bytes, mime, description)
@@ -1407,8 +1411,14 @@ class Handler(SimpleHTTPRequestHandler):
             return
 
         # ---- one CLI call at a time (shared with the coach + estimate)
+        guard = _LLMGuard()
+        if not guard.acquire():
+            self._fail(429, "The AI is busy with another request — wait for "
+                            "it to finish and try again.")
+            return
         allowed, retry = RATE_LIMITER.allow()
         if not allowed:
+            guard.release()
             self.send_response(429)
             self.send_header("Retry-After", str(retry))
             self._cors_headers()
@@ -1419,11 +1429,6 @@ class Handler(SimpleHTTPRequestHandler):
             self.send_header("Content-Length", str(len(body)))
             self.end_headers()
             self.wfile.write(body)
-            return
-        guard = _LLMGuard()
-        if not guard.acquire():
-            self._fail(429, "The AI is busy with another request — wait for "
-                            "it to finish and try again.")
             return
         try:
             analysis, err = run_physique(image_bytes, mime, description, stats)

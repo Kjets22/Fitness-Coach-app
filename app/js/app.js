@@ -97,8 +97,11 @@ OF.app = (function () {
       if (sheet.classList.contains("hidden")) return;
       if (e.key === "Escape") { closeSheet(); return; }
       if (e.key === "Tab") {
-        // minimal focus trap: cycle within the sheet's focusable items
-        var items = sheet.querySelectorAll(".sheet-item, [data-close-sheet]");
+        // minimal focus trap: cycle within the sheet's FOCUSABLE items —
+        // buttons and links only (the [data-close-sheet] backdrop div isn't
+        // focusable, and .sheet-primary/.sheet-quick weren't matched at all,
+        // so Shift+Tab escaped behind the modal)
+        var items = sheet.querySelectorAll("button, a[href]");
         if (!items.length) return;
         var first = items[0], last = items[items.length - 1];
         if (e.shiftKey && document.activeElement === first) {
@@ -183,6 +186,9 @@ OF.app = (function () {
     var gear = document.getElementById("header-settings");
     if (gear) gear.addEventListener("click", onNavClick);
     window.addEventListener("hashchange", function () {
+      // a deep link (widget) or browser-back can land while the log sheet is
+      // open — the tab would switch BEHIND the still-open sheet
+      closeSheet();
       showTab(currentTabFromHash());
     });
     initSheet();

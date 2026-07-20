@@ -498,10 +498,35 @@ OF.trainer = (function () {
   function createProgram(profile) { var p = generate(profile); save(p); return p; }
   function regenerate() {
     var p = load(); if (!p) return null;
-    return createProgram({
+    var fresh = generate({
       daysPerWeek: p.daysPerWeek, equipment: p.equipment, experience: p.experience,
       sessionMinutes: p.sessionMinutes, emphasis: p.emphasis
     });
+    // A mid-cycle rebuild must not roll back earned progression: carry each
+    // lift's current working weight + stall counter into the new program
+    // (historyWeight only knows the last LOGGED weight — a bump granted after
+    // the last session but not yet trained would silently vanish), and keep
+    // the week position instead of restarting at Day 1.
+    var prior = {};
+    p.days.forEach(function (d) {
+      d.slots.forEach(function (s) {
+        if (s && s.name && s.weightKg != null) {
+          prior[s.name.toLowerCase()] = { weightKg: s.weightKg, fails: s.fails || 0 };
+        }
+      });
+    });
+    fresh.days.forEach(function (d) {
+      d.slots.forEach(function (s) {
+        var old = s && s.name ? prior[s.name.toLowerCase()] : null;
+        if (old && s.incKg > 0 && (s.weightKg == null || old.weightKg > s.weightKg)) {
+          s.weightKg = old.weightKg;
+          s.fails = old.fails;
+        }
+      });
+    });
+    fresh.pointer = p.pointer % fresh.days.length;
+    save(fresh);
+    return fresh;
   }
 
   /* ---------------- today's session ---------------- */
@@ -650,8 +675,14 @@ OF.trainer = (function () {
       // target weight always satisfies the rep target (they lifted more).
       var byReps = working.slice().sort(function (a, b) { return Number(b.reps) - Number(a.reps); }).slice(0, ex.sets);
       function over(s) { return Number(s.weightKg) > ex.weightKg + TOL; }
-      var allHitTop = byReps.every(function (s) { return over(s) || Number(s.reps) >= ex.repHigh; });
-      var hitFloor = byReps.every(function (s) { return over(s) || Number(s.reps) >= ex.repLow; });
+      // Going heavier only counts as a pass if the reps still landed in the
+      // prescribed range: 62.5x8 against 60x6-10 beats the prescription, but
+      // 62.5x2 is a failed set. The old unconditional auto-pass let a
+      // grinding too-heavy session ADD weight — compounding the overload.
+      var allHitTop = byReps.every(function (s) {
+        return Number(s.reps) >= ex.repHigh || (over(s) && Number(s.reps) >= ex.repLow);
+      });
+      var hitFloor = byReps.every(function (s) { return Number(s.reps) >= ex.repLow; });
       var from = ex.weightKg;
       if (allHitTop) {                                    // smashed it → add weight (double progression)
         var maxKg = byReps.reduce(function (m, s) { return Math.max(m, Number(s.weightKg)); }, ex.weightKg);
@@ -674,7 +705,12 @@ OF.trainer = (function () {
       var logged = byName[ex.name.toLowerCase()];
       if (!logged) return;
       var w = null;
-      logged.forEach(function (s) { var v = Number(s.weightKg); if (isFinite(v) && v > 0 && (w == null || v > w)) w = v; });
+      // same >=4-rep guard as historyWeight: a worked-up heavy double/single
+      // must not become the prescribed weight — guaranteed failure next time
+      logged.forEach(function (s) {
+        var v = Number(s.weightKg), r = Number(s.reps);
+        if (isFinite(v) && v > 0 && r >= 4 && (w == null || v > w)) w = v;
+      });
       if (w != null) { ex.weightKg = w; changes.push({ name: ex.name, kind: "seeded", to: w }); }
     });
     changes.forEach(function (c) {
@@ -957,12 +993,21 @@ OF.trainer = (function () {
       var a2 = avoidList();
       if (a2.indexOf(cur.name) === -1) { a2.push(cur.name); setAvoid(a2); }
     }
+    // keep the load baseline when the swap is like-for-like: same group is
+    // already guaranteed, so require same compound/isolation class AND a
+    // shared implement (barbell→barbell yes, barbell→dumbbell no — loads
+    // don't transfer across implements) — travellers kept re-guessing weights
+    var curPool = null;
+    for (var pi = 0; pi < POOL.length; pi++) {
+      if (POOL[pi].name === cur.name) { curPool = POOL[pi]; break; }
+    }
+    var sameImplement = curPool && cand.equip.some(function (t) { return curPool.equip.indexOf(t) !== -1; });
+    var likeForLike = !!cand.compound === !!cur.compound && sameImplement;
     p.days[dayIdx].slots[slotIdx] = {
       name: cand.name, group: cand.group, compound: cand.compound, hold: !!cand.hold,
       sets: cur.sets, repLow: cur.repLow, repHigh: cur.repHigh,
-      // keep the load baseline when the swap is like-for-like (same group and
-      // both compound/both isolation) — travellers kept re-guessing weights
-      weightKg: null, incKg: cand.incKg
+      weightKg: (likeForLike && cur.weightKg != null) ? cur.weightKg : null,
+      incKg: cand.incKg
     };
     p.updatedAt = new Date().toISOString();
     save(p);

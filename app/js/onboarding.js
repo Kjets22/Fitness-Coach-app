@@ -152,10 +152,13 @@ OF.onboarding = (function () {
     var existing = OF.goals ? OF.goals.activeGoal() : null;
     if (existing) {
       if (existing.type !== type) {
-        // Same rule as goals.js: a type change clears the adaptation
-        // history and restarts progress from today.
-        S.getAll("adjustments").forEach(function (r) { S.remove("adjustments", r.id); });
-        S.update("goal", existing.id, { type: type, date: U.todayISO() });
+        // Same rule as goals.js: a type change KEEPS the adaptation history
+        // (those nudges correct the goal-independent MAINTENANCE estimate)
+        // and restarts progress from today. Amount only applies to
+        // cut/lean-bulk — a stale one would render "Maintain — gain 22 lb".
+        var patch = { type: type, date: U.todayISO() };
+        if (type !== "cut" && type !== "lean-bulk") patch.targetAmountKg = null;
+        S.update("goal", existing.id, patch);
       }
     } else {
       S.add("goal", {
@@ -164,6 +167,8 @@ OF.onboarding = (function () {
         heightCm: null, age: null, sex: null, activity: null
       });
     }
+    // mirror into the coach profile — the two stores drift apart otherwise
+    if (OF.goals && OF.goals.syncProfileGoal) { try { OF.goals.syncProfileGoal(type); } catch (e) {} }
     if (OF.goals) OF.goals.refresh();
     if (OF.dashboard) OF.dashboard.refresh();
   }

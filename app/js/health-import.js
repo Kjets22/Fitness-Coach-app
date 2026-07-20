@@ -209,7 +209,14 @@ OF.healthImport = (function () {
       // header (sets sawHealthTag). Guard the partial-"<Record" tail so it isn't
       // parsed here and then again once its ">" arrives (which would double-count).
       if (from === 0 && text.indexOf("<Record") === -1) processLine(text);
-      return text.slice(from); // header / incomplete tail -> carry
+      var tail = text.slice(from);
+      // Cap the carry: past the last <Record>, Apple exports end with huge
+      // <Workout>/<ActivitySummary> sections containing no Record tags — an
+      // uncapped carry re-buffers that entire multi-MB tail chunk by chunk
+      // (O(n²) concat). A single opening tag can't be longer than 64 KB, so
+      // keeping the last 64 KB preserves any straddling "<Record…" prefix.
+      if (tail.length > 65536) tail = tail.slice(-65536);
+      return tail; // header / incomplete tail -> carry
     }
 
     return new Promise(function (resolve, reject) {
@@ -454,8 +461,13 @@ OF.healthImport = (function () {
       pending.types.steps.recs.forEach(function (rec) {
         if (failed) return;
         var hit = existing[rec.date];
-        var ok = hit ? S.update("steps", hit.id, { count: rec.count })
-                     : S.add("steps", { date: rec.date, count: rec.count });
+        // house rule: a hand-typed count wins over ANY automated source —
+        // skip manual days. Everything imported is stamped "health" so the
+        // launch-time auto-sync keeps refreshing it consistently (an
+        // unstamped import looked "manual" and froze today's live count).
+        if (hit && hit.source === "manual") return;
+        var ok = hit ? S.update("steps", hit.id, { count: rec.count, source: "health" })
+                     : S.add("steps", { date: rec.date, count: rec.count, source: "health" });
         if (!ok) { failed = true; return; }
         hit ? u++ : a++;
       });

@@ -42,11 +42,18 @@ OF.streak = (function () {
     try { localStorage.setItem(KEY, JSON.stringify(m)); } catch (e) {}
   }
 
-  /** Set of local ISO dates that have ANY log. */
+  /** Set of local ISO dates the USER logged something. Auto-synced Health
+      records (source:"health") don't count — steps arriving by themselves
+      would make the streak permanent and meaningless, and a bulk Health
+      import would instantly read as years of "logging". */
   function loggedDays() {
     var set = {};
     TYPES.forEach(function (t) {
-      try { S.getAll(t).forEach(function (r) { if (r && r.date) set[r.date] = true; }); } catch (e) {}
+      try {
+        S.getAll(t).forEach(function (r) {
+          if (r && r.date && r.source !== "health") set[r.date] = true;
+        });
+      } catch (e) {}
     });
     return set;
   }
@@ -102,7 +109,14 @@ OF.streak = (function () {
     setMeta({ prevCurrent: cur });                       // remember for next call
     if (cur < last) { setMeta({ lastMilestone: 0 }); last = 0; }
     var hit = 0;
-    MILESTONES.forEach(function (ms) { if (cur === ms && ms > last && prev === cur - 1) hit = ms; });
+    // "small" growth = day-by-day logging (a widget-drained yesterday +
+    // today's log legitimately advances by 2); large jumps = bulk imports,
+    // which must stay silent. Crossing (not just landing on) a milestone
+    // counts — landing exactly used to skip the tier forever.
+    var grew = cur - prev;
+    MILESTONES.forEach(function (ms) {
+      if (cur >= ms && prev < ms && ms > last && grew >= 1 && grew <= 2) hit = ms;
+    });
     if (hit) { setMeta({ lastMilestone: hit }); return hit; }
     return 0;
   }

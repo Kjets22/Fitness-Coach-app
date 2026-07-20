@@ -358,4 +358,68 @@ import { makeWorld, check, section, report } from "./coach2-shim.mjs";
     !injNames.some(n => ["Overhead Press", "Seated Dumbbell Press", "Pike Push-Up", "Overhead Triceps Extension"].includes(n)));
 }
 
+/* ---------- progression guards (build 32 audit fixes) ---------- */
+section("progression guards");
+{
+  const w = makeWorld();
+  const p = w.OF.trainer.createProgram({ daysPerWeek: 3, equipment: "full-gym", experience: "intermediate", sessionMinutes: 60 });
+  // pick a weighted slot on day 0 and give it a known baseline
+  const slot = p.days[0].slots.find(s => s.incKg > 0);
+  slot.weightKg = 60; slot.repLow = 6; slot.repHigh = 10; slot.sets = 3;
+  w.OF.trainer.saveProgramForTest ? w.OF.trainer.saveProgramForTest(p)
+    : localStorage.setItem("optimalfit.trainerProgram", JSON.stringify(p));
+
+  // grinding heavier with reps BELOW the floor = failed session, must NOT add
+  const res = w.OF.trainer.completeSession(0, [{ name: slot.name, sets: [
+    { weightKg: 62.5, reps: 2 }, { weightKg: 62.5, reps: 2 }, { weightKg: 62.5, reps: 2 }
+  ] }]);
+  const after = JSON.parse(localStorage.getItem("optimalfit.trainerProgram"));
+  const slotAfter = after.days[0].slots.find(s => s.name === slot.name);
+  check("over-weight sub-floor session does not ADD weight (was: auto-pass bumped to 65)",
+    slotAfter.weightKg <= 60, slotAfter.weightKg);
+  check("it counts as a stall/hold, not a pass",
+    !(res.changes || []).some(c => c.name === slot.name && c.kind === "added"), res.changes);
+
+  // heavier AND in-range reps still earns the bump (the legit over case)
+  const w2 = makeWorld();
+  const p2 = w2.OF.trainer.createProgram({ daysPerWeek: 3, equipment: "full-gym", experience: "intermediate", sessionMinutes: 60 });
+  const s2 = p2.days[0].slots.find(s => s.incKg > 0);
+  s2.weightKg = 60; s2.repLow = 6; s2.repHigh = 10; s2.sets = 3;
+  localStorage.setItem("optimalfit.trainerProgram", JSON.stringify(p2));
+  w2.OF.trainer.completeSession(0, [{ name: s2.name, sets: [
+    { weightKg: 62.5, reps: 8 }, { weightKg: 62.5, reps: 8 }, { weightKg: 62.5, reps: 10 }
+  ] }]);
+  const after2 = JSON.parse(localStorage.getItem("optimalfit.trainerProgram"));
+  const s2After = after2.days[0].slots.find(s => s.name === s2.name);
+  check("heavier + in-range reps still bumps from the heavier base",
+    s2After.weightKg > 62.5, s2After.weightKg);
+
+  // baseline seeding must ignore a worked-up heavy double
+  const w3 = makeWorld();
+  const p3 = w3.OF.trainer.createProgram({ daysPerWeek: 3, equipment: "full-gym", experience: "intermediate", sessionMinutes: 60 });
+  const s3 = p3.days[0].slots.find(s => s.incKg > 0);
+  s3.weightKg = null; s3.sets = 3;
+  localStorage.setItem("optimalfit.trainerProgram", JSON.stringify(p3));
+  w3.OF.trainer.completeSession(0, [{ name: s3.name, sets: [
+    { weightKg: 40, reps: 10 }, { weightKg: 50, reps: 8 }, { weightKg: 60, reps: 2 }
+  ] }]);
+  const after3 = JSON.parse(localStorage.getItem("optimalfit.trainerProgram"));
+  const s3After = after3.days[0].slots.find(s => s.name === s3.name);
+  check("seeding ignores <4-rep sets (was: 60x2 became the prescription)",
+    s3After.weightKg === 50, s3After.weightKg);
+
+  // regenerate keeps earned weights and week position
+  const w4 = makeWorld();
+  const p4 = w4.OF.trainer.createProgram({ daysPerWeek: 3, equipment: "full-gym", experience: "intermediate", sessionMinutes: 60 });
+  const s4 = p4.days[0].slots.find(s => s.incKg > 0);
+  s4.weightKg = 77.5; p4.pointer = 2;
+  localStorage.setItem("optimalfit.trainerProgram", JSON.stringify(p4));
+  const regen = w4.OF.trainer.regenerate();
+  const s4New = regen.days.flatMap(d => d.slots).find(s => s.name === s4.name);
+  check("regenerate keeps an unearned-yet-untrained bump (was: rolled back)",
+    !s4New || s4New.weightKg === 77.5, s4New && s4New.weightKg);
+  check("regenerate keeps the week position (was: reset to Day 1)",
+    regen.pointer === 2 % regen.days.length, regen.pointer);
+}
+
 report("coach2-tests");

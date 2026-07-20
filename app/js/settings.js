@@ -122,6 +122,9 @@ OF.settings = (function () {
     if (OF.daily) OF.daily.renderAll();
     OF.insights.refresh(); // also refreshes the goal area (adaptive loop + card)
     OF.dashboard.refresh(); // after insights so targets include fresh adjustments
+    // the Today's-session card prints prescribed loads via fmtWeight — a
+    // kg<->lb switch left it in the old unit until the next re-render
+    if (OF.trainer && OF.trainer.renderCard) { try { OF.trainer.renderCard(); } catch (e) {} }
   }
 
   /* ---------- Export ----------

@@ -165,6 +165,9 @@ OF.demo = (function () {
         sex: "m",
         activity: "moderate"
       })) counts.goal = 1;
+      // mirror into the coach profile — every other goal producer does, and
+      // drift here fires a bogus "your goal changed" re-interview nag
+      if (OF.goals && OF.goals.syncProfileGoal) { try { OF.goals.syncProfileGoal("lean-bulk"); } catch (e) {} }
     }
 
     var consecTraining = 0;     // fatigue tracker
@@ -261,12 +264,14 @@ OF.demo = (function () {
       var quality = clamp(Math.round(1 + (durH - 5.5) * 1.3 + (rnd() - 0.5) * 1.6), 1, 5);
       var durMin = Math.round(durH * 60);
 
-      if (S.add("sleep", {
+      var hasSleep = S.getAll("sleep").some(function (r) { return r.date === date; });
+      if (!hasSleep && S.add("sleep", {
         date: date,
         bedTime: hm(Math.floor(bedMin / 60) % 24, bedMin % 60),
         wakeTime: hm(Math.floor(wakeMin / 60), wakeMin % 60),
         quality: quality,
         durationMin: durMin,
+        source: "health",   // same contract as steps: sync may refresh these
         notes: ""
       })) counts.sleep++;
 
@@ -397,9 +402,14 @@ OF.demo = (function () {
         })) counts.food++;
       });
 
-      /* ---------- STEPS (one entry per day; pattern 7) ---------- */
+      /* ---------- STEPS (one entry per day; pattern 7) ----------
+         Respect the one-record-per-day contract: never shadow a day the
+         user already has (today's REAL count was being covered by a fake
+         one), and stamp source:"health" so HealthKit sync/import may keep
+         updating these dates (source-less looked hand-typed = frozen). */
       var stepCount = Math.round(6000 + rnd() * 4000 + (trains ? 1500 + rnd() * 500 : 0));
-      if (S.add("steps", { date: date, count: stepCount })) counts.steps++;
+      var hasSteps = S.getAll("steps").some(function (r) { return r.date === date; });
+      if (!hasSteps && S.add("steps", { date: date, count: stepCount, source: "health" })) counts.steps++;
 
       /* ---------- BODY (every ~3 days; pattern 5 — lean-bulk story) ---------- */
       if (dayIdx % 3 === 0) {

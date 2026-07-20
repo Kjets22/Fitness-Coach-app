@@ -21,7 +21,7 @@ OF.exerciseLibrary = (function () {
     "Back": [
       "Deadlift", "Barbell Row", "Pendlay Row", "Dumbbell Row",
       "T-Bar Row", "Seated Cable Row", "Lat Pulldown", "Pull-Up",
-      "Chin-Up", "Face Pull", "Straight-Arm Pulldown", "Rack Pull",
+      "Chin-Up", "Straight-Arm Pulldown", "Rack Pull",
       "Machine Row", "Shrug"
     ],
     "Legs": [
@@ -33,9 +33,10 @@ OF.exerciseLibrary = (function () {
     ],
     "Shoulders": [
       "Overhead Press", "Seated Dumbbell Press", "Arnold Press",
-      "Lateral Raise", "Front Raise", "Rear Delt Fly",
+      "Lateral Raise", "Front Raise", "Rear Delt Fly", "Face Pull",
       "Upright Row", "Cable Lateral Raise", "Machine Shoulder Press"
-    ],
+    ],   // Face Pull lives here to MATCH muscleGroupFor (rear delts) — the
+         // catalog filing it under Back made suggestions and volume disagree
     "Arms": [
       "Barbell Curl", "Dumbbell Curl", "Hammer Curl", "Preacher Curl",
       "Concentration Curl", "Cable Curl", "Incline Dumbbell Curl",

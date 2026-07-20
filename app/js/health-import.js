@@ -462,10 +462,12 @@ OF.healthImport = (function () {
         if (failed) return;
         var hit = existing[rec.date];
         // house rule: a hand-typed count wins over ANY automated source —
-        // skip manual days. Everything imported is stamped "health" so the
-        // launch-time auto-sync keeps refreshing it consistently (an
-        // unstamped import looked "manual" and froze today's live count).
-        if (hit && hit.source === "manual") return;
+        // skip manual days. Records with NO source predate stamping and were
+        // hand-typed too (auto-sync always stamped "health"), so only
+        // source:"health" days are fair game to overwrite. Imports are
+        // stamped "health" so the launch-time auto-sync keeps refreshing
+        // them (an unstamped import looked "manual" and froze today's count).
+        if (hit && hit.source !== "health") return;
         var ok = hit ? S.update("steps", hit.id, { count: rec.count, source: "health" })
                      : S.add("steps", { date: rec.date, count: rec.count, source: "health" });
         if (!ok) { failed = true; return; }
@@ -484,9 +486,11 @@ OF.healthImport = (function () {
         if (failed) return;
         var have = byDate[rec.date] || [];
         if (have.length > 1) { ws++; return; } // user logged several entries: keep them
+        // source:"health" on every imported type — the streak counts USER
+        // logging, and an unstamped bulk import read as years of it
         var ok = have.length === 1
-          ? S.update("water", have[0].id, { amountMl: rec.amountMl })
-          : S.add("water", { date: rec.date, amountMl: rec.amountMl });
+          ? S.update("water", have[0].id, { amountMl: rec.amountMl, source: "health" })
+          : S.add("water", { date: rec.date, amountMl: rec.amountMl, source: "health" });
         if (!ok) { failed = true; return; }
         have.length ? wu++ : wa++;
       });
@@ -502,7 +506,7 @@ OF.healthImport = (function () {
         if (failed) return;
         if (bodyDates[rec.date]) { bs++; return; }
         if (!S.add("body", { date: rec.date, weightKg: rec.weightKg,
-                             bodyFatPct: null, muscleMassKg: null, notes: "" })) {
+                             bodyFatPct: null, muscleMassKg: null, notes: "", source: "health" })) {
           failed = true; return;
         }
         ba++;
@@ -517,7 +521,7 @@ OF.healthImport = (function () {
       pending.types.sleep.recs.forEach(function (rec) {
         if (failed) return;
         if (sleepDates[rec.date]) { ss++; return; }
-        if (!S.add("sleep", rec)) { failed = true; return; }
+        if (!S.add("sleep", Object.assign({}, rec, { source: "health" }))) { failed = true; return; }
         sa++;
       });
       parts.push("sleep: " + sa + " added" + (ss ? ", " + ss + " skipped (night already logged)" : ""));

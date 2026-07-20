@@ -188,10 +188,18 @@ OF.settings = (function () {
     var reader = new FileReader();
     reader.onload = function () {
       try {
-        // Empty device: use "replace" so PREFS (units etc.) restore too —
+        // Fresh device: use "replace" so PREFS (units etc.) restore too —
         // importAll only applies prefs/appState in replace mode, and merge
-        // onto nothing is identical for records anyway.
-        var replace = S.countAll() === 0;
+        // onto nothing is identical for records anyway. "Fresh" requires no
+        // app state either: replace deletes appState keys the backup lacks,
+        // and a post-onboarding device (0 records, real trainer program)
+        // must not lose it to an older backup without the confirm prompt.
+        var replace = S.countAll() === 0 && (function () {
+          try {
+            return !localStorage.getItem("optimalfit.trainerProgram") &&
+                   !localStorage.getItem("optimalfit.coachProfile");
+          } catch (e) { return false; }
+        })();
         if (S.countAll() > 0) {
           // default action (OK) is the SAFE one — merge, never destroys.
           var wantMerge = confirm(

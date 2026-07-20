@@ -40,6 +40,18 @@ OF.cloudSync = (function () {
     try { var a = OF.socialApi; return a && a.uid ? a.uid() : null; } catch (e) { return null; }
   }
 
+  /** "Fresh device" = no records AND no meaningful app state. Zero records
+      alone isn't enough: right after onboarding the user may already have a
+      trainer program + coach profile, and a full "replace" restore would
+      delete state the (possibly older) backup doesn't carry. */
+  function deviceIsFresh(recordCount) {
+    if (recordCount > 0) return false;
+    try {
+      return !localStorage.getItem("optimalfit.trainerProgram") &&
+             !localStorage.getItem("optimalfit.coachProfile");
+    } catch (e) { return false; }
+  }
+
   /** Serialize the whole local store (tracking data + prefs + coach state). */
   function snapshot() {
     try { return JSON.parse(S.exportAll()); } catch (e) { return null; }
@@ -121,7 +133,7 @@ OF.cloudSync = (function () {
           // importAll look for records one level too deep (restored nothing).
           // Fresh device (reinstall): full replace so prefs/app-state return
           // too. Device with data: merge — local always wins.
-          S.importAll(backup.data, before === 0 ? "replace" : "merge");
+          S.importAll(backup.data, deviceIsFresh(before) ? "replace" : "merge");
           var after = 0;
           try { after = S.countAll(); } catch (e) {}
           var added = after - before;

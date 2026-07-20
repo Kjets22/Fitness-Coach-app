@@ -518,10 +518,12 @@ OF.trainer = (function () {
     fresh.days.forEach(function (d) {
       d.slots.forEach(function (s) {
         var old = s && s.name ? prior[s.name.toLowerCase()] : null;
-        if (old && s.incKg > 0 && (s.weightKg == null || old.weightKg > s.weightKg)) {
-          s.weightKg = old.weightKg;
-          s.fails = old.fails;
-        }
+        if (!old || !(s.incKg > 0)) return;
+        if (s.weightKg == null || old.weightKg > s.weightKg) s.weightKg = old.weightKg;
+        // carry the stall counter whenever the working weight is unchanged —
+        // dropping it when historyWeight seeded the same number would erase
+        // one earned strike toward the deload
+        if (s.weightKg === old.weightKg) s.fails = old.fails;
       });
     });
     fresh.pointer = p.pointer % fresh.days.length;
@@ -704,13 +706,18 @@ OF.trainer = (function () {
       if (ex.weightKg != null || ex.incKg <= 0) return;
       var logged = byName[ex.name.toLowerCase()];
       if (!logged) return;
-      var w = null;
-      // same >=4-rep guard as historyWeight: a worked-up heavy double/single
-      // must not become the prescribed weight — guaranteed failure next time
+      var w = null, wAny = null;
+      // same rules as historyWeight: seed from the heaviest >=4-rep set (a
+      // worked-up heavy double/single must not become the prescription), and
+      // if the whole session was low-rep, fall back to 85% of the heaviest —
+      // never seeding at all would leave the slot baseline-less forever
       logged.forEach(function (s) {
         var v = Number(s.weightKg), r = Number(s.reps);
-        if (isFinite(v) && v > 0 && r >= 4 && (w == null || v > w)) w = v;
+        if (!isFinite(v) || v <= 0) return;
+        if (wAny == null || v > wAny) wAny = v;
+        if (r >= 4 && (w == null || v > w)) w = v;
       });
+      if (w == null && wAny != null) w = Math.round(wAny * 0.85 * 100) / 100;
       if (w != null) { ex.weightKg = w; changes.push({ name: ex.name, kind: "seeded", to: w }); }
     });
     changes.forEach(function (c) {
@@ -993,21 +1000,16 @@ OF.trainer = (function () {
       var a2 = avoidList();
       if (a2.indexOf(cur.name) === -1) { a2.push(cur.name); setAvoid(a2); }
     }
-    // keep the load baseline when the swap is like-for-like: same group is
-    // already guaranteed, so require same compound/isolation class AND a
-    // shared implement (barbell→barbell yes, barbell→dumbbell no — loads
-    // don't transfer across implements) — travellers kept re-guessing weights
-    var curPool = null;
-    for (var pi = 0; pi < POOL.length; pi++) {
-      if (POOL[pi].name === cur.name) { curPool = POOL[pi]; break; }
-    }
-    var sameImplement = curPool && cand.equip.some(function (t) { return curPool.equip.indexOf(t) !== -1; });
-    var likeForLike = !!cand.compound === !!cur.compound && sameImplement;
     p.days[dayIdx].slots[slotIdx] = {
       name: cand.name, group: cand.group, compound: cand.compound, hold: !!cand.hold,
       sets: cur.sets, repLow: cur.repLow, repHigh: cur.repHigh,
-      weightKg: (likeForLike && cur.weightKg != null) ? cur.weightKg : null,
-      incKg: cand.incKg
+      // the baseline is deliberately DISCARDED: loads don't transfer between
+      // different lifts (Deadlift 140 → Barbell Row 140 would wedge the slot
+      // at an impossible weight — every session logs below it and progression
+      // holds forever), and the equip vocabulary ("gym" = barbell AND every
+      // machine) is too coarse to detect a genuinely like-for-like pair.
+      // The first session re-seeds from what the user actually lifts.
+      weightKg: null, incKg: cand.incKg
     };
     p.updatedAt = new Date().toISOString();
     save(p);

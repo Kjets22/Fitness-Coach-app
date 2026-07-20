@@ -253,7 +253,8 @@ OF.healthSync = (function () {
         if (r.ok) { render(); }
         else { msg(r.err === "denied"
           ? "Permission was declined. You can enable it later in your phone’s Health settings."
-          : "Couldn’t connect to Health. Try again, or use the file import below."); }
+          : "Couldn’t connect to Health (" + (r.err || "unknown error") + "). " +
+            "Try again, or use the file import below."); }
       });
     } else if (act === "sync") {
       msg("Syncing…");

@@ -2,6 +2,14 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+  <!-- BOTH capabilities live here. The widget work (build 26) once replaced
+       this file with an App-Group-only version and silently stripped
+       HealthKit — Health connect then failed on device with no permission
+       sheet. Never overwrite this file; merge into it. -->
+  <key>com.apple.developer.healthkit</key>
+  <true/>
+  <key>com.apple.developer.healthkit.access</key>
+  <array/>
   <key>com.apple.security.application-groups</key>
   <array><string>group.com.optimalfit.app</string></array>
 </dict>

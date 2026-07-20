@@ -556,6 +556,10 @@ input[type="checkbox"], input[type="radio"] { -webkit-appearance: auto; appearan
 .entry {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;      /* crowded rows (sleep: stars + Edit + Delete) drop
+                           the buttons to a 2nd line instead of crushing the
+                           title into a 4-line column */
+  row-gap: 6px;
   gap: var(--sp-3);
   background: var(--card);
   border: 1px solid var(--card-edge);
@@ -577,7 +581,7 @@ input[type="checkbox"], input[type="radio"] { -webkit-appearance: auto; appearan
 }
 .entry-ico .ico { width: 18px; height: 18px; }
 
-.entry-main { flex: 1; min-width: 0; }
+.entry-main { flex: 1 1 14ch; min-width: 14ch; }   /* title keeps a readable column; extras wrap */
 .entry-title { font-weight: 650; font-size: 0.95rem; }
 .entry-sub {
   color: var(--text-dim);
@@ -1754,6 +1758,9 @@ body.metric-modal-open { overflow: hidden; }
   font-variant-numeric: tabular-nums;
 }
 #rest-bar[hidden] { display: none; }
+/* while resting, give the scroller clearance so the floating pill can never
+   sit over the last card's Remove button (QA finding, build 37) */
+body.resting main.content { padding-bottom: 76px; }
 #rest-bar .rest-dismiss { color: var(--text-dim); font-size: 0.78rem; }
 #rest-bar.rest-done {
   border-color: var(--accent-2);

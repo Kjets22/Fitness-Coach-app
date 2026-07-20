@@ -959,6 +959,7 @@ OF.exercise = (function () {
     var durMs = (restDur || 90) * 1000;
     var since = restStart != null ? Date.now() - restStart : Infinity;
     var showing = mode === "active" && restStart != null && since < durMs + 60 * 1000;
+    document.body.classList.toggle("resting", !!(showing && onExerciseTab && !finish.open));
     if (!showing || !onExerciseTab || finish.open) { if (bar) bar.hidden = true; return; }
     if (!bar) {
       bar = document.createElement("button");

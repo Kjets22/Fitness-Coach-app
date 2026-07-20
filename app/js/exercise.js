@@ -477,7 +477,8 @@ OF.exercise = (function () {
         // last-session weights for the NEW lift if we have them, else keep
         // the rows (weights editable) — never lose set count mid-workout
         var prev = lastSetsFor(to);
-        if (prev && prev.length) { sx.sets = prev.map(function (ps) { return { w: ps.w, r: ps.r, done: false }; }); sx.prefilled = true; }
+        // stored sets are {weightKg,reps} — seedSet normalizes to builder shape
+        if (prev && prev.length) { sx.sets = prev.slice(0, MAX_SETS).map(seedSet); sx.prefilled = true; }
         saveActive(); renderBuilder();
         U.toast("Swapped " + from + " \u2192 " + to + " for today.", "ok");
       }

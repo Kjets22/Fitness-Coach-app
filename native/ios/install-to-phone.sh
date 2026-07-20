@@ -24,6 +24,21 @@ if ! xcrun devicectl list devices 2>/dev/null | grep "$DEVID" | grep -qiv unavai
   exit 1
 fi
 
+# --- QA GATE: no build reaches the phone with red tests (Krish's standing
+# rule 2026-07-20: agent-tested, no bugs). QA_SKIP=1 bypasses in emergencies.
+if [ "${QA_SKIP:-0}" != "1" ]; then
+  echo ">> QA gate: running test suites…"
+  ( cd /Users/krishjetly/Fitness-Coach-app \
+    && node tests/coach2-tests.mjs >/tmp/of-qa-tests.log 2>&1 \
+    && node tests/coach2-eval.mjs >>/tmp/of-qa-tests.log 2>&1 ) \
+    || { echo "!! QA GATE FAILED — tests are red (see /tmp/of-qa-tests.log). NOT installing."; exit 1; }
+  # every shipped JS file must at least parse
+  for jf in /Users/krishjetly/Fitness-Coach-app/app/js/*.js; do
+    node --check "$jf" >/dev/null 2>&1 || { echo "!! QA GATE FAILED — syntax error in $jf. NOT installing."; exit 1; }
+  done
+  echo ">> QA gate passed (suites green, all JS parses)"
+fi
+
 # --- version/build come from the app source (single source of truth) ---
 VLINE=$(grep 'OF.APP_VERSION' /Users/krishjetly/Fitness-Coach-app/app/js/util.js)
 MARKETING=$(echo "$VLINE" | sed -E 's/.*"([0-9]+\.[0-9]+\.[0-9]+).*/\1/')

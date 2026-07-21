@@ -62,7 +62,10 @@ xcodebuild -project App.xcodeproj -scheme App \
   -allowProvisioningUpdates \
   DEVELOPMENT_TEAM="$TEAM" CODE_SIGN_STYLE=Automatic \
   MARKETING_VERSION="$MARKETING" CURRENT_PROJECT_VERSION="$BUILD" \
-  build
+  build \
+  || { echo "!! BUILD FAILED — if the error above says 'No Accounts', sign into"; \
+       echo "!! Xcode (Settings > Accounts, team $TEAM) once; the HealthKit"; \
+       echo "!! profile then regenerates automatically and this script self-heals."; exit 1; }
 
 APP=$(/usr/bin/find "$DD/Build/Products" -maxdepth 2 -name "App.app" -path "*iphoneos*" | head -1)
 [ -n "$APP" ] || { echo "!! built app not found under $DD"; exit 1; }

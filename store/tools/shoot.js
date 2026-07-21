@@ -374,6 +374,39 @@ async function captureSize(browser, size) {
   await shot(page, size, 8, "profile-stats");
   await page.evaluate(() => { if (OF.social) OF.social.sheetClose(1); });
 
+  // 9. LIVE WORKOUT — superset pair + running rest pill (build 36 feature).
+  // Seed a mid-session activeWorkout and reload so exercise.js resumes it.
+  await page.evaluate(() => {
+    const now = Date.now();
+    const mk = (w, r, done, rpe) => {
+      const s = { kg: Math.round(w / 2.20462 * 100) / 100, reps: r,
+        wRaw: String(w), rRaw: String(r), done: !!done };
+      if (rpe) s.rpe = rpe;
+      return s;
+    };
+    localStorage.setItem("optimalfit.activeWorkout", JSON.stringify({
+      startedAt: now - 14 * 60 * 1000, type: "strength", programDay: null,
+      restStart: now - 12 * 1000, restDur: 90,
+      exList: [
+        { name: "Bench Press", superset: true, touched: true,
+          sets: [mk(185, 8, true, 8), mk(185, 8, true), mk(185, 6, false)] },
+        { name: "Dumbbell Row", touched: true,
+          sets: [mk(70, 10, true), mk(70, 10, true), mk(70, 8, false)] }
+      ]
+    }));
+    location.hash = "exercise";
+    location.reload();
+  });
+  await sleep(2500);
+  await page.waitForSelector(".ss-hint", { timeout: 10000 });
+  await page.evaluate(() => {
+    const h = document.querySelector(".ex-item.ss-a");
+    if (h) h.scrollIntoView({ block: "start" });
+    window.scrollBy(0, -70); // keep the session timer visible above the pair
+  });
+  await sleep(400);
+  await shot(page, size, 9, "workout-superset");
+
   await page.close();
 }
 

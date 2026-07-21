@@ -62,5 +62,7 @@
 	<true/>
 	<key>NSHealthShareUsageDescription</key>
 	<string>OptimalFit reads your steps, weight, sleep and active energy from Apple Health so you don’t have to log them by hand. This data stays on your device.</string>
+	<key>NSHealthUpdateUsageDescription</key>
+	<string>OptimalFit can save workouts you finish to Apple Health so they appear alongside your other activity. Nothing is ever written without your explicit permission.</string>
 </dict>
 </plist>

@@ -1,15 +1,8 @@
-# OptimalFit — App Store resubmission kit (UPLOAD 1.6.0 build 40 — see PENDING note)
+# OptimalFit — App Store resubmission kit (UPLOAD 1.6.0 build 41)
 
 
-> **PENDING (2-minute one-time step):** build 40 restores the HealthKit
-> entitlement (Health connect was broken on device since build 26), but this
-> Mac's Xcode has NO Apple ID signed in, so the provisioning profile can't be
-> regenerated. Open Xcode -> Settings -> Accounts -> sign in with the Apple ID
-> on team F62L7PL2GA. After that, every build/archive self-heals automatically
-> (`-allowProvisioningUpdates`) - no other action needed. Do NOT submit build
-> 38: its Health connect is broken.
 
-> **Upload the newest archive: `OptimalFit-1.6.0-build40`** — it contains the
+> **Upload the newest archive: `OptimalFit-1.6.0-build41`** — it contains the
 > compliance fixes (consent, privacy manifest) PLUS the redesign, widgets,
 > haptics, and the full user-ready sprint. The 1.4.x archives are superseded.
 
@@ -26,7 +19,7 @@ All copy-paste text lives in `store/app-store-listing.md` (updated 2026-07-17).
 ## Submission steps (your ~20 minutes)
 
 1. **Upload the build** — Xcode → Window → **Organizer** → Archives → select
-   **OptimalFit-1.6.0-build40** (newest in the list) → **Distribute App**
+   **OptimalFit-1.6.0-build41** (newest in the list) → **Distribute App**
    → App Store Connect → Upload → accept defaults (this creates the missing
    Distribution certificate with your Apple ID; approve any keychain prompt).
 2. **App Store Connect → OptimalFit → + Version 1.6.0**

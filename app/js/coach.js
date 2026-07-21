@@ -533,8 +533,9 @@ OF.coach = (function () {
     }
     if (busy) {
       html += '<div class="msg-row">' + avatar +
-        '<div class="bubble bubble-coach bubble-thinking">Coach is thinking&hellip; ' +
-        '<span class="dots"><span></span><span></span><span></span></span></div></div>';
+        '<div class="bubble bubble-coach bubble-thinking"><span id="think-label">Coach is thinking&hellip;</span> ' +
+        '<span class="dots"><span></span><span></span><span></span></span>' +
+        '<span id="think-elapsed" class="think-elapsed"></span></div></div>';
     }
     els.log.innerHTML = html;
     // fresh chat = read the greeting from its first line; conversations pin
@@ -542,12 +543,31 @@ OF.coach = (function () {
     els.log.scrollTop = messages.length ? els.log.scrollHeight : 0;
   }
 
+  var thinkTimer = null, thinkStart = 0;
   function setBusy(b) {
     busy = b;
     // the input stays ENABLED while the coach thinks — user testing hated
     // being locked out of typing the next question during a 10-60s answer
     els.send.disabled = b;
     els.send.textContent = b ? "Thinking…" : "Send";
+    // a long answer (up to ~2 min) behind a static bubble feels DEAD — tick
+    // the elapsed time and rotate the label so the wait reads as progress
+    if (thinkTimer) { clearInterval(thinkTimer); thinkTimer = null; }
+    if (b) {
+      thinkStart = Date.now();
+      thinkTimer = setInterval(function () {
+        var s = Math.round((Date.now() - thinkStart) / 1000);
+        var el = document.getElementById("think-elapsed");
+        var lab = document.getElementById("think-label");
+        if (el) el.textContent = s >= 3 ? " " + s + "s" : "";
+        if (lab) {
+          lab.textContent = s < 8 ? "Coach is thinking…"
+            : s < 25 ? "Reading your logs…"
+            : s < 60 ? "Writing your answer…"
+            : "Still working — long answers can take a couple of minutes…";
+        }
+      }, 1000);
+    }
   }
 
   /** Grow the textarea with its content (capped by the CSS max-height). */

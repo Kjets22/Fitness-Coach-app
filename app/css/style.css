@@ -1095,6 +1095,7 @@ body.metric-modal-open { overflow: hidden; }
   border-bottom-left-radius: 5px;
 }
 .bubble-thinking { color: var(--text-dim); }
+.think-elapsed { font-variant-numeric: tabular-nums; font-size: 0.8rem; color: var(--text-dim); }
 
 /* typing indicator: three bouncing dots */
 .dots { display: inline-flex; gap: 3px; margin-left: 2px; }

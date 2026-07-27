@@ -1,22 +1,25 @@
 /* ============================================================
    physique.js — "Analyze physique from photo" on the Body tab.
 
-   Sends a body photo (re-encoded client-side to a <=1600px JPEG)
-   to the local serve.py bridge (POST /api/physique), which runs
-   the user's Claude Code subscription headlessly with ONLY the
-   Read tool so it can view the image. The result is a body-neutral
-   visual ESTIMATE of body composition + muscle development. The
-   user reviews it and can Save the ANALYSIS (a `physique` record —
-   the image bytes are NEVER stored) or Discard.
+   Sends 1-4 body photos (each re-encoded client-side to a
+   <=1600px JPEG; e.g. upper body front, back, legs) to the
+   serve.py bridge (POST /api/physique), which has the AI view the
+   image(s) and produce ONE combined body-neutral visual ESTIMATE
+   of body composition + muscle development. The user reviews it
+   and can Save the ANALYSIS (a `physique` record — the image
+   bytes are NEVER stored) or Discard.
 
    Degrades exactly like coach.js / food-photo.js: without the
    server the button renders disabled with a hint. Phone mode
    reuses the SAME pairing key coach.js stores (optimalfit.pairKey,
    X-OF-Key). All rendered text goes through U.esc().
 
-   The photo is analyzed on the user's OWN machine and deleted by
-   the server right after — it never leaves the machine and is not
-   saved. The saved record is analysis only.
+   PRIVACY — keep every user-facing claim here ACCURATE: photos
+   ARE sent over the network to the owner's coach server and are
+   processed by Anthropic's Claude to produce the analysis. They
+   are used transiently for that one analysis and are not stored
+   by the app or the server. Never write copy claiming photos
+   "stay on this device" or "are never sent anywhere".
    ============================================================ */
 
 window.OF = window.OF || {};
@@ -29,8 +32,7 @@ OF.physique = (function () {
   var server = null;          // null (unknown) | "ok" | "no-server"
   var state = "pick";         // pick | loading | result | nonbody | error | saved
   var busy = false;
-  var imgB64 = null;          // raw base64 of the re-encoded JPEG
-  var previewUrl = null;      // data: URL for the thumbnail
+  var photos = [];            // [{b64, url, label}] — up to MAX_PHOTOS
   var description = "";        // survives re-renders
   var analysis = null;         // last parsed analysis from the server
   var errorMsg = "";
@@ -39,6 +41,12 @@ OF.physique = (function () {
   var MAX_SIDE = 1600;
   var JPEG_QUALITY = 0.85;
   var REQUEST_TIMEOUT_MS = 130000; // server kills the CLI at 120 s
+
+  /* Multiple photos -> one combined analysis (upper body from the front,
+     back, legs …). Labels tell the AI which angle each photo shows; tapping
+     a label cycles through the options. */
+  var MAX_PHOTOS = 4;
+  var LABEL_OPTIONS = ["Front", "Back", "Legs", "Side", "Upper body", "Lower body"];
 
   var REGION_ORDER = ["shoulders", "chest", "arms", "back", "core", "legs"];
   var REGION_LABEL = {
@@ -120,7 +128,7 @@ OF.physique = (function () {
       els.area.innerHTML = OF.entitlements.paywallHtml({
         compact: true,
         title: (OF.icons ? OF.icons.get("bodyscan") + " " : "") + "Physique analysis",
-        blurb: "AI estimates body composition and muscle development from a photo (processed transiently by the coach service, never stored)."
+        blurb: "AI estimates body composition and muscle development from your photos (analyzed transiently by the coach service and Anthropic's Claude, never stored)."
       });
       OF.entitlements.bindPaywall(els.area, renderButton);
       return;
@@ -186,21 +194,39 @@ OF.physique = (function () {
 
   var PRIVACY_LINE =
     '<p class="muted small phys-privacy">' + OF.icons.get("check") +
-    ' Your photo is processed transiently by the OptimalFit coach service and never stored — ' +
-    'it is sent only to your own OptimalFit computer for the analysis and is deleted right after — never stored, never sent anywhere else. Only the written analysis ' +
-    'can be saved.</p>';
+    ' Your photos are sent securely to the OptimalFit coach service and analyzed by ' +
+    'Anthropic&rsquo;s Claude AI. They are used only for this one analysis and deleted right ' +
+    'after &mdash; neither the app nor the coach service keeps them. Only the written ' +
+    'analysis can be saved.</p>';
+
+  function thumbsHtml(withControls) {
+    if (!photos.length) return "";
+    return '<div class="phys-thumbs">' + photos.map(function (p, i) {
+      return '<div class="phys-thumb">' +
+        '<img src="' + U.esc(p.url) + '" alt="' + U.esc(p.label) + ' physique photo">' +
+        (withControls
+          ? '<button type="button" class="phys-thumb-label" data-phys-label="' + i + '" ' +
+              'title="Tap to change which angle this photo shows">' + U.esc(p.label) + '</button>' +
+            '<button type="button" class="phys-thumb-x" data-phys-remove="' + i + '" ' +
+              'aria-label="Remove photo">&times;</button>'
+          : '<span class="phys-thumb-label">' + U.esc(p.label) + '</span>') +
+        '</div>';
+    }).join("") + '</div>';
+  }
 
   function pickHtml() {
-    return '<h2>Analyze physique from photo</h2>' +
+    return '<h2>Analyze physique from photos</h2>' +
       '<div class="photo-pick-row">' +
-        '<label class="btn photo-file-btn">' + OF.icons.get("bodyscan") +
-          '<span>' + (previewUrl ? 'Change photo' : 'Take / choose photo') + '</span>' +
-          '<input type="file" id="phys-file" accept="image/*" hidden>' +
+        '<label class="btn photo-file-btn"' + (photos.length >= MAX_PHOTOS ? ' hidden' : '') + '>' +
+          OF.icons.get("bodyscan") +
+          '<span>' + (photos.length ? 'Add more photos' : 'Take / choose photos') + '</span>' +
+          '<input type="file" id="phys-file" accept="image/*" multiple hidden>' +
         '</label>' +
       '</div>' +
-      '<div class="photo-preview" id="phys-preview">' +
-        (previewUrl ? '<img src="' + U.esc(previewUrl) + '" alt="Selected physique photo">' : '') +
-      '</div>' +
+      '<p class="muted small">Add up to ' + MAX_PHOTOS + ' photos in one go &mdash; e.g. upper body ' +
+        'from the front, your back, and your legs &mdash; for one combined analysis. ' +
+        'Tap a photo&rsquo;s label if it shows a different angle.</p>' +
+      thumbsHtml(true) +
       '<label class="photo-desc-label">Details (optional)' +
         '<textarea id="phys-desc" maxlength="500" rows="2" ' +
         'placeholder="Optional: height, weight, training experience, your goal — improves the estimate">' +
@@ -211,16 +237,15 @@ OF.physique = (function () {
         U.esc(errorMsg) + '</p>' +
       '<div class="form-actions">' +
         '<button type="button" class="btn primary" id="phys-analyze"' +
-          (imgB64 ? '' : ' disabled') + '>Analyze</button>' +
+          (photos.length ? '' : ' disabled') + '>Analyze' +
+          (photos.length > 1 ? ' ' + photos.length + ' photos' : '') + '</button>' +
         '<button type="button" class="btn ghost" data-close-phys>Cancel</button>' +
       '</div>';
   }
 
   function loadingHtml() {
-    return '<h2>Analyze physique from photo</h2>' +
-      '<div class="photo-preview">' +
-        (previewUrl ? '<img src="' + U.esc(previewUrl) + '" alt="Selected physique photo">' : '') +
-      '</div>' +
+    return '<h2>Analyze physique from photos</h2>' +
+      thumbsHtml(false) +
       '<div class="msg-row photo-thinking">' +
         '<span class="coach-avatar" aria-hidden="true">' + OF.icons.get("bodyscan") + '</span>' +
         '<div class="bubble bubble-coach bubble-thinking">Assessing your physique&hellip; 10&ndash;60 s ' +
@@ -289,10 +314,10 @@ OF.physique = (function () {
     var a = analysis;
     return '<h2>That doesn’t look like a physique photo</h2>' +
       '<p class="muted">' + (U.esc(a && a.notes) ||
-        "The AI could not assess a body in this photo. Use a well-lit, " +
-        "form-fitting or minimal-clothing front or side photo.") + '</p>' +
+        "The AI could not assess a body in these photos. Use well-lit, " +
+        "form-fitting or minimal-clothing photos (front, back, side or legs).") + '</p>' +
       '<div class="form-actions">' +
-        '<button type="button" class="btn primary" id="phys-again">Try another photo</button>' +
+        '<button type="button" class="btn primary" id="phys-again">Try other photos</button>' +
         '<button type="button" class="btn ghost" data-close-phys>Close</button>' +
       '</div>';
   }
@@ -328,8 +353,7 @@ OF.physique = (function () {
 
   function openModal() {
     state = "pick";
-    imgB64 = null;
-    previewUrl = null;
+    photos = [];
     description = "";
     analysis = null;
     errorMsg = "";
@@ -382,7 +406,7 @@ OF.physique = (function () {
   }
 
   function doAnalyze() {
-    if (busy || !imgB64) return;
+    if (busy || !photos.length) return;
     saveDesc();
     busy = true;
     state = "loading";
@@ -396,8 +420,13 @@ OF.physique = (function () {
       method: "POST",
       headers: apiHeaders({ "Content-Type": "application/json" }),
       body: JSON.stringify({
-        imageBase64: imgB64,
+        // legacy single-image fields keep an updated app working against an
+        // older server; a current server prefers the richer `images` list
+        imageBase64: photos[0].b64,
         mime: "image/jpeg",
+        images: photos.map(function (p) {
+          return { imageBase64: p.b64, mime: "image/jpeg", label: p.label };
+        }),
         description: description,
         stats: bodyStats()   // height/weight/age/sex sharpen the composition estimate
       }),
@@ -491,22 +520,33 @@ OF.physique = (function () {
 
   /* ---------------- wiring ---------------- */
 
+  function nextLabel() {
+    for (var i = 0; i < LABEL_OPTIONS.length; i++) {
+      var taken = photos.some(function (p) { return p.label === LABEL_OPTIONS[i]; });
+      if (!taken) return LABEL_OPTIONS[i];
+    }
+    return LABEL_OPTIONS[0];
+  }
+
   function onFilePicked(input) {
-    var file = input.files && input.files[0];
-    if (!file) return;
+    var files = Array.prototype.slice.call(input.files || []);
+    if (!files.length) return;
     errorMsg = "";
-    reencode(file, function (b64, dataUrl, err) {
-      if (!isOpen() || state !== "pick") return;
-      if (err) {
-        imgB64 = null;
-        previewUrl = null;
-        errorMsg = err;
-      } else {
-        imgB64 = b64;
-        previewUrl = dataUrl;
-      }
-      saveDesc();
-      renderModal();
+    saveDesc();
+    var room = MAX_PHOTOS - photos.length;
+    if (files.length > room) {
+      files = files.slice(0, room);
+      errorMsg = "Up to " + MAX_PHOTOS + " photos per analysis — extra photos were skipped.";
+    }
+    var pending = files.length;
+    files.forEach(function (file) {
+      reencode(file, function (b64, dataUrl, err) {
+        if (err) errorMsg = err;
+        else if (photos.length < MAX_PHOTOS) {
+          photos.push({ b64: b64, url: dataUrl, label: nextLabel() });
+        }
+        if (--pending === 0 && isOpen() && state === "pick") renderModal();
+      });
     });
   }
 
@@ -526,6 +566,24 @@ OF.physique = (function () {
     els.modal.addEventListener("click", function (e) {
       if (e.target.closest("[data-close-phys]")) { closeModal(); return; }
       if (e.target.closest("#phys-analyze")) { doAnalyze(); return; }
+      var lbl = e.target.closest("[data-phys-label]");
+      if (lbl) {   // tap the label chip -> cycle Front -> Back -> Legs -> …
+        var li = Number(lbl.getAttribute("data-phys-label"));
+        if (photos[li]) {
+          var cur = LABEL_OPTIONS.indexOf(photos[li].label);
+          photos[li].label = LABEL_OPTIONS[(cur + 1) % LABEL_OPTIONS.length];
+          saveDesc();
+          renderModal();
+        }
+        return;
+      }
+      var rm = e.target.closest("[data-phys-remove]");
+      if (rm) {
+        photos.splice(Number(rm.getAttribute("data-phys-remove")), 1);
+        saveDesc();
+        renderModal();
+        return;
+      }
       if (e.target.closest("#phys-save")) { saveAnalysis(); return; }
       if (e.target.closest("#phys-again")) {
         state = "pick";

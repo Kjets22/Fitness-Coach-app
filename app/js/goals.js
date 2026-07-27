@@ -210,7 +210,7 @@ OF.goals = (function () {
           '<div style="flex:1;min-width:0">' +
           '<p class="goal-progress-line">' +
           e(achieved + " of " + targetTxt + " " + what +
-            (progress.usedFallback ? " (using weight — log muscle mass on the Body tab for a sharper number)" : "") +
+            (progress.usedFallback ? " (using body weight — log muscle mass on the Body tab for a sharper number)" : "") +
             " since " + fmtDateShort(progress.baseDate)) + '</p>' +
           U.progressBar(progress.pct, ringColor) +
           '</div></div>';

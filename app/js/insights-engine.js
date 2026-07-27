@@ -677,7 +677,7 @@ OF.engine = (function () {
       protein = {
         status: "insufficient",
         message: !latestWeight
-          ? "Log a weight measurement so protein intake can be compared to the " + PROTEIN_TARGET + " g/kg target."
+          ? "Log a body-weight measurement so protein intake can be compared to the " + PROTEIN_TARGET + " g/kg target."
           : "Log meals (with protein grams) on " + plural(3 - proteinDays.length, "more day") + " in the last 2 weeks."
       };
     }

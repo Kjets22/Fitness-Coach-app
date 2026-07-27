@@ -107,7 +107,7 @@ OF.body = (function () {
     // 75) — it would silently rewrite calorie/water targets.
     var warn = "";
     if (mmKg !== null && mmKg > w) {
-      warn = "Heads up: muscle mass (" + U.fmtWeight(mmKg) + ") is more than your weight (" +
+      warn = "Heads up: muscle mass (" + U.fmtWeight(mmKg) + ") is more than your body weight (" +
         U.fmtWeight(w) + ") — double-check the values.";
     } else {
       var prevRec = S.getAll("body").slice().sort(U.byNewest).filter(function (r) {

@@ -215,7 +215,7 @@ OF.social = (function () {
           }).join("") + '</div>';
       }
     } else if (r.type === "progress") {
-      bits.title = "Progress" + (r.metric === "weight" ? " — weight" : "");
+      bits.title = "Progress" + (r.metric === "weight" ? " — body weight" : "");
       if (num(r.start_value) != null && num(r.end_value) != null) {
         var pd = Math.round((r.end_value - r.start_value) * 10) / 10;
         var arrow = pd > 0 ? "↑ " : pd < 0 ? "↓ " : "→ ";

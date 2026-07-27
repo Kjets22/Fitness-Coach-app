@@ -270,7 +270,7 @@ OF.healthImport = (function () {
     recs = Object.keys(acc.weight).sort().map(function (d) {
       return { date: d, weightKg: Math.round(acc.weight[d].kg * 100) / 100 };
     });
-    if (recs.length) types.body = { label: "Weight", recs: recs };
+    if (recs.length) types.body = { label: "Body weight", recs: recs };
 
     recs = Object.keys(acc.water).sort().map(function (d) {
       return { date: d, amountMl: Math.round(acc.water[d]) };
@@ -407,7 +407,7 @@ OF.healthImport = (function () {
       return { date: d, weightKg: Math.round(byDate[d].kg * 100) / 100 };
     });
     if (!recs.length) throw new Error("No usable weight rows found in that CSV.");
-    return { source: "Samsung Health (weight CSV)", types: { body: { label: "Weight", recs: recs } } };
+    return { source: "Samsung Health (weight CSV)", types: { body: { label: "Body weight", recs: recs } } };
   }
 
   /* ================= preview + import ================= */

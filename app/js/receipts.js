@@ -647,7 +647,7 @@ OF.receipts = (function () {
       if (num(r.streak) != null && r.streak > 1) out.subs.push(r.streak + "-day streak");
       if (Array.isArray(r.days7)) out.days7 = r.days7.map(function (v) { return v ? 1 : 0; }).slice(0, 7);
     } else if (r.type === "progress") {
-      out.title = "Progress — " + (r.metric === "weight" ? "weight" : "progress");
+      out.title = "Progress — " + (r.metric === "weight" ? "body weight" : "progress");
       if (num(r.start_value) != null && num(r.end_value) != null) {
         out.metric = U.fmtWeightDelta(r.end_value - r.start_value);
         out.subs.push(fmtW(r.start_value) + " → " + fmtW(r.end_value) +

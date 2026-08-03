@@ -1,8 +1,8 @@
-# OptimalFit — App Store resubmission kit (UPLOAD 1.6.0 build 43)
+# OptimalFit — App Store resubmission kit (UPLOAD 1.6.0 build 47)
 
 
 
-> **Upload the newest archive: `OptimalFit-1.6.0-build43`** — it contains the
+> **Upload the newest archive: `OptimalFit-1.6.0-build47`** — it contains the
 > compliance fixes (consent, privacy manifest) PLUS the redesign, widgets,
 > haptics, and the full user-ready sprint. The 1.4.x archives are superseded.
 > Build 42 added `NSHealthUpdateUsageDescription` to Info.plist — build 41's
@@ -28,12 +28,12 @@ All copy-paste text lives in `store/app-store-listing.md` (updated 2026-07-17).
 ## Submission steps (your ~20 minutes)
 
 1. **Upload the build** — Xcode → Window → **Organizer** → Archives → select
-   **OptimalFit-1.6.0-build43** (newest in the list) → **Distribute App**
+   **OptimalFit-1.6.0-build47** (newest in the list) → **Distribute App**
    → App Store Connect → Upload → accept defaults (this creates the missing
    Distribution certificate with your Apple ID; approve any keychain prompt).
 2. **App Store Connect → OptimalFit → + Version 1.6.0**
    - Paste **What's New**, description, promotional text from `app-store-listing.md`.
-   - Select the uploaded build 43 once it finishes processing (~15 min).
+   - Select the uploaded build 47 once it finishes processing (~15 min).
 3. **App Privacy** — re-answer using the updated table in `app-store-listing.md`
    (adds **Health & Fitness — linked — App Functionality** for the account backup).
 4. **App Review Information**
@@ -48,7 +48,7 @@ All copy-paste text lives in `store/app-store-listing.md` (updated 2026-07-17).
 ## Reply to Apple (paste into the rejection thread)
 
 ```
-Thank you for the detailed review. Version 1.6.0 (build 43) addresses both issues:
+Thank you for the detailed review. Version 1.6.0 (build 47) addresses both issues:
 
 Guideline 2.1(a): In 1.0 (3) the AI Coach required a companion program running
 on the user's own personal computer, which is why it could not load on the
@@ -75,7 +75,7 @@ Send (it appears before anything is transmitted).
 
 ## Assets
 
-- **Archive:** `~/Library/Developer/Xcode/Archives/2026-07-27/OptimalFit-1.6.0-build43.xcarchive` — the ONLY archive in Organizer, labeled "OptimalFit build 43 UPLOAD THIS"
+- **Archive:** `~/Library/Developer/Xcode/Archives/2026-08-03/OptimalFit-1.6.0-build47.xcarchive` — the ONLY archive in Organizer, labeled "OptimalFit build 43 UPLOAD THIS"
 - **Screenshots:** `store/screenshots/iphone67-1290x2796-*.png` (valid set; shows the pre-redesign UI — fine for this compliance resubmission, refresh later via `store/tools/shoot.js` once updated for the new UI)
 - **Demo account:** `.env.reviewer` (gitignored) — premium, pre-populated
 - **Privacy manifest:** `native/ios/App/App/PrivacyInfo.xcprivacy` (new, in the build)

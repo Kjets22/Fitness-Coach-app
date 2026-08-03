@@ -176,6 +176,91 @@ OF.goals = (function () {
 
   /* ---------------- "Your goal" card ---------------- */
 
+  /* ---------------- three-tier goal display ----------------
+     LONG-TERM  = the goal hero (headline + big ring + pace)
+     MILESTONES = derived checkpoints (OF.targets.goalMilestones)
+     DAILY      = today's live numbers vs targets, tappable    */
+
+  /** Today's logged numbers vs targets — the DAILY goal tier. */
+  function dailyGoals(targets) {
+    if (!targets || targets.status !== "ok") return [];
+    var today = U.todayISO();
+    function sumToday(type, field) {
+      return S.getAll(type).reduce(function (n, r) {
+        return n + (r.date === today && isFinite(Number(r[field])) ? Number(r[field]) : 0);
+      }, 0);
+    }
+    var stepsRec = S.getAll("steps").filter(function (r) { return r.date === today; })[0];
+    var sleepRec = S.getAll("sleep").filter(function (r) { return r.date === today; })[0];
+    var sleepH = sleepRec && isFinite(Number(sleepRec.durationMin))
+      ? Math.round(Number(sleepRec.durationMin) / 6) / 10 : 0;
+    return [
+      { key: "kcal", label: "Calories", val: Math.round(sumToday("food", "calories")),
+        target: targets.calories, unit: "kcal", tab: "food" },
+      { key: "protein", label: "Protein", val: Math.round(sumToday("food", "protein")),
+        target: targets.proteinG, unit: "g", tab: "food" },
+      { key: "water", label: "Water", val: sumToday("water", "amountMl"),
+        target: targets.waterMl, unit: "ml", tab: "daily" },
+      { key: "steps", label: "Steps", val: stepsRec ? Number(stepsRec.count) || 0 : 0,
+        target: targets.steps, unit: "", tab: "daily" },
+      { key: "sleep", label: "Sleep", val: sleepH, target: targets.sleepH, unit: "h", tab: "sleep" },
+      { key: "train", label: "Train", val: S.getAll("exercise").some(function (r) {
+          return r.date === today; }) ? 1 : 0, target: 1, unit: "", tab: "exercise" }
+    ];
+  }
+
+  function dailyGoalsHtml(targets) {
+    var items = dailyGoals(targets);
+    if (!items.length) return "";
+    var done = items.filter(function (it) {
+      return it.target > 0 && it.val / it.target >= 1;
+    }).length;
+    var html = '<div class="chart-mini-label">Today&rsquo;s goals ' +
+      '<span class="day-goals-score">' + done + '/' + items.length + '</span></div>' +
+      '<div class="day-goals">';
+    items.forEach(function (it) {
+      var frac = it.target > 0 ? Math.min(1, it.val / it.target) : 0;
+      var isDone = frac >= 1;
+      var valTxt = it.key === "water" ? U.fmtWater(it.val)
+        : it.key === "train" ? (isDone ? "Done" : "Not yet —")
+        : String(it.val);
+      var subTxt = it.key === "water" ? "of " + U.fmtWater(it.target)
+        : it.key === "train" ? (isDone ? "workout logged" : "tap to log one")
+        : "of " + it.target + (it.unit ? " " + it.unit : "");
+      html += '<button type="button" class="day-goal' + (isDone ? " done" : "") +
+        '" data-day-nav="' + e(it.tab) + '" aria-label="' +
+        e(it.label + ": " + valTxt + ", " + subTxt + (isDone ? ", goal met" : "")) + '">' +
+        U.progressRing(frac, { size: 46, stroke: 5,
+          color: isDone ? "var(--accent-2)" : "grad",
+          value: Math.round(frac * 100) + "%", label: it.label + " progress" }) +
+        '<span class="day-goal-lbl">' + (isDone ? OF.icons.get("check") : "") + e(it.label) + '</span>' +
+        '<span class="day-goal-sub">' + e(valTxt) + ' <em>' + e(subTxt) + '</em></span></button>';
+    });
+    return html + '</div>';
+  }
+
+  /** Derived checkpoint timeline — the INTERMEDIATE goal tier. */
+  function milestonesHtml(goal) {
+    var ms = OF.targets.goalMilestones(goal, S.getAll("body"));
+    if (!ms || !ms.items.length) return "";
+    var html = '<div class="chart-mini-label">Milestones</div><div class="ms-track">';
+    ms.items.forEach(function (m, i) {
+      var lbl = ms.mode === "amount"
+        ? U.fmtWeightDelta((m.dir < 0 ? -1 : 1) * m.kg)
+        : m.weeks + " wk";
+      var sub = ms.mode === "amount" ? "~" + fmtDateShort(m.whenIso) : "on plan";
+      var info = m.state === "done" ? lbl + " — milestone reached!"
+        : m.state === "current" ? lbl + " is your next milestone (" + sub + ")"
+        : lbl + " comes after that (" + sub + ")";
+      html += '<button type="button" class="ms-step ms-' + m.state + '" data-ms-info="' +
+        e(info) + '" aria-label="' + e("Milestone " + (i + 1) + ": " + info) + '">' +
+        '<span class="ms-dot">' + (m.state === "done" ? OF.icons.get("check") : (i + 1)) + '</span>' +
+        '<span class="ms-lbl">' + e(lbl) + '</span>' +
+        '<span class="ms-sub">' + e(sub) + '</span></button>';
+    });
+    return html + '</div>';
+  }
+
   function goalCardHtml(goal) {
     var T = OF.targets;
     var t = T.GOAL_TYPES[goal.type];
@@ -241,6 +326,9 @@ OF.goals = (function () {
       html += '<p class="goal-note muted">No body measurements yet — log your weight on the Body tab to start tracking progress.</p>';
     }
 
+    /* intermediate tier: derived checkpoints between today and the goal */
+    html += milestonesHtml(goal);
+
     /* honesty check */
     if (reality && reality.unrealistic) {
       var kindTxt = reality.kind === "muscle"
@@ -263,20 +351,14 @@ OF.goals = (function () {
           " — the targets below aim for that healthy pace.") + '</div>';
     }
 
-    /* daily targets */
+    /* daily tier: live tappable rings — today's logs vs today's targets */
     if (targets && targets.status === "ok") {
-      html += '<div class="chart-mini-label">Daily targets</div><div class="insight-sub">';
-      html += '<span class="mini-stat">' + e(targets.calories + " kcal") + '</span>';
-      html += '<span class="mini-stat">' + e("protein " + targets.proteinG + "g") + '</span>';
-      html += '<span class="mini-stat">' + e("fat " + targets.fatG + "g") + '</span>';
-      html += '<span class="mini-stat">' + e("carbs " + targets.carbsG + "g") + '</span>';
-      html += '<span class="mini-stat">' + e("water " + U.fmtWater(targets.waterMl)) + '</span>';
-      html += '<span class="mini-stat">' + e(targets.steps + " steps") + '</span>';
-      html += '<span class="mini-stat">' + e("sleep " + targets.sleepH + "h") + '</span>';
-      if (targets.weeklyTargetKg) {
-        html += '<span class="mini-stat">' + e("weight " + U.fmtWeightDelta(targets.weeklyTargetKg) + "/wk") + '</span>';
-      }
-      html += '</div>';
+      html += dailyGoalsHtml(targets);
+      html += '<p class="goal-note muted small day-goals-fine">' +
+        e("Also today: fat " + targets.fatG + "g · carbs " + targets.carbsG + "g" +
+          (targets.weeklyTargetKg
+            ? " · pace " + U.fmtWeightDelta(targets.weeklyTargetKg) + "/wk"
+            : "")) + '</p>';
       var maintTxt;
       if (live.ready) {
         maintTxt = "Estimated maintenance: ~" + live.blendedMaintenance +
@@ -677,6 +759,19 @@ OF.goals = (function () {
           U.toast("Could not switch the goal — storage is full or blocked.", "warn");
         }
       }
+      return;
+    }
+    var dayNav = evt.target.closest("[data-day-nav]");
+    if (dayNav) {
+      // tap a daily goal ring -> jump straight to where you log it
+      if (OF.haptics) OF.haptics.light();
+      location.hash = "#" + dayNav.getAttribute("data-day-nav");
+      return;
+    }
+    var msStep = evt.target.closest("[data-ms-info]");
+    if (msStep) {
+      if (OF.haptics) OF.haptics.light();
+      U.toast(msStep.getAttribute("data-ms-info"), "ok");
       return;
     }
     if (evt.target.closest("#goal-coach-pick")) { coachPick(); return; }

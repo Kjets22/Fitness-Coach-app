@@ -1248,6 +1248,131 @@ body.metric-modal-open { overflow: hidden; }
 .goal-progress-flex { display: flex; align-items: center; gap: var(--sp-4); margin: var(--sp-2) 0; }
 .goal-progress-flex .ring { flex-shrink: 0; }
 .goal-coach-pick { width: 100%; justify-content: center; margin-bottom: var(--sp-3); }
+
+/* ---- three-tier goal display: daily rings + milestone track ---- */
+.day-goals-score {
+  float: right;
+  font-weight: 800;
+  color: var(--accent-2);
+  letter-spacing: 0;
+}
+.day-goals {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--sp-2);
+  margin-bottom: var(--sp-2);
+}
+.day-goal {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  min-height: 44px;
+  padding: 10px 4px 8px;
+  border: 1px solid var(--card-edge);
+  border-radius: var(--r-md);
+  background: var(--bg-2);
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+  transition: transform 0.18s ease, border-color 0.18s ease, background 0.18s ease;
+}
+.day-goal:active { transform: scale(0.96); }
+.day-goal.done { border-color: var(--accent-2); background: var(--accent-2-soft); }
+.day-goal-lbl {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+.day-goal-lbl .ico { width: 12px; height: 12px; color: var(--accent-2); }
+.day-goal-sub { font-size: 0.7rem; color: var(--text-dim); }
+.day-goal-sub em { font-style: normal; opacity: 0.8; }
+.day-goals-fine { margin-top: 0; }
+
+.ms-track {
+  display: flex;
+  align-items: flex-start;
+  margin: var(--sp-2) 0 var(--sp-3);
+}
+.ms-step {
+  position: relative;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 4px 2px;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+  min-height: 44px;
+}
+/* connecting line between the dots */
+.ms-step + .ms-step::before {
+  content: "";
+  position: absolute;
+  top: 17px;
+  right: 50%;
+  width: 100%;
+  height: 2px;
+  background: var(--card-edge);
+  z-index: 0;
+}
+.ms-step.ms-done + .ms-step.ms-done::before,
+.ms-step.ms-done + .ms-step.ms-current::before { background: var(--accent-2); }
+.ms-dot {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 2px solid var(--card-edge);
+  background: var(--bg-2);
+  font-size: 0.75rem;
+  font-weight: 800;
+  color: var(--text-dim);
+  transition: border-color 0.2s ease, background 0.2s ease;
+}
+.ms-dot .ico { width: 14px; height: 14px; }
+.ms-done .ms-dot {
+  border-color: var(--accent-2);
+  background: var(--accent-2);
+  color: #fff;
+}
+.ms-current .ms-dot {
+  border-color: var(--accent-2);
+  color: var(--accent-2);
+  box-shadow: 0 0 0 0 var(--accent-2-soft);
+  animation: ms-pulse 2s ease-out infinite;
+}
+@keyframes ms-pulse {
+  0% { box-shadow: 0 0 0 0 var(--accent-2-soft); }
+  60% { box-shadow: 0 0 0 8px rgba(0, 0, 0, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(0, 0, 0, 0); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ms-current .ms-dot { animation: none; }
+}
+.ms-lbl { font-size: 0.74rem; font-weight: 700; margin-top: 2px; }
+.ms-current .ms-lbl { color: var(--accent-2); }
+.ms-sub { font-size: 0.66rem; color: var(--text-dim); }
+
+.coach-chip-action {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  border-color: var(--accent-2) !important;
+  color: var(--accent-2) !important;
+  font-weight: 700;
+}
+.coach-chip-action .ico { width: 13px; height: 13px; }
 .goal-suggest-card {
   border: 1px solid var(--card-edge);
   border-left: 3px solid var(--accent-2);

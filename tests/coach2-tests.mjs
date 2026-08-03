@@ -496,4 +496,47 @@ section("progression guards");
   check("27% female -> not a cut", s.rec.type !== "cut", s.rec.type);
 }
 
+/* ---------------- goalMilestones (intermediate goal tier) ---------------- */
+{
+  section("goalMilestones — derived checkpoints");
+  const today = "2026-08-03";
+  const day = (off) => new Date(Date.parse(today) + off * 86400000).toISOString().slice(0, 10);
+  const w = makeWorld();
+  const T = w.OF.targets;
+
+  // cut 8 kg over 16 weeks, started 30 days ago, 4.2 kg already lost
+  const goal = { date: day(-30), type: "cut", targetAmountKg: 8, targetDate: day(82) };
+  const body = [
+    { date: day(-30), weightKg: 95 },
+    { date: today, weightKg: 90.8 }
+  ];
+  let ms = T.goalMilestones(goal, body, today);
+  check("amount mode with a target amount", ms.mode === "amount", ms.mode);
+  check("four quarter checkpoints", ms.items.length === 4, ms.items.length);
+  check("first two quarters (2kg, 4kg) done", ms.items[0].state === "done" && ms.items[1].state === "done",
+    ms.items.map(i => i.state).join(","));
+  check("third quarter is current", ms.items[2].state === "current", ms.items[2].state);
+  check("fourth is upcoming", ms.items[3].state === "upcoming", ms.items[3].state);
+  check("checkpoint kg ascend to the target", ms.items[3].kg === 8, ms.items[3].kg);
+  check("projected dates between start and target",
+    ms.items.every(i => i.whenIso > goal.date && i.whenIso <= goal.targetDate),
+    ms.items.map(i => i.whenIso).join(","));
+
+  // no-amount goal (recomp) started 5 weeks ago -> weeks mode
+  ms = T.goalMilestones({ date: day(-35), type: "recomp" }, [], today);
+  check("weeks mode without a target amount", ms.mode === "weeks", ms.mode);
+  check("2wk + 4wk done at 5 weeks in", ms.items[0].state === "done" && ms.items[1].state === "done",
+    ms.items.map(i => i.state).join(","));
+  check("8wk is current", ms.items[2].state === "current", ms.items[2].state);
+
+  // no goal -> null; no-date amount goal -> still produces dated milestones
+  check("null without a goal", T.goalMilestones(null, [], today) === null);
+  ms = T.goalMilestones({ date: today, type: "cut", targetAmountKg: 6 },
+    [{ date: today, weightKg: 85 }], today);
+  check("no target date still yields 4 dated checkpoints",
+    ms.items.length === 4 && ms.items.every(i => i.whenIso > today),
+    ms.items.map(i => i.whenIso).join(","));
+  check("fresh goal: first checkpoint is current", ms.items[0].state === "current");
+}
+
 report("coach2-tests");

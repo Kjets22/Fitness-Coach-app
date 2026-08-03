@@ -601,6 +601,64 @@ OF.targets = (function () {
     };
   }
 
+  /* ----------------------------------------------------------
+     goalMilestones — the INTERMEDIATE tier between daily targets
+     and the long-term goal. Zero user input: derived entirely
+     from the goal + body records.
+
+     Amount goals (cut / lean-bulk): quarter checkpoints of the
+     target amount, each with a projected date interpolated
+     between the goal start and target date (or the healthy-rate
+     finish when no date is set).
+     No-amount goals (recomp / maintain / performance): weeks-on-
+     plan checkpoints (2 / 4 / 8 / 12 weeks).
+
+     Returns { mode: "amount"|"weeks", items: [{ label, sub,
+       state: "done"|"current"|"upcoming" }] } or null without a
+     goal. Exactly one item is "current" unless all are done. */
+  function goalMilestones(goal, body, todayIso) {
+    if (!goal) return null;
+    var today = todayIso || U.todayISO();
+    var t0 = dayNum(goal.date), tNow = dayNum(today);
+    if (t0 == null || tNow == null) return null;
+    var items = [];
+
+    var t = GOAL_TYPES[goal.type] || GOAL_TYPES.maintain;
+    var progress = goalProgress(goal, body);
+    var targetKg = progress && progress.status === "ok" ? progress.targetKg : null;
+
+    if (targetKg != null && targetKg > 0) {
+      var achieved = Math.max(0, progress.achievedKg || 0);
+      // finish line: the explicit target date, else the healthy-rate finish
+      var tEnd = goal.targetDate ? dayNum(goal.targetDate) : null;
+      if (tEnd == null || tEnd <= t0) {
+        var weightNow = latestWeightKg(body) || 80;
+        var rate = Math.max(0.1, weightNow * (goal.type === "cut" ? 0.0075 : 0.0025));
+        tEnd = t0 + Math.ceil(targetKg / rate) * 7;
+      }
+      [0.25, 0.5, 0.75, 1].forEach(function (q) {
+        var kg = Math.round(targetKg * q * 10) / 10;
+        items.push({
+          kg: kg,
+          dir: t.dir,
+          whenIso: isoFromDayNum(Math.round(t0 + (tEnd - t0) * q)),
+          state: achieved >= kg - 0.05 ? "done" : "upcoming"
+        });
+      });
+    } else {
+      [2, 4, 8, 12].forEach(function (wk) {
+        items.push({
+          weeks: wk,
+          state: tNow - t0 >= wk * 7 ? "done" : "upcoming"
+        });
+      });
+    }
+    for (var i = 0; i < items.length; i++) {
+      if (items[i].state !== "done") { items[i].state = "current"; break; }
+    }
+    return { mode: targetKg != null && targetKg > 0 ? "amount" : "weeks", items: items };
+  }
+
   return {
     GOAL_TYPES: GOAL_TYPES,
     ACTIVITY: ACTIVITY,
@@ -615,6 +673,7 @@ OF.targets = (function () {
     goalProgress: goalProgress,
     realityCheck: realityCheck,
     intakeStats: intakeStats,
-    suggestGoal: suggestGoal
+    suggestGoal: suggestGoal,
+    goalMilestones: goalMilestones
   };
 })();

@@ -525,11 +525,19 @@ OF.coach = (function () {
         '<button type="button" class="btn mini" data-fb="-1" aria-label="Bad answer">&#128078;</button></div>';
     }
     // follow-up chips stay available mid-conversation (user testing: they
-    // vanished after the first question and every follow-up meant typing)
+    // vanished after the first question and every follow-up meant typing).
+    // They are CONTEXTUAL: picked from what the coach just said, so the
+    // conversation feels like a dialogue, not a FAQ.
     if (!busy && messages.length) {
-      html += '<div class="coach-chips coach-chips-follow">' + chips().slice(0, 3).map(function (c) {
-        return '<button type="button" class="coach-chip" data-q="' + U.esc(c) + '">' + U.esc(c) + '</button>';
-      }).join("") + '</div>';
+      html += '<div class="coach-chips coach-chips-follow">' +
+        followChips(lastMsg && lastMsg.role === "coach" ? lastMsg.text : "")
+          .map(function (c) {
+            return c.nav
+              ? '<button type="button" class="coach-chip coach-chip-action" data-nav="' +
+                U.esc(c.nav) + '">' + OF.icons.get(c.icon || "target") + U.esc(c.label) + '</button>'
+              : '<button type="button" class="coach-chip" data-q="' + U.esc(c.q) + '">' +
+                U.esc(c.q) + '</button>';
+          }).join("") + '</div>';
     }
     if (busy) {
       html += '<div class="msg-row">' + avatar +
@@ -541,6 +549,30 @@ OF.coach = (function () {
     // fresh chat = read the greeting from its first line; conversations pin
     // to the newest message as usual
     els.log.scrollTop = messages.length ? els.log.scrollHeight : 0;
+  }
+
+  /** Contextual follow-up chips from the coach's LAST answer: reply-shaped
+      (not generic FAQ), max 3, plus a deep-link action when the answer
+      talks about the user's goal. */
+  function followChips(lastText) {
+    var t = String(lastText || "").toLowerCase();
+    var out = [];
+    if (/goal|cut|bulk|recomp|deficit|surplus/.test(t)) {
+      out.push({ nav: "insights", icon: "target", label: "Open my goal" });
+      out.push({ q: "How's my pacing toward that goal?" });
+    }
+    if (/workout|session|exercise|set|rep|squat|bench|deadlift|press|row/.test(t)) {
+      out.push({ q: "Walk me through that step by step" });
+    }
+    if (/eat|meal|protein|calor|carb|food|diet/.test(t)) {
+      out.push({ q: "Give me one simple meal that fits" });
+    }
+    if (/sleep|recover|rest|sore/.test(t)) {
+      out.push({ q: "How do I recover faster?" });
+    }
+    out.push({ q: "Why does that matter for me?" });
+    out.push({ q: "What's the ONE thing to do today?" });
+    return out.slice(0, 3);
   }
 
   var thinkTimer = null, thinkStart = 0;
@@ -816,8 +848,14 @@ OF.coach = (function () {
         runWeeklyCheckin();
         return;
       }
+      var nav = e.target.closest("[data-nav]");
+      if (nav) {
+        if (OF.haptics) OF.haptics.light();
+        location.hash = "#" + nav.getAttribute("data-nav");
+        return;
+      }
       var chip = e.target.closest(".coach-chip");
-      if (chip) send(chip.getAttribute("data-q"));
+      if (chip && chip.getAttribute("data-q")) send(chip.getAttribute("data-q"));
     });
   }
 

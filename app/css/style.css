@@ -1291,6 +1291,24 @@ body.metric-modal-open { overflow: hidden; }
 .day-goal-sub em { font-style: normal; opacity: 0.8; }
 .day-goals-fine { margin-top: 0; }
 
+.week-goals {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--sp-2);
+  margin-bottom: var(--sp-2);
+}
+.wk-dots { display: flex; gap: 4px; margin: 2px 0 1px; }
+.wk-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--card-edge);
+  transition: background 0.2s ease, box-shadow 0.2s ease;
+}
+.wk-dot.on { background: var(--accent-2); }
+.wk-dot.today { box-shadow: 0 0 0 2px var(--accent-2-soft); }
+.wk-dot.future { opacity: 0.45; }
+
 .ms-track {
   display: flex;
   align-items: flex-start;

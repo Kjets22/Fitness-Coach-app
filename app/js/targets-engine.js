@@ -659,6 +659,50 @@ OF.targets = (function () {
     return { mode: targetKg != null && targetKg > 0 ? "amount" : "weeks", items: items };
   }
 
+  /* ----------------------------------------------------------
+     weeklyStatus — the WEEKLY goal tier. Training is a frequency
+     behavior, not a daily one: a "train today" tile reads as a
+     failure on every planned rest day (the classic broken-streak
+     demotivator). Weekly frequency = the Fitbit/Hevy model.
+
+     { exercise, body, today, daysPerWeek } ->
+     { workouts: { done, target, dots: [7 x {done,isToday,future}] },
+       weighIns: { done, target } }
+     Week = calendar week starting Monday. */
+  function weeklyStatus(data) {
+    data = data || {};
+    var today = data.today || U.todayISO();
+    var tNow = dayNum(today);
+    if (tNow == null) return null;
+    // dayNum(1970-01-01)=0 was a Thursday -> Monday offset (dn+3)%7
+    var monday = tNow - ((tNow + 3) % 7);
+    var target = num(data.daysPerWeek);
+    if (target == null || target < 1 || target > 7) target = 3;
+
+    var trained = {};
+    (data.exercise || []).forEach(function (r) {
+      var d = dayNum(r && r.date);
+      if (d != null && d >= monday && d < monday + 7) trained[d] = 1;
+    });
+    var dots = [];
+    for (var i = 0; i < 7; i++) {
+      dots.push({
+        done: !!trained[monday + i],
+        isToday: monday + i === tNow,
+        future: monday + i > tNow
+      });
+    }
+    var weighDays = {};
+    (data.body || []).forEach(function (r) {
+      var d = dayNum(r && r.date);
+      if (d != null && d >= monday && d < monday + 7 && num(r.weightKg) != null) weighDays[d] = 1;
+    });
+    return {
+      workouts: { done: Object.keys(trained).length, target: Math.round(target), dots: dots },
+      weighIns: { done: Object.keys(weighDays).length, target: 2 }
+    };
+  }
+
   return {
     GOAL_TYPES: GOAL_TYPES,
     ACTIVITY: ACTIVITY,
@@ -674,6 +718,7 @@ OF.targets = (function () {
     realityCheck: realityCheck,
     intakeStats: intakeStats,
     suggestGoal: suggestGoal,
-    goalMilestones: goalMilestones
+    goalMilestones: goalMilestones,
+    weeklyStatus: weeklyStatus
   };
 })();

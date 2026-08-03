@@ -539,4 +539,37 @@ section("progression guards");
   check("fresh goal: first checkpoint is current", ms.items[0].state === "current");
 }
 
+/* ---------------- weeklyStatus (weekly goal tier) ---------------- */
+{
+  section("weeklyStatus — weekly frequency goals");
+  const w = makeWorld();
+  const T = w.OF.targets;
+  const monday = "2026-08-03"; // a Monday
+  const day = (off) => new Date(Date.parse(monday) + off * 86400000).toISOString().slice(0, 10);
+
+  // Wednesday, trained Mon+Tue (two entries same day must not double-count)
+  let s = T.weeklyStatus({
+    exercise: [{ date: day(0) }, { date: day(1) }, { date: day(1) },
+      { date: day(-2) } /* last week — excluded */],
+    body: [{ date: day(1), weightKg: 90 }],
+    today: day(2), daysPerWeek: 4
+  });
+  check("distinct training days counted", s.workouts.done === 2, s.workouts.done);
+  check("target passed through", s.workouts.target === 4);
+  check("last week's session excluded", s.workouts.dots.filter(d => d.done).length === 2);
+  check("dot strip is 7 days", s.workouts.dots.length === 7);
+  check("today flagged on the right dot", s.workouts.dots[2].isToday === true &&
+    s.workouts.dots.filter(d => d.isToday).length === 1);
+  check("future days flagged", s.workouts.dots[3].future && s.workouts.dots[6].future);
+  check("one weigh-in of two", s.weighIns.done === 1 && s.weighIns.target === 2);
+
+  // Sunday edge: still the same week as its Monday
+  s = T.weeklyStatus({ exercise: [{ date: day(0) }], body: [], today: day(6), daysPerWeek: 3 });
+  check("Sunday still counts Monday's session", s.workouts.done === 1);
+
+  // bogus daysPerWeek falls back to 3
+  s = T.weeklyStatus({ exercise: [], body: [], today: monday, daysPerWeek: 99 });
+  check("bad target falls back to 3", s.workouts.target === 3, s.workouts.target);
+}
+
 report("coach2-tests");

@@ -203,9 +203,7 @@ OF.goals = (function () {
         target: targets.waterMl, unit: "ml", tab: "daily" },
       { key: "steps", label: "Steps", val: stepsRec ? Number(stepsRec.count) || 0 : 0,
         target: targets.steps, unit: "", tab: "daily" },
-      { key: "sleep", label: "Sleep", val: sleepH, target: targets.sleepH, unit: "h", tab: "sleep" },
-      { key: "train", label: "Train", val: S.getAll("exercise").some(function (r) {
-          return r.date === today; }) ? 1 : 0, target: 1, unit: "", tab: "exercise" }
+      { key: "sleep", label: "Sleep", val: sleepH, target: targets.sleepH, unit: "h", tab: "sleep" }
     ];
   }
 
@@ -221,11 +219,8 @@ OF.goals = (function () {
     items.forEach(function (it) {
       var frac = it.target > 0 ? Math.min(1, it.val / it.target) : 0;
       var isDone = frac >= 1;
-      var valTxt = it.key === "water" ? U.fmtWater(it.val)
-        : it.key === "train" ? (isDone ? "Done" : "Not yet —")
-        : String(it.val);
+      var valTxt = it.key === "water" ? U.fmtWater(it.val) : String(it.val);
       var subTxt = it.key === "water" ? "of " + U.fmtWater(it.target)
-        : it.key === "train" ? (isDone ? "workout logged" : "tap to log one")
         : "of " + it.target + (it.unit ? " " + it.unit : "");
       html += '<button type="button" class="day-goal' + (isDone ? " done" : "") +
         '" data-day-nav="' + e(it.tab) + '" aria-label="' +
@@ -237,6 +232,56 @@ OF.goals = (function () {
         '<span class="day-goal-sub">' + e(valTxt) + ' <em>' + e(subTxt) + '</em></span></button>';
     });
     return html + '</div>';
+  }
+
+  /** THIS WEEK tier — training is a weekly-frequency behavior (a daily
+      "train" tile falsely reads as failure on planned rest days). Target
+      comes from the training program's days/week, else activity level. */
+  function weeklyDaysTarget(goal) {
+    try {
+      var p = OF.profile && OF.profile.get ? OF.profile.get() : null;
+      var d = p && p.prefs ? Number(p.prefs.daysPerWeek) : NaN;
+      if (isFinite(d) && d >= 1 && d <= 7) return Math.round(d);
+    } catch (e) { /* profile absent */ }
+    var map = { sedentary: 2, light: 3, moderate: 4, active: 5, "very-active": 6 };
+    return (goal && map[goal.activity]) || 3;
+  }
+
+  function weeklyGoalsHtml(goal) {
+    var ws = OF.targets.weeklyStatus({
+      exercise: S.getAll("exercise"),
+      body: S.getAll("body"),
+      today: U.todayISO(),
+      daysPerWeek: weeklyDaysTarget(goal)
+    });
+    if (!ws) return "";
+    var w = ws.workouts, wi = ws.weighIns;
+    var wDone = w.done >= w.target, wiDone = wi.done >= wi.target;
+    var dots = w.dots.map(function (d2) {
+      return '<span class="wk-dot' + (d2.done ? " on" : "") +
+        (d2.isToday ? " today" : "") + (d2.future ? " future" : "") + '"></span>';
+    }).join("");
+    return '<div class="chart-mini-label">This week</div><div class="week-goals">' +
+      '<button type="button" class="day-goal week-goal' + (wDone ? " done" : "") +
+        '" data-day-nav="exercise" aria-label="' +
+        e("Workouts: " + w.done + " of " + w.target + " this week" + (wDone ? ", goal met" : "")) + '">' +
+        U.progressRing(Math.min(1, w.target ? w.done / w.target : 0), { size: 46, stroke: 5,
+          color: wDone ? "var(--accent-2)" : "grad",
+          value: w.done + "/" + w.target, label: "Workouts this week" }) +
+        '<span class="day-goal-lbl">' + (wDone ? OF.icons.get("check") : "") + 'Workouts</span>' +
+        '<span class="wk-dots" aria-hidden="true">' + dots + '</span>' +
+        '<span class="day-goal-sub">' + e(wDone ? "week goal met — rest is part of the plan"
+          : (w.target - w.done) + " to go · any day this week") + '</span></button>' +
+      '<button type="button" class="day-goal week-goal' + (wiDone ? " done" : "") +
+        '" data-day-nav="body" aria-label="' +
+        e("Weigh-ins: " + wi.done + " of " + wi.target + " this week" + (wiDone ? ", goal met" : "")) + '">' +
+        U.progressRing(Math.min(1, wi.done / wi.target), { size: 46, stroke: 5,
+          color: wiDone ? "var(--accent-2)" : "grad",
+          value: wi.done + "/" + wi.target, label: "Weigh-ins this week" }) +
+        '<span class="day-goal-lbl">' + (wiDone ? OF.icons.get("check") : "") + 'Weigh-ins</span>' +
+        '<span class="day-goal-sub">' + e(wiDone ? "trend data topped up"
+          : "keeps your trend accurate") + '</span></button>' +
+      '</div>';
   }
 
   /** Derived checkpoint timeline — the INTERMEDIATE goal tier. */
@@ -328,6 +373,9 @@ OF.goals = (function () {
 
     /* intermediate tier: derived checkpoints between today and the goal */
     html += milestonesHtml(goal);
+
+    /* weekly tier: frequency goals (training, weigh-ins) */
+    html += weeklyGoalsHtml(goal);
 
     /* honesty check */
     if (reality && reality.unrealistic) {

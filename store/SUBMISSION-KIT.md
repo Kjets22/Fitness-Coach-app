@@ -75,7 +75,7 @@ Send (it appears before anything is transmitted).
 
 ## Assets
 
-- **Archive:** `~/Library/Developer/Xcode/Archives/2026-08-03/OptimalFit-1.6.0-build47.xcarchive` — the ONLY archive in Organizer, labeled "OptimalFit build 43 UPLOAD THIS"
+- **Archive:** `~/Library/Developer/Xcode/Archives/2026-08-03/OptimalFit-1.6.0-build47.xcarchive` — the ONLY archive in Organizer, labeled "OptimalFit build 47 UPLOAD THIS"
 - **Screenshots:** `store/screenshots/iphone67-1290x2796-*.png` (valid set; shows the pre-redesign UI — fine for this compliance resubmission, refresh later via `store/tools/shoot.js` once updated for the new UI)
 - **Demo account:** `.env.reviewer` (gitignored) — premium, pre-populated
 - **Privacy manifest:** `native/ios/App/App/PrivacyInfo.xcprivacy` (new, in the build)

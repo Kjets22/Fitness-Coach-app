@@ -188,9 +188,15 @@ OF.goals = (function () {
 
     var html = '<div class="card insight-card goal-card">';
     html += '<div class="insight-head"><h2>Your goal</h2>';
-    if (progress && progress.status === "ok" && progress.onTrack != null) {
+    // pace verdict needs a week of data to mean anything — "behind pace"
+    // minutes after setting a goal just discourages (sim-QA finding)
+    var goalAgeDays = OF.targets.dayNum(U.todayISO()) - OF.targets.dayNum(goal.date);
+    if (progress && progress.status === "ok" && progress.onTrack != null &&
+        goalAgeDays >= 7) {
       html += chip(progress.onTrack ? "on track" : "behind pace",
         progress.onTrack ? "conf-high" : "conf-medium");
+    } else if (progress && progress.status === "ok" && goalAgeDays < 7) {
+      html += chip("day " + Math.max(1, goalAgeDays + 1), "conf-high");
     }
     html += '</div>';
     html += '<p class="insight-headline">' + e(goalHeadline(goal)) + '</p>';
@@ -348,6 +354,12 @@ OF.goals = (function () {
         'tracker into a personal plan: daily calorie, protein, water and step targets that ' +
         'adapt as it learns how YOUR body responds. Everything is optional except the goal itself.</p>';
     }
+    // One-tap path: the coach reads the user's own data (weight, body fat,
+    // physique photos, training frequency) and picks the goal for them.
+    html += '<button type="button" class="btn goal-coach-pick" id="goal-coach-pick">' +
+      OF.icons.get("sparkles") + '<span>Let your coach pick' +
+      (goal ? ' again' : ' for you') + '</span></button>' +
+      '<div id="goal-suggest"></div>';
     html += '<form id="goal-form" novalidate>';
     html += '<div class="form-row"><label class="grow">Goal' +
       '<select id="gf-type">' + types.map(function (k) {
@@ -400,6 +412,95 @@ OF.goals = (function () {
       (goal ? '<button type="button" class="btn ghost" id="goal-cancel">Cancel</button>' : '') +
       '</div></form></div>';
     return html;
+  }
+
+  /* ---------------- coach-picked goal (one tap) ---------------- */
+
+  var lastSuggestion = null;
+
+  function coachPick() {
+    var T = OF.targets;
+    var g = activeGoal() || {};
+    lastSuggestion = T.suggestGoal({
+      body: S.getAll("body"),
+      exercise: S.getAll("exercise"),
+      physique: S.getAll("physique"),
+      profile: { sex: g.sex, heightCm: g.heightCm, age: g.age, activity: g.activity },
+      today: U.todayISO()
+    });
+    var el = document.getElementById("goal-suggest");
+    if (el) el.innerHTML = suggestionHtml(lastSuggestion);
+    prefillForm(lastSuggestion.rec);
+    if (OF.haptics) OF.haptics.light();
+  }
+
+  function suggestionHtml(s) {
+    var T = OF.targets;
+    var t = T.GOAL_TYPES[s.rec.type];
+    var meta = [];
+    if (s.rec.targetAmountKg) {
+      meta.push((s.rec.type === "cut" ? "lose " : "gain ") +
+        U.fmtWeight(s.rec.targetAmountKg));
+    }
+    if (s.rec.targetDate) meta.push("by " + fmtDateShort(s.rec.targetDate));
+    return '<div class="goal-suggest-card">' +
+      '<div class="insight-head"><p class="goal-suggest-head">Coach&rsquo;s pick: <strong>' +
+        e(t ? t.label : s.rec.type) + '</strong></p>' +
+        chip(s.confidence + " confidence", s.confidence === "high" ? "conf-high" :
+          s.confidence === "medium" ? "conf-medium" : "conf-low") + '</div>' +
+      (meta.length ? '<p class="goal-suggest-meta">' + e(meta.join(" ")) + '</p>' : '') +
+      '<ul class="goal-suggest-why">' + s.why.map(function (w) {
+        return '<li>' + e(w) + '</li>';
+      }).join("") + '</ul>' +
+      '<div class="form-actions">' +
+        '<button type="button" class="btn primary" id="gs-use">Use this goal</button>' +
+        '<button type="button" class="btn ghost" id="gs-tweak">Tweak it below</button>' +
+      '</div></div>';
+  }
+
+  /** Mirror the suggestion into the visible form so "Tweak" needs no re-entry. */
+  function prefillForm(rec) {
+    var typeSel = document.getElementById("gf-type");
+    if (typeSel) { typeSel.value = rec.type; onTypeChange(); }
+    var amt = document.getElementById("gf-amount");
+    if (amt) amt.value = rec.targetAmountKg ? U.toDisplayWeight(rec.targetAmountKg) : "";
+    var dt = document.getElementById("gf-date");
+    if (dt) dt.value = rec.targetDate || "";
+    var act = document.getElementById("gf-activity");
+    if (act && rec.activity) act.value = rec.activity;
+  }
+
+  function applySuggestion() {
+    if (!lastSuggestion) return;
+    var existing = activeGoal();
+    var rec = Object.assign({ date: existing ? existing.date : U.todayISO() },
+      lastSuggestion.rec);
+    var typeChanged = !!(existing && existing.type !== rec.type);
+    if (typeChanged) rec.date = U.todayISO(); // progress restarts; adaptation history kept
+    var ok = existing ? S.update("goal", existing.id, rec) : S.add("goal", rec);
+    if (!ok) { U.toast("Could not save — storage is full or blocked."); return; }
+    syncProfileGoal(rec.type);
+    editing = false;
+    lastSuggestion = null;
+    refresh();
+    if (OF.insights) OF.insights.refresh();
+    if (OF.dashboard) OF.dashboard.refresh();
+    if (OF.haptics) OF.haptics.medium ? OF.haptics.medium() : 0;
+    if (typeChanged && OF.trainer && OF.trainer.hasProgram && OF.trainer.hasProgram()) {
+      U.toast("Coach set your goal. Rebuild your training program to match?", "ok", {
+        label: "Rebuild",
+        fn: function () {
+          try {
+            OF.trainer.regenerate();
+            if (OF.trainer.refresh) OF.trainer.refresh();
+            if (OF.dashboard) OF.dashboard.refresh();
+            U.toast("Program rebuilt for your new goal.", "ok");
+          } catch (e2) { U.toast("Could not rebuild — open the Coach tab and use the check-in.", "warn"); }
+        }
+      });
+    } else {
+      U.toast("Goal set by your coach — progress tracking starts now.", "ok");
+    }
   }
 
   /* ---------------- events ---------------- */
@@ -576,6 +677,17 @@ OF.goals = (function () {
           U.toast("Could not switch the goal — storage is full or blocked.", "warn");
         }
       }
+      return;
+    }
+    if (evt.target.closest("#goal-coach-pick")) { coachPick(); return; }
+    if (evt.target.closest("#gs-use")) { applySuggestion(); return; }
+    if (evt.target.closest("#gs-tweak")) {
+      // suggestion is already mirrored into the form — just clear the panel
+      // and put the user on the first field
+      var panel = document.getElementById("goal-suggest");
+      if (panel) panel.innerHTML = "";
+      var first = document.getElementById("gf-type");
+      if (first) first.focus();
       return;
     }
     var tgt = evt.target;

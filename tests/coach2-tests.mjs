@@ -422,4 +422,78 @@ section("progression guards");
     regen.pointer === 2 % regen.days.length, regen.pointer);
 }
 
+/* ---------------- coach-picked goal (suggestGoal) ---------------- */
+{
+  section("suggestGoal — the coach picks the goal from the user's data");
+  const today = "2026-08-03";
+  const day = (off) => new Date(Date.parse(today) + off * 86400000).toISOString().slice(0, 10);
+  const w = makeWorld();
+  const T = w.OF.targets;
+
+  // high body fat male with logged weight -> cut, sane amount + future date
+  let s = T.suggestGoal({
+    body: [{ date: today, weightKg: 100, bodyFatPct: 28 }],
+    exercise: [], physique: [], profile: { sex: "m" }, today
+  });
+  check("high-bf male -> cut", s.rec.type === "cut", s.rec.type);
+  check("cut amount positive and <= 12% BW", s.rec.targetAmountKg > 0 && s.rec.targetAmountKg <= 12, s.rec.targetAmountKg);
+  check("cut date in the future", s.rec.targetDate > today, s.rec.targetDate);
+  check("why cites the body-fat reading", s.why.some(x => /body fat/.test(x)));
+
+  // lean male -> lean-bulk with 16-week horizon
+  s = T.suggestGoal({
+    body: [{ date: today, weightKg: 70, bodyFatPct: 11 }],
+    exercise: [], physique: [], profile: { sex: "m" }, today
+  });
+  check("lean male -> lean-bulk", s.rec.type === "lean-bulk", s.rec.type);
+  check("bulk date ~16 weeks out", s.rec.targetDate === day(112), s.rec.targetDate);
+
+  // photo-estimated bf is used when no measured bf exists
+  s = T.suggestGoal({
+    body: [{ date: today, weightKg: 90 }],
+    physique: [{ date: today, bodyFatMidpoint: 27, muscularity: "average" }],
+    exercise: [], profile: { sex: "m" }, today
+  });
+  check("photo bf estimate drives a cut", s.rec.type === "cut", s.rec.type);
+  check("why says the estimate came from a photo", s.why.some(x => /photo/.test(x)));
+
+  // mid bf + low muscularity -> lean-bulk (novice muscle first)
+  s = T.suggestGoal({
+    body: [{ date: today, weightKg: 75, bodyFatPct: 15 }],
+    physique: [{ date: today, bodyFatMidpoint: 15, muscularity: "low" }],
+    exercise: [], profile: { sex: "m" }, today
+  });
+  check("mid-bf low-muscularity -> lean-bulk", s.rec.type === "lean-bulk", s.rec.type);
+
+  // no body data but frequent training -> performance
+  const freqEx = [];
+  for (let i = 0; i < 16; i++) freqEx.push({ date: day(-1 - i), type: "Strength" });
+  s = T.suggestGoal({ body: [], exercise: freqEx, physique: [], profile: {}, today });
+  check("no-bf frequent trainer -> performance", s.rec.type === "performance", s.rec.type);
+  check("frequent trainer activity guessed", ["moderate", "active"].includes(s.rec.activity), s.rec.activity);
+
+  // zero data -> maintain, never throws, low confidence
+  s = T.suggestGoal({ body: [], exercise: [], physique: [], profile: {}, today });
+  check("zero data -> maintain", s.rec.type === "maintain", s.rec.type);
+  check("zero data -> low confidence", s.confidence === "low", s.confidence);
+  check("always explains itself", s.why.length >= 1);
+
+  // full data -> high confidence; profile fields carried into the record
+  s = T.suggestGoal({
+    body: [{ date: today, weightKg: 82, bodyFatPct: 24 }],
+    exercise: freqEx, physique: [],
+    profile: { sex: "m", heightCm: 180, age: 23 }, today
+  });
+  check("full data -> high confidence", s.confidence === "high", s.confidence);
+  check("profile carried into rec", s.rec.heightCm === 180 && s.rec.age === 23 && s.rec.sex === "m");
+
+  // female thresholds differ: 27% is a cut for m but not for f
+  s = T.suggestGoal({
+    body: [{ date: today, weightKg: 65, bodyFatPct: 27 }],
+    exercise: [], physique: [{ date: today, bodyFatMidpoint: 27, muscularity: "average" }],
+    profile: { sex: "f" }, today
+  });
+  check("27% female -> not a cut", s.rec.type !== "cut", s.rec.type);
+}
+
 report("coach2-tests");

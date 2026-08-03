@@ -484,6 +484,123 @@ OF.targets = (function () {
     return { days: keys.length, kcal: avgOf("kcal"), protein: avgOf("protein"), carbs: avgOf("carbs"), fat: avgOf("fat") };
   }
 
+  /* ----------------------------------------------------------
+     suggestGoal — the coach picks the goal FOR the user from
+     their own data (one tap, instant, works offline).
+
+     data: { body:[], exercise:[], physique:[], profile:{sex,
+       heightCm, age}|null, today:"YYYY-MM-DD" }
+     -> { rec: goal-record fields ready to save, why: [string],
+          confidence: "low"|"medium"|"high" }  (never null — with
+          zero data it still recommends an honest starting point)
+
+     The decision mirrors what a veteran coach does on day one:
+     body-fat level (measured > photo estimate) decides cut vs
+     lean-bulk vs recomp; training frequency and physique
+     muscularity break ties; the amount + date come from the
+     evidence-based healthy rates already used by realityCheck
+     (cut ~0.75% BW/week, muscle ~0.25% BW/week). */
+  function suggestGoal(data) {
+    data = data || {};
+    var body = data.body || [], exercise = data.exercise || [];
+    var physique = (data.physique || []).slice().sort(function (a, b) {
+      return String(b.date || "").localeCompare(String(a.date || ""));
+    });
+    var prof = data.profile || {};
+    var today = data.today || U.todayISO();
+    var why = [];
+
+    var weight = latestWeightKg(body);
+    var bf = effectiveBodyFat(body, physique);
+    var musc = physique.length ? physique[0].muscularity : null;
+    var sex = prof.sex === "m" || prof.sex === "f" ? prof.sex : null;
+
+    // training frequency: distinct workout days in the last 28 days
+    var t0 = dayNum(today), days = {};
+    exercise.forEach(function (r) {
+      var d = dayNum(r && r.date);
+      if (d != null && t0 - d >= 0 && t0 - d < 28) days[r.date] = 1;
+    });
+    var sessionsWk = Math.round(Object.keys(days).length / 4 * 10) / 10;
+
+    // thresholds by sex (unknown sex -> midpoints, said out loud in `why`)
+    var cutTh = sex === "m" ? 20 : sex === "f" ? 30 : 25;
+    var leanTh = sex === "m" ? 15 : sex === "f" ? 23 : 19;
+    var bulkTh = sex === "m" ? 13 : sex === "f" ? 21 : 17;
+
+    var type, targetAmountKg = null, targetDate = null;
+    var bfTxt = bf ? "~" + Math.round(bf.pct) + "% body fat (" +
+      (bf.source === "photo" ? "from your physique photo" : "your logged measurement") + ")" : null;
+
+    if (bf && weight && bf.pct >= cutTh) {
+      type = "cut";
+      // lose down to the healthy-lean midpoint, at ~0.75% BW/week (the
+      // evidence-backed 0.5-1% band), capped at 12% of body weight per goal
+      var loseKg = Math.min(weight * (bf.pct - leanTh) / 100, weight * 0.12);
+      targetAmountKg = Math.max(1, Math.round(loseKg * 2) / 2);
+      var wkRate = weight * 0.0075;
+      var weeks = Math.min(30, Math.max(8, Math.ceil(targetAmountKg / wkRate)));
+      targetDate = isoFromDayNum(t0 + weeks * 7);
+      why.push("You're at " + bfTxt + " — trimming to ~" + leanTh +
+        "% frees up strength, energy and definition.");
+      why.push("The pace is the healthy one: ~0.75% of body weight per week, so muscle stays.");
+    } else if (bf && weight && bf.pct <= bulkTh) {
+      type = "lean-bulk";
+      targetAmountKg = Math.max(1, Math.round(weight * 0.0025 * 16 * 2) / 2);
+      targetDate = isoFromDayNum(t0 + 16 * 7);
+      why.push("You're already lean at " + bfTxt + " — building muscle is the biggest win from here.");
+      why.push("~0.25% of body weight per week over 16 weeks adds muscle without meaningful fat.");
+    } else if (bf && weight) {
+      // mid body-fat: physique development decides
+      if ((musc === "low" || musc === "below-average") && bf.pct < cutTh - 3) {
+        type = "lean-bulk";
+        targetAmountKg = Math.max(1, Math.round(weight * 0.0025 * 16 * 2) / 2);
+        targetDate = isoFromDayNum(t0 + 16 * 7);
+        why.push("At " + bfTxt + " with room to grow muscle, a lean gaining phase beats cutting.");
+      } else {
+        type = "recomp";
+        why.push("At " + bfTxt + " you're in the sweet spot for recomposition — " +
+          "build muscle and drop fat at the same weight.");
+      }
+      if (musc) why.push("Your physique analysis rates muscular development “" + musc + "”.");
+    } else if (sessionsWk >= 3) {
+      type = "performance";
+      why.push("You've trained " + sessionsWk + "×/week for the last month — " +
+        "without a body-fat reading, sharpening performance is the safest optimal pick.");
+      why.push("Log a weight + body-fat (or a physique photo) and I can re-pick with precision.");
+    } else if (weight || exercise.length) {
+      type = "recomp";
+      why.push("With limited data so far, recomposition is the no-regrets start: " +
+        "build muscle, lose fat, and every workout you log sharpens the plan.");
+    } else {
+      type = "maintain";
+      why.push("No logged data yet — start at maintenance while your first week of " +
+        "logging teaches the coach how your body responds, then re-pick.");
+    }
+    if (!sex && bf) why.push("Thresholds used unisex midpoints — set your sex on the goal for sharper cutoffs.");
+    if (sessionsWk >= 1 && (type === "cut" || type === "lean-bulk" || type === "recomp")) {
+      why.push("Training " + sessionsWk + "×/week supports this goal well.");
+    }
+
+    var activity = sessionsWk >= 5 ? "active" : sessionsWk >= 3 ? "moderate" :
+      sessionsWk >= 1 ? "light" : null;
+
+    var haveCount = (weight != null ? 1 : 0) + (bf ? 1 : 0) + (sessionsWk > 0 ? 1 : 0);
+    return {
+      rec: {
+        type: type,
+        targetAmountKg: targetAmountKg,
+        targetDate: targetDate,
+        heightCm: num(prof.heightCm),
+        age: num(prof.age) != null ? Math.round(num(prof.age)) : null,
+        sex: sex,
+        activity: prof.activity || activity
+      },
+      why: why,
+      confidence: haveCount >= 3 ? "high" : haveCount === 2 ? "medium" : "low"
+    };
+  }
+
   return {
     GOAL_TYPES: GOAL_TYPES,
     ACTIVITY: ACTIVITY,
@@ -497,6 +614,7 @@ OF.targets = (function () {
     computeAdaptation: computeAdaptation,
     goalProgress: goalProgress,
     realityCheck: realityCheck,
-    intakeStats: intakeStats
+    intakeStats: intakeStats,
+    suggestGoal: suggestGoal
   };
 })();

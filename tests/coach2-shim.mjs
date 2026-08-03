@@ -26,6 +26,10 @@ export function makeWorld(data = {}) {
       byNewest: (a, b) => String(b.date || "").localeCompare(String(a.date || "")),
       esc: (s) => String(s == null ? "" : s),
       fmtWeight: (kg) => kg + " kg",
+      muscleKg: (r) => {
+        const v = Number(r && r.muscleMassKg);
+        return isFinite(v) && v > 0 ? v : null;
+      },
       toast: () => {}
     },
     storage: {
@@ -48,7 +52,7 @@ export function makeWorld(data = {}) {
     icons: { get: () => "" }
   };
   // fresh module instances each world (bust require cache)
-  for (const f of ["evidence", "coach-profile", "coach-learn", "trainer", "coach-intake"]) {
+  for (const f of ["evidence", "coach-profile", "coach-learn", "trainer", "coach-intake", "targets-engine"]) {
     delete require.cache[require.resolve(join(ROOT, "app/js", f + ".js"))];
   }
   require(join(ROOT, "app/js/evidence.js"));
@@ -56,6 +60,7 @@ export function makeWorld(data = {}) {
   require(join(ROOT, "app/js/coach-learn.js"));
   require(join(ROOT, "app/js/trainer.js"));
   require(join(ROOT, "app/js/coach-intake.js"));
+  require(join(ROOT, "app/js/targets-engine.js"));
   world.OF = g.OF;
   world.store = store;
   return world;

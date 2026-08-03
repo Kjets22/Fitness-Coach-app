@@ -1247,6 +1247,25 @@ body.metric-modal-open { overflow: hidden; }
 }
 .goal-progress-flex { display: flex; align-items: center; gap: var(--sp-4); margin: var(--sp-2) 0; }
 .goal-progress-flex .ring { flex-shrink: 0; }
+.goal-coach-pick { width: 100%; justify-content: center; margin-bottom: var(--sp-3); }
+.goal-suggest-card {
+  border: 1px solid var(--card-edge);
+  border-left: 3px solid var(--accent-2);
+  border-radius: var(--r-md);
+  padding: var(--sp-3);
+  margin-bottom: var(--sp-3);
+  background: var(--bg-2);
+}
+.goal-suggest-head { margin: 0; font-size: 0.95rem; }
+.goal-suggest-meta { margin: 4px 0 0; font-weight: 600; font-size: 0.9rem; }
+.goal-suggest-why {
+  margin: var(--sp-2) 0;
+  padding-left: 1.1em;
+  font-size: 0.86rem;
+  line-height: 1.5;
+  color: var(--text-dim);
+}
+.goal-suggest-why li { margin-bottom: 4px; }
 .goal-progress-line { margin: 4px 0 2px; font-size: 0.92rem; }
 .goal-note { margin: 6px 0 2px; font-size: 0.88rem; }
 .goal-note.good { color: var(--accent-2); font-weight: 650; }

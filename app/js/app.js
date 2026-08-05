@@ -42,6 +42,10 @@ OF.app = (function () {
     // On mobile the tracker tabs highlight the "Log" destination.
     var logBtn = document.getElementById("nav-log");
     if (logBtn) logBtn.classList.toggle("active", LOG_TABS.indexOf(name) !== -1);
+    // Coach is a full-height chat screen: the shell takes the visible
+    // height (see body.coach-open in style.css) and the log scrolls.
+    document.body.classList.toggle("coach-open", name === "coach");
+    if (name === "coach") updateVvh();
     // Refresh data-driven tabs on entry so they always show current data.
     if (name === "dashboard" && OF.dashboard) OF.dashboard.refresh();
     if (name === "daily" && OF.daily) OF.daily.refresh();
@@ -55,6 +59,14 @@ OF.app = (function () {
   function currentTabFromHash() {
     var h = (location.hash || "").replace("#", "");
     return TABS.indexOf(h) !== -1 ? h : "dashboard";
+  }
+
+  /* --vvh: the real visible viewport height in px. More reliable than
+     100dvh across webviews/emulation, and it tracks the on-screen keyboard
+     via visualViewport so the coach input rides on top of the keyboard. */
+  function updateVvh() {
+    var h = (window.visualViewport && visualViewport.height) || window.innerHeight;
+    document.documentElement.style.setProperty("--vvh", Math.round(h) + "px");
   }
 
   /* ---------- Log action sheet ---------- */
@@ -191,6 +203,9 @@ OF.app = (function () {
       closeSheet();
       showTab(currentTabFromHash());
     });
+    updateVvh();
+    window.addEventListener("resize", updateVvh);
+    if (window.visualViewport) visualViewport.addEventListener("resize", updateVvh);
     initSheet();
     initKeyboardScroll();
     initKeyboardChrome();

@@ -15,7 +15,7 @@
    ============================================================ */
 
 /* Bump this string when any shell file changes. */
-var VERSION = "v109";
+var VERSION = "v111"; /* coach: full-screen+job polling+proposals+nutrition; 1-month trial; no-cache precache */
 var CACHE = "optimalfit-shell-" + VERSION;
 
 var SHELL = [
@@ -81,7 +81,14 @@ var SHELL = [
 self.addEventListener("install", function (event) {
   event.waitUntil(
     caches.open(CACHE)
-      .then(function (cache) { return cache.addAll(SHELL); })
+      .then(function (cache) {
+        // Reload-from-network: without this, addAll goes through the HTTP
+        // cache and a stale disk entry gets frozen into the new precache —
+        // an "updated" worker can then serve last version's JS forever.
+        return cache.addAll(SHELL.map(function (u) {
+          return new Request(u, { cache: "no-cache" });
+        }));
+      })
       .then(function () { return self.skipWaiting(); })
   );
 });

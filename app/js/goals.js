@@ -772,6 +772,93 @@ OF.goals = (function () {
     S.getAll("adjustments").forEach(function (r) { S.remove("adjustments", r.id); });
   }
 
+  /* ---------------- coach proposals ----------------
+     The AI coach can propose a concrete change; the user accepts or
+     dismisses it in the chat (coach.js renders the Apply/Not-now card).
+     Only a small, safe set of change types is accepted here — anything
+     else stays advice-only text. Returns {ok, summary} or {ok, error}. */
+
+  function applyCoachProposal(p) {
+    var T = OF.targets;
+    if (!p || typeof p !== "object") return { ok: false, error: "Bad proposal." };
+
+    if (p.type === "goalType") {
+      if (!T.GOAL_TYPES[p.value]) return { ok: false, error: "Unknown goal type." };
+      var existing = activeGoal();
+      if (existing) {
+        if (existing.type === p.value) {
+          return { ok: false, error: "That is already your goal." };
+        }
+        var rec = Object.assign({}, existing,
+          { type: p.value, date: U.todayISO() });
+        delete rec.id;
+        clearAdjustments();  // type change restarts progress + adaptation
+        if (!S.update("goal", existing.id, rec)) {
+          return { ok: false, error: "Could not save the goal." };
+        }
+      } else {
+        if (!S.add("goal", { date: U.todayISO(), type: p.value,
+          targetAmountKg: null, targetDate: null, heightCm: null,
+          age: null, sex: null, activity: null })) {
+          return { ok: false, error: "Could not save the goal." };
+        }
+      }
+      syncProfileGoal(p.value);
+      refresh();
+      if (OF.insights) OF.insights.refresh();
+      if (OF.dashboard) OF.dashboard.refresh();
+      return { ok: true, summary: "Goal set to " +
+        ((T.GOAL_TYPES[p.value] && T.GOAL_TYPES[p.value].label) || p.value) + "." };
+    }
+
+    if (p.type === "calorieAdjust") {
+      var delta = Math.round(Number(p.deltaKcal));
+      if (!isFinite(delta) || delta === 0 || Math.abs(delta) > 300) {
+        return { ok: false, error: "Calorie change must be within ±300 kcal." };
+      }
+      var goal = activeGoal();
+      if (!goal) return { ok: false, error: "Set a goal first (Insights tab)." };
+      var kg = T.latestWeightKg(S.getAll("body"));
+      var total = adjTotal();
+      var before = T.computeTargets(goal, { weightKg: kg, adjTotal: total });
+      var after = T.computeTargets(goal, { weightKg: kg, adjTotal: total + delta });
+      if (!S.add("adjustments", {
+        date: U.todayISO(),
+        kind: "calories",
+        delta: delta,
+        from: before && before.status === "ok" ? before.calories : null,
+        to: after && after.status === "ok" ? after.calories : null,
+        reason: "Coach suggestion" + (p.why ? ": " + String(p.why).slice(0, 140) : "")
+      })) return { ok: false, error: "Could not save the adjustment." };
+      refresh();
+      if (OF.insights) OF.insights.refresh();
+      if (OF.dashboard) OF.dashboard.refresh();
+      return { ok: true, summary: "Daily calorie target " +
+        (delta > 0 ? "raised" : "lowered") + " by " + Math.abs(delta) + " kcal" +
+        (after && after.status === "ok" ? " (now " + after.calories + " kcal)." : ".") };
+    }
+
+    if (p.type === "targetDate") {
+      var g2 = activeGoal();
+      if (!g2) return { ok: false, error: "Set a goal first (Insights tab)." };
+      var v = String(p.value || "");
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(v) || v <= U.todayISO()) {
+        return { ok: false, error: "Target date must be a future date." };
+      }
+      var rec2 = Object.assign({}, g2, { targetDate: v });
+      delete rec2.id;
+      if (!S.update("goal", g2.id, rec2)) {
+        return { ok: false, error: "Could not save the date." };
+      }
+      refresh();
+      if (OF.insights) OF.insights.refresh();
+      if (OF.dashboard) OF.dashboard.refresh();
+      return { ok: true, summary: "Goal target date moved to " + v + "." };
+    }
+
+    return { ok: false, error: "This suggestion can't be applied automatically." };
+  }
+
   function onAreaClick(evt) {
     var sw = evt.target.closest("[data-goal-switch]");
     if (sw) {
@@ -960,6 +1047,7 @@ OF.goals = (function () {
     calorieAdjs: calorieAdjs,
     runAdaptation: runAdaptation,
     coachContext: coachContext,
+    applyCoachProposal: applyCoachProposal,
     syncProfileGoal: syncProfileGoal   // onboarding reuses the same mirror
   };
 })();

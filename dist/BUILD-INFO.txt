@@ -199,3 +199,29 @@ OptimalFit-release.aab 4fc1f08f73ca6a5a3eb64cebcb3b3fb36870e818e9684ee0f4628d4a8
 OptimalFit-debug.apk 810f4c6f4e213904e425d11702df6ec53a271505b9d8558d7913d9d35fe0276b
 OptimalFit-release.apk b2bb1b96b84c002fb229e52410ff107cd974aa3a4e6515517caf07fb3805e59a
 OptimalFit-release.aab 4a3ea357fced6e1baa620649b3063afc19e68a7d502fe10e5f6d8c565b3e4462
+
+=========================================================================
+ v1.2.0 (versionCode 6) — rebuilt 2026-08-05 on git main (build 49 base)
+=========================================================================
+Coach rework + monetization prep:
+  - Full-screen chat coach (coach-open shell height + --vvh keyboard
+    tracking), readable bubbles 1.05rem, 44px chips
+  - Background-safe answers: /api/coach returns jobId, worker thread
+    computes, /api/coach/result polled; job persisted client-side so
+    app-switch/reload mid-answer resumes (fixes the user-reported error)
+  - Actionable coach proposals (Apply/Not-now: goalType, calorieAdjust
+    +/-300 logged as "Coach suggestion", targetDate)
+  - Nutrition-expert coach: recipes/restaurant orders grounded in NEW
+    todayNutrition context (today's macros + remaining vs targets)
+  - 1-MONTH free trial (was 7-day): supabase migration
+    20260805120000_trial_30_days.sql (APPLY TO LIVE DB BEFORE RELEASE),
+    signup promo banner + welcome toast, entitlements copy updated
+  - sw v111: precache fetches bypass HTTP cache; serve.py sends
+    Cache-Control: no-cache on shell files
+Artifacts (SHA-256), signed with the ORIGINAL keystore (cert 7e4cb1...d9e1):
+  OptimalFit-debug.apk      D823D2D837D72BB192D666C95E45B4574DF8959E5B4FEA87C141272375B2D238
+  OptimalFit-release.apk    D6A402AF8B1C25E36B9F479A08B32A417A1FF9F5155356FC32813140735AA829
+  OptimalFit-release.aab    053AF2B2D5CFCC436EEB5492F4986B06067BE9BD50E3CF434C64AF994D9E4300
+  apksigner: cert digest match; jarsigner AAB: jar verified
+  APK contents verified: coach.js (job flow, proposals, todayNutrition),
+  goals.js (applyCoachProposal) byte-present in assets/public

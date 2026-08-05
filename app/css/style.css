@@ -1007,9 +1007,29 @@ body.metric-modal-open { overflow: hidden; }
 /* Chat-app layout: the coach tab fills the visible area, the LOG is the
    internal scroller, and the input row is pinned at the bottom — so with
    the native keyboard resize the input sits directly above the keyboard
-   instead of the page scrolling past it. */
-#tab-coach:not(.hidden) { display: flex; flex-direction: column; height: 100%; min-height: 0; }
-#tab-coach h1 { flex-shrink: 0; margin-bottom: var(--sp-2); }
+   instead of the page scrolling past it.
+
+   The HEIGHT lives on .app-shell via body.coach-open (set by app.js):
+   height on the flex children loses to the flex main-axis algorithm, which
+   is why the old `height: 100%` chain collapsed and the chat rendered as a
+   short card. --vvh (app.js, visualViewport) tracks the real visible
+   height incl. the keyboard; falls back to 100dvh. */
+body.coach-open { overflow: hidden; }
+body.coach-open .app-shell {
+  height: calc(var(--vvh, 100dvh) - var(--header-h));
+  min-height: 0;
+  overflow: hidden;
+}
+body.coach-open .content {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+  padding-top: 8px;
+  padding-bottom: 8px;
+}
+#tab-coach:not(.hidden) { display: flex; flex-direction: column; flex: 1; height: auto; min-height: 0; }
+#tab-coach h1 { flex-shrink: 0; margin-bottom: var(--sp-2); font-size: 1.15rem; }
 #coach-status { flex-shrink: 0; overflow-y: auto; max-height: 100%; }
 #coach-chat.coach-card { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; margin-bottom: 0; }
 .coach-disclaimer { flex-shrink: 0; margin: 6px 0 0; font-size: 0.68rem; }
@@ -1026,17 +1046,17 @@ body.metric-modal-open { overflow: hidden; }
   min-height: 0;
 }
 
-.coach-empty { margin: 4px 0 var(--sp-2); font-size: 0.9rem; }
+.coach-empty { margin: 4px 0 var(--sp-2); font-size: 1rem; line-height: 1.55; }
 
-.coach-chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.coach-chips { display: flex; flex-wrap: wrap; gap: 10px; }
 .coach-chip {
   background: var(--bg-2);
   border: 1px solid var(--card-edge);
   color: var(--text);
   border-radius: var(--r-full);
-  padding: 9px 15px;
-  min-height: 40px;
-  font-size: 0.85rem;
+  padding: 10px 16px;
+  min-height: 44px;
+  font-size: 0.95rem;
   font-weight: 550;
   font-family: inherit;
   cursor: pointer;
@@ -1063,15 +1083,47 @@ body.metric-modal-open { overflow: hidden; }
 .coach-avatar .ico { width: 15px; height: 15px; }
 
 .bubble {
-  max-width: 85%;
-  padding: 10px 14px;
+  max-width: 92%;
+  padding: 12px 16px;
   border-radius: var(--r-lg);
-  font-size: 0.93rem;
-  line-height: 1.5;
+  font-size: 1.05rem;
+  line-height: 1.6;
   white-space: pre-wrap;
   overflow-wrap: break-word;
   animation: bubble-in var(--dur) var(--ease);
 }
+
+/* signup free-month promo line */
+.soc-auth-promo {
+  background: var(--accent-soft);
+  border: 1px solid var(--accent);
+  border-radius: var(--r-md);
+  padding: 10px 12px;
+  font-size: 0.95rem;
+  line-height: 1.45;
+  margin: 0 0 10px;
+}
+
+/* actionable coach proposal: Apply / Not now */
+.coach-proposal {
+  margin-left: 36px;               /* aligns under the coach bubble, past the avatar */
+  max-width: 86%;
+  background: var(--accent-soft);
+  border: 1px solid var(--accent);
+  border-radius: var(--r-lg);
+  padding: 12px 14px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  animation: bubble-in var(--dur) var(--ease);
+}
+.coach-proposal.done { border-color: var(--card-edge); background: var(--bg-2); font-size: 0.95rem; }
+.proposal-label { font-weight: 650; font-size: 1rem; flex: 1; min-width: 140px; }
+.proposal-actions { display: flex; gap: 8px; }
+.btn-sm { padding: 8px 14px; min-height: 38px; font-size: 0.9rem; }
+.proposal-ok { color: var(--good, #22c55e); font-weight: 800; }
+.proposal-bad { color: var(--danger); font-weight: 800; }
 @keyframes bubble-in {
   from { opacity: 0; transform: translateY(4px); }
   to { opacity: 1; transform: none; }
@@ -1885,6 +1937,17 @@ body.metric-modal-open { overflow: hidden; }
 
   /* clear the bottom nav + the iOS home indicator (safe area) */
   .content { padding-bottom: calc(96px + env(safe-area-inset-bottom, 0px)); }
+
+  /* coach chat screen: shell = viewport minus header minus the fixed
+     bottom nav; with the keyboard up (body.kb-open hides the nav) the
+     chat gets that space back and the input sits on the keyboard */
+  body.coach-open .app-shell {
+    height: calc(var(--vvh, 100dvh) - var(--header-h) - 64px - env(safe-area-inset-bottom, 0px));
+  }
+  body.coach-open .content { padding-bottom: 8px; }
+  body.coach-open.kb-open .app-shell {
+    height: calc(var(--vvh, 100dvh) - var(--header-h));
+  }
 
   .entry { flex-wrap: wrap; }
   .entry-actions { margin-left: auto; }

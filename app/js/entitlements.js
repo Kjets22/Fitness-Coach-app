@@ -24,7 +24,7 @@ OF.entitlements = (function () {
   function profile() { var a = api(); return (a && a.cachedProfile) ? a.cachedProfile() : null; }
 
   /* Premium if the signed-in profile carries is_premium / is_admin (owner grant)
-     OR the 7-day free trial hasn't expired. Free/anon => not premium. */
+     OR the 1-month free trial hasn't expired. Free/anon => not premium. */
   var staleRefreshFired = false;
   function isPremium() {
     var p = profile();
@@ -80,17 +80,17 @@ OF.entitlements = (function () {
         '<span class="ent-mini-txt">' + title + ' <span class="muted">— Premium</span></span>' + act + '</div>';
     }
     if (!signedIn()) {
-      return card(title, blurb + " It’s an OptimalFit Premium feature and every new account gets a 7-day free trial — sign in or create an account to start yours. Everything else in the app is free.",
-        '<button type="button" class="btn primary" data-ent="signin">Sign in / Start free trial</button>' +
+      return card(title, blurb + " It’s an OptimalFit Premium feature and every new account gets a FULL MONTH free — sign in or create an account to start your free month. Everything else in the app is free.",
+        '<button type="button" class="btn primary" data-ent="signin">Sign in / Get 1 month free</button>' +
         '<a class="btn ghost" href="#dashboard">Meanwhile: build your program free</a>');
     }
     if (!profile()) {
       // auth account exists but the profile (where the trial lives) was never
       // created — the user abandoned the username step; send them back to it
-      return card(title, blurb + " Finish setting up your account (pick a username on the Community tab) to start your 7-day free trial of the Premium AI features.",
+      return card(title, blurb + " Finish setting up your account (pick a username on the Community tab) to start your free month of the Premium AI features.",
         '<button type="button" class="btn primary" data-ent="signin">Finish setup</button>');
     }
-    return card(title, blurb + " Your 7-day free trial of the Premium AI features has ended. It stays available to Premium members — if you’ve just been given access, re-check below.",
+    return card(title, blurb + " Your free month of the Premium AI features has ended. It stays available to Premium members — if you’ve just been given access, re-check below.",
       '<button type="button" class="btn primary" data-ent="recheck">Check my access</button>');
   }
 

@@ -42,6 +42,19 @@ OF.coach = (function () {
   var pairError = "";       // shown on the pairing card after a rejected code
   var REQUEST_TIMEOUT_MS = 130000; // server kills the CLI at 120s
 
+  /* Coach answers are computed as a SERVER JOB and fetched by polling, so
+     leaving the app mid-answer is fine: the server keeps working, and the
+     app re-attaches to the pending job (persisted below) when it comes
+     back — even after a full reload. */
+  var JOB_STORE = "optimalfit.coachJob";     // {jobId, question, ts}
+  var POLL_MS = 2500;
+  var JOB_MAX_AGE_MS = 10 * 60 * 1000;       // give up resuming after 10 min
+  var pollTimer = null;
+  var pollMisses = 0;
+  var pendingSend = null;   // question whose POST died because the app was
+                            // backgrounded mid-send; retried on return
+  var IS_TOUCH = window.matchMedia && matchMedia("(pointer: coarse)").matches;
+
   /* Phone-mode pairing: when serve.py runs with --phone, LAN clients must
      send the 6-digit code (printed in the server window) as X-OF-Key.
      Stored once in localStorage; localhost never needs it (the server
@@ -68,7 +81,9 @@ OF.coach = (function () {
     return OF.coachApi ? OF.coachApi.url(path) : path;
   }
 
-  /* Suggestion chips — trainer-flavoured, and program-aware when a plan exists. */
+  /* Suggestion chips — trainer-flavoured, program-aware when a plan exists,
+     and always one nutrition door (the coach is a nutritionist too:
+     recipes, meal ideas, restaurant orders that fit today's targets). */
   function chips() {
     var hasPlan = false;
     try { hasPlan = !!(OF.trainer && OF.trainer.hasProgram && OF.trainer.hasProgram()); } catch (e) {}
@@ -77,12 +92,13 @@ OF.coach = (function () {
         "Walk me through today's session",
         "Make today's workout harder",
         "I'm sore — adjust today's plan",
-        "What should I eat before today's session?"
+        "What should I eat for dinner to hit my targets?"
       ];
     }
     return [
       "Build me a training plan for my goal",
-      "What should I eat before tomorrow's session?",
+      "Give me a high-protein recipe for tonight",
+      "I'm eating out — what should I order?",
       "Why is my readiness low today?"
     ];
   }
@@ -366,8 +382,37 @@ OF.coach = (function () {
         bodyFatPct: latestBody.bodyFatPct,
         muscleMassKg: U.muscleKg(latestBody)   // canonical kg; converts legacy % records
       } : null,
-      physique: physique
+      physique: physique,
+      todayNutrition: todayNutrition(goalCoaching)
     };
+  }
+
+  /** What they've eaten TODAY vs their daily targets — the anchor for meal,
+      recipe and restaurant-order advice ("you have ~900 kcal and 70g protein
+      left today"). Remaining values are null without targets. */
+  function todayNutrition(goalCoaching) {
+    var today = U.todayISO();
+    var t = { kcal: 0, proteinG: 0, carbsG: 0, fatG: 0, meals: [] };
+    S.getAll("food").forEach(function (r) {
+      if (r.date !== today) return;
+      if (typeof r.calories === "number") t.kcal += r.calories;
+      if (typeof r.protein === "number") t.proteinG += r.protein;
+      if (typeof r.carbs === "number") t.carbsG += r.carbs;
+      if (typeof r.fat === "number") t.fatG += r.fat;
+      if (r.mealType) t.meals.push(r.mealType);
+    });
+    t.kcal = Math.round(t.kcal);
+    t.proteinG = round1(t.proteinG);
+    t.carbsG = round1(t.carbsG);
+    t.fatG = round1(t.fatG);
+    t.mealsLoggedToday = t.meals.length;
+    delete t.meals;
+    var dt = goalCoaching && goalCoaching.dailyTargets;
+    if (dt && typeof dt === "object") {
+      t.remainingKcal = typeof dt.kcal === "number" ? Math.round(dt.kcal - t.kcal) : null;
+      t.remainingProteinG = typeof dt.proteinG === "number" ? round1(dt.proteinG - t.proteinG) : null;
+    }
+    return t;
   }
 
   /* ---------------- rendering ---------------- */
@@ -509,12 +554,13 @@ OF.coach = (function () {
       '</div>';
     }
     var avatar = '<span class="coach-avatar" aria-hidden="true">' + OF.icons.get("sparkles") + '</span>';
-    messages.forEach(function (m) {
+    messages.forEach(function (m, mi) {
       if (m.role === "user") {
         html += '<div class="bubble bubble-user">' + U.esc(m.text) + '</div>';
       } else { // coach / error rows get the avatar dot
         html += '<div class="msg-row">' + avatar +
           '<div class="bubble bubble-' + m.role + '">' + U.esc(m.text) + '</div></div>';
+        if (m.proposal) html += proposalCard(m, mi);
       }
     });
     // Coach 2.0: thumbs on the latest answer feed the learning loop
@@ -549,6 +595,27 @@ OF.coach = (function () {
     // fresh chat = read the greeting from its first line; conversations pin
     // to the newest message as usual
     els.log.scrollTop = messages.length ? els.log.scrollHeight : 0;
+  }
+
+  /** Apply / Not-now card for an actionable coach proposal. */
+  function proposalCard(m, idx) {
+    if (m.proposalState === "applied") {
+      return '<div class="coach-proposal done"><span class="proposal-ok">&#10003;</span> ' +
+        U.esc(m.proposalNote || "Applied.") + '</div>';
+    }
+    if (m.proposalState === "dismissed") {
+      return '<div class="coach-proposal done muted">Dismissed — nothing changed.</div>';
+    }
+    if (m.proposalState === "failed") {
+      return '<div class="coach-proposal done"><span class="proposal-bad">&#10007;</span> ' +
+        U.esc(m.proposalNote || "Could not apply.") + '</div>';
+    }
+    return '<div class="coach-proposal">' +
+      '<div class="proposal-label">' + U.esc(m.proposal.label) + '</div>' +
+      '<div class="proposal-actions">' +
+      '<button type="button" class="btn primary btn-sm" data-prop-apply="' + idx + '">Apply</button>' +
+      '<button type="button" class="btn btn-sm" data-prop-dismiss="' + idx + '">Not now</button>' +
+      '</div></div>';
   }
 
   /** Contextual follow-up chips from the coach's LAST answer: reply-shaped
@@ -611,7 +678,27 @@ OF.coach = (function () {
   }
 
   function pushMsg(role, text) {
-    messages.push({ role: role, text: text });
+    var msg = { role: role, text: text };
+    if (role === "coach") {
+      /* The coach may end with `PROPOSAL {json}` — one concrete change the
+         user can accept or dismiss (goal type, calorie nudge, target date).
+         Strip it from the visible text and attach it to the message. */
+      var pm = /\nPROPOSAL\s+(\{.*\})\s*$/.exec("\n" + text);
+      if (pm) {
+        try {
+          var p = JSON.parse(pm[1]);
+          if (p && p.type && p.label) {
+            msg.proposal = p;
+            msg.proposalState = null; // null | "applied" | "dismissed" | "failed"
+            msg.proposalNote = "";
+            msg.text = text.slice(0, text.length - pm[0].length + 1)
+              .replace(/\s+$/, "");
+            text = msg.text;
+          }
+        } catch (e) { /* malformed proposal: leave the raw text visible */ }
+      }
+    }
+    messages.push(msg);
     if (messages.length > MAX_MSGS) messages = messages.slice(-MAX_MSGS);
     saveChat();
     // [24] announce ONLY the new coach/error reply to screen readers — the
@@ -742,18 +829,55 @@ OF.coach = (function () {
 
     pushMsg("user", question);
     els.input.value = "";
+    if (IS_TOUCH) els.input.blur();   // drop the keyboard: reading > typing
     setBusy(true);
     renderLog();
+    postQuestion(question);
+  }
 
-    var ctrl = ("AbortController" in window) ? new AbortController() : null;
-    var timer = ctrl ? setTimeout(function () { ctrl.abort(); }, REQUEST_TIMEOUT_MS) : null;
+  function handle401(j) {
+    if (OF.coachApi && OF.coachApi.remote()) {
+      // [16] baked-key mode: no code to re-enter — surface an update hint
+      health = "no-server";
+      finishJob("error", "The AI coach is temporarily unavailable. Please update OptimalFit or try again later.");
+    } else { // phone pairing: the code was revoked
+      setPairKey("");
+      pairError = "The server asked to pair again — enter the current code.";
+      health = "need-key";
+      finishJob("error", (j && j.error) || "Pairing required.");
+    }
+  }
 
+  function unreachableMsg() {
+    return (OF.coachApi && OF.coachApi.remote())
+      ? "Could not reach the AI coach. Check your internet connection and try again."
+      : (isNativeApp()
+          ? "Could not reach the coach on your computer. Make sure OptimalFit is running there and this phone is on the same Wi-Fi."
+          : "Could not reach the local server. Is “" + launcherName() + "” still running?");
+  }
+
+  /** Every way an exchange ends funnels through here. */
+  function finishJob(role, text) {
+    clearJob();
+    stopPolling();
+    pushMsg(role, text);
+    setBusy(false);
+    // need-key swaps chat for the pairing card; a mid-chat 401/failure in
+    // remote mode must ALSO surface the offline banner — otherwise later
+    // questions get silently answered on-device with no explanation
+    if (health === "need-key" || (health !== "ok" && offlineUsable())) { renderStatus(); renderLog(); }
+    else renderLog();
+    // desktop gets the cursor back; on phones the keyboard STAYS DOWN so
+    // the answer is readable full-screen (tap the input to bring it back)
+    if (!IS_TOUCH) els.input.focus();
+  }
+
+  function postQuestion(question) {
     var httpStatus = 0;
     fetch(apiUrl("/api/coach"), {
       method: "POST",
       headers: apiHeaders({ "Content-Type": "application/json" }),
-      body: JSON.stringify({ question: question, context: buildContext() }),
-      signal: ctrl ? ctrl.signal : undefined
+      body: JSON.stringify({ question: question, context: buildContext() })
     })
       .then(function (res) {
         httpStatus = res.status;
@@ -766,39 +890,105 @@ OF.coach = (function () {
         });
       })
       .then(function (j) {
+        pendingSend = null;
         if (httpStatus === 401) {
-          if (OF.coachApi && OF.coachApi.remote()) {
-            // [16] baked-key mode: no code to re-enter — surface an update hint
-            health = "no-server";
-            pushMsg("error", "The AI coach is temporarily unavailable. Please update OptimalFit or try again later.");
-          } else { // phone pairing: the code was revoked
-            setPairKey("");
-            pairError = "The server asked to pair again — enter the current code.";
-            health = "need-key";
-            pushMsg("error", (j && j.error) || "Pairing required.");
-          }
-        } else if (j && j.ok && typeof j.answer === "string") pushMsg("coach", j.answer.trim());
-        else pushMsg("error", (j && j.error) || "The coach returned an unexpected response.");
+          handle401(j);
+        } else if (j && j.ok && j.jobId) {
+          // job server: the answer computes server-side; poll for it, so
+          // backgrounding the app mid-answer never kills the exchange
+          saveJob(j.jobId, question);
+          pollMisses = 0;
+          pollJob();
+        } else if (j && j.ok && typeof j.answer === "string") {
+          finishJob("coach", j.answer.trim()); // older server: direct answer
+        } else {
+          finishJob("error", (j && j.error) || "The coach returned an unexpected response.");
+        }
+      })
+      .catch(function () {
+        // The send itself died. If that happened because the app went to the
+        // background (app switch kills in-flight fetches), don't show an
+        // error — hold the question and re-send the moment we're visible.
+        if (document.visibilityState === "hidden") {
+          pendingSend = question;
+        } else {
+          finishJob("error", unreachableMsg());
+        }
+      });
+  }
+
+  /* ---------------- job persistence + polling ---------------- */
+
+  function saveJob(jobId, question) {
+    try {
+      localStorage.setItem(JOB_STORE,
+        JSON.stringify({ jobId: jobId, question: question, ts: Date.now() }));
+    } catch (e) { /* private mode: resume just won't survive a reload */ }
+  }
+  function loadJob() {
+    try {
+      var j = JSON.parse(localStorage.getItem(JOB_STORE) || "null");
+      if (j && j.jobId && Date.now() - (j.ts || 0) < JOB_MAX_AGE_MS) return j;
+    } catch (e) { }
+    return null;
+  }
+  function clearJob() {
+    try { localStorage.removeItem(JOB_STORE); } catch (e) { }
+  }
+  function stopPolling() {
+    if (pollTimer) { clearTimeout(pollTimer); pollTimer = null; }
+  }
+
+  function pollJob() {
+    stopPolling();
+    var job = loadJob();
+    if (!job) { setBusy(false); renderLog(); return; }
+
+    fetch(apiUrl("/api/coach/result?id=" + encodeURIComponent(job.jobId)),
+      { cache: "no-store", headers: apiHeaders() })
+      .then(function (res) {
+        if (res.status === 401) throw { pairing: true };
+        return res.json();
+      })
+      .then(function (j) {
+        pollMisses = 0;
+        if (j && j.status === "pending") {
+          pollTimer = setTimeout(pollJob, POLL_MS);
+        } else if (j && j.status === "done" && typeof j.answer === "string") {
+          finishJob("coach", j.answer.trim());
+        } else if (j && j.status === "unknown") {
+          finishJob("error", "The coach server restarted before the answer was saved. Ask again.");
+        } else {
+          finishJob("error", (j && j.error) || "The coach returned an unexpected response.");
+        }
       })
       .catch(function (e) {
-        pushMsg("error", e && e.name === "AbortError"
-          ? "The coach took too long and the request was cancelled."
-          : ((OF.coachApi && OF.coachApi.remote())
-              ? "Could not reach the AI coach. Check your internet connection and try again."
-              : (isNativeApp()
-                  ? "Could not reach the coach on your computer. Make sure OptimalFit is running there and this phone is on the same Wi-Fi."
-                  : "Could not reach the local server. Is “" + launcherName() + "” still running?")));
-      })
-      .then(function () { // finally
-        if (timer) clearTimeout(timer);
-        setBusy(false);
-        // need-key swaps chat for the pairing card; a mid-chat 401/failure in
-        // remote mode must ALSO surface the offline banner — otherwise later
-        // questions get silently answered on-device with no explanation
-        if (health === "need-key" || (health !== "ok" && offlineUsable())) { renderStatus(); renderLog(); }
-        else renderLog();
-        els.input.focus();
+        if (e && e.pairing) { handle401(null); return; }
+        // A failed poll is NORMAL when the phone sleeps or switches apps —
+        // the job keeps running server-side. Keep polling quietly; only give
+        // up after ~30s of misses while the app is actually visible.
+        pollMisses++;
+        if (pollMisses >= 12 && document.visibilityState === "visible") {
+          finishJob("error", unreachableMsg());
+        } else {
+          pollTimer = setTimeout(pollJob, POLL_MS);
+        }
       });
+  }
+
+  /** Re-attach to a pending job (tab re-entry, app resume, full reload). */
+  function resumeJobIfAny() {
+    var job = loadJob();
+    if (!job) return false;
+    var last = messages[messages.length - 1];
+    if (!last || last.role !== "user" || last.text !== job.question) {
+      pushMsg("user", job.question);
+    }
+    setBusy(true);
+    renderLog();
+    pollMisses = 0;
+    pollJob();
+    return true;
   }
 
   /* ---------------- wiring ---------------- */
@@ -854,8 +1044,50 @@ OF.coach = (function () {
         location.hash = "#" + nav.getAttribute("data-nav");
         return;
       }
+      var ap = e.target.closest("[data-prop-apply]");
+      var dm = e.target.closest("[data-prop-dismiss]");
+      if (ap || dm) {
+        var idx = +((ap || dm).getAttribute(ap ? "data-prop-apply" : "data-prop-dismiss"));
+        var pm = messages[idx];
+        if (pm && pm.proposal) {
+          if (dm) {
+            pm.proposalState = "dismissed";
+          } else {
+            var res = (OF.goals && OF.goals.applyCoachProposal)
+              ? OF.goals.applyCoachProposal(pm.proposal)
+              : { ok: false, error: "Goals module unavailable." };
+            pm.proposalState = res.ok ? "applied" : "failed";
+            pm.proposalNote = res.ok ? res.summary : res.error;
+            if (OF.haptics && res.ok) OF.haptics.light();
+          }
+          saveChat();
+          renderLog();
+        }
+        return;
+      }
       var chip = e.target.closest(".coach-chip");
       if (chip && chip.getAttribute("data-q")) send(chip.getAttribute("data-q"));
+    });
+    // Tapping/scrolling the conversation dismisses the keyboard so the whole
+    // screen is readable; tapping the input brings it right back.
+    if (IS_TOUCH) {
+      els.log.addEventListener("touchstart", function (e) {
+        if (!e.target.closest(".coach-chip") &&
+            document.activeElement === els.input) els.input.blur();
+      }, { passive: true });
+    }
+    // App comes back to the foreground: finish anything interrupted NOW —
+    // re-send a POST that died mid-switch, or poll the pending job.
+    document.addEventListener("visibilitychange", function () {
+      if (document.visibilityState !== "visible") return;
+      if (pendingSend) {
+        var q = pendingSend;
+        pendingSend = null;
+        postQuestion(q);
+      } else if (loadJob()) {
+        pollMisses = 0;
+        pollJob();
+      }
     });
   }
 
@@ -895,6 +1127,7 @@ OF.coach = (function () {
   function onEnter() {
     if (health !== "ok") checkHealth();
     else renderStatus();
+    resumeJobIfAny();
   }
 
   // buildContext is exported so tests can check payload size/shape

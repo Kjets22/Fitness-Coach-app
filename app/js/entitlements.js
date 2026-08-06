@@ -23,10 +23,53 @@ OF.entitlements = (function () {
   function signedIn() { var a = api(); return !!(a && a.currentUser && a.currentUser()); }
   function profile() { var a = api(); return (a && a.cachedProfile) ? a.cachedProfile() : null; }
 
+  /* ---- install trial: the free month SHIPS WITH THE APP ----
+     No account, no setup: every install gets the Premium AI features for
+     30 days from first launch, tracked on-device. After it ends the
+     paywall appears. (Device-local by design — clearing app data restarts
+     it; acceptable pre-revenue, revisit with real billing.) */
+  var INSTALL_KEY = "optimalfit.installedAt";
+  var INSTALL_TRIAL_DAYS = 30;
+
+  function installedAt() {
+    try {
+      var v = Number(localStorage.getItem(INSTALL_KEY));
+      if (isFinite(v) && v > 0) return v;
+      v = Date.now();
+      localStorage.setItem(INSTALL_KEY, String(v));
+      return v;
+    } catch (e) { return Date.now(); } // private mode: trial never expires
+  }
+  function installTrialEndsAt() {
+    return installedAt() + INSTALL_TRIAL_DAYS * 86400000;
+  }
+  function installTrialActive() {
+    return Date.now() < installTrialEndsAt();
+  }
+  function installTrialDaysLeft() {
+    if (!installTrialActive()) return null;
+    return Math.max(1, Math.ceil((installTrialEndsAt() - Date.now()) / 86400000));
+  }
+  /** First launch only: returns true ONCE, right when the trial starts —
+      app.js uses it to show the "your first month is free" welcome. */
+  function installTrialJustStarted() {
+    try {
+      if (localStorage.getItem(INSTALL_KEY)) {
+        if (localStorage.getItem(INSTALL_KEY + ".welcomed")) return false;
+        localStorage.setItem(INSTALL_KEY + ".welcomed", "1");
+        // welcome only makes sense while the trial is actually running
+        return installTrialActive();
+      }
+    } catch (e) { }
+    return false;
+  }
+
   /* Premium if the signed-in profile carries is_premium / is_admin (owner grant)
      OR the 1-month free trial hasn't expired. Free/anon => not premium. */
   var staleRefreshFired = false;
   function isPremium() {
+    // the install trial needs NO account — the free month ships with the app
+    if (installTrialActive()) return true;
     var p = profile();
     if (!p) return false;
     if (p.is_premium || p.is_admin) return true;
@@ -44,8 +87,12 @@ OF.entitlements = (function () {
     var t = new Date(p.trial_ends_at).getTime();
     return isFinite(t) && t > Date.now();
   }
-  /* Whole days left in the trial (null when not on a trial / already premium). */
+  /* Whole days left in the trial (null when not on a trial / already premium).
+     The install trial (free month with the app) counts first, then any
+     account trial. */
   function trialDaysLeft() {
+    var d = installTrialDaysLeft();
+    if (d != null) return d;
     var p = profile();
     if (!trialActive(p)) return null;
     return Math.max(1, Math.ceil((new Date(p.trial_ends_at).getTime() - Date.now()) / 86400000));
@@ -80,17 +127,17 @@ OF.entitlements = (function () {
         '<span class="ent-mini-txt">' + title + ' <span class="muted">— Premium</span></span>' + act + '</div>';
     }
     if (!signedIn()) {
-      return card(title, blurb + " It’s an OptimalFit Premium feature and every new account gets a FULL MONTH free — sign in or create an account to start your free month. Everything else in the app is free.",
-        '<button type="button" class="btn primary" data-ent="signin">Sign in / Get 1 month free</button>' +
-        '<a class="btn ghost" href="#dashboard">Meanwhile: build your program free</a>');
+      return card(title, blurb + " Your free month with OptimalFit has ended — every install gets the Premium AI features free for 30 days, and yours are up. Go Premium to keep them: create an account and Premium membership picks up where your free month left off. Everything else in the app stays free forever.",
+        '<button type="button" class="btn primary" data-ent="signin">Go Premium</button>' +
+        '<a class="btn ghost" href="#dashboard">Keep using the free features</a>');
     }
     if (!profile()) {
-      // auth account exists but the profile (where the trial lives) was never
-      // created — the user abandoned the username step; send them back to it
-      return card(title, blurb + " Finish setting up your account (pick a username on the Community tab) to start your free month of the Premium AI features.",
+      // auth account exists but the profile (where membership lives) was
+      // never created — the user abandoned the username step; send them back
+      return card(title, blurb + " Your free month has ended. Finish setting up your account (pick a username on the Community tab) to continue with Premium.",
         '<button type="button" class="btn primary" data-ent="signin">Finish setup</button>');
     }
-    return card(title, blurb + " Your free month of the Premium AI features has ended. It stays available to Premium members — if you’ve just been given access, re-check below.",
+    return card(title, blurb + " Your free month of the Premium AI features has ended. Go Premium to keep them — if you’ve just been given access, re-check below.",
       '<button type="button" class="btn primary" data-ent="recheck">Check my access</button>');
   }
 
@@ -130,6 +177,9 @@ OF.entitlements = (function () {
     isPremium: isPremium,
     isAdmin: isAdmin,
     trialDaysLeft: trialDaysLeft,
+    installTrialActive: installTrialActive,
+    installTrialDaysLeft: installTrialDaysLeft,
+    installTrialJustStarted: installTrialJustStarted,
     signedIn: signedIn,
     refresh: refresh,
     paywallHtml: paywallHtml,

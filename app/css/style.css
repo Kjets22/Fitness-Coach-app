@@ -1093,17 +1093,6 @@ body.coach-open .content {
   animation: bubble-in var(--dur) var(--ease);
 }
 
-/* signup free-month promo line */
-.soc-auth-promo {
-  background: var(--accent-soft);
-  border: 1px solid var(--accent);
-  border-radius: var(--r-md);
-  padding: 10px 12px;
-  font-size: 0.95rem;
-  line-height: 1.45;
-  margin: 0 0 10px;
-}
-
 /* actionable coach proposal: Apply / Not now */
 .coach-proposal {
   margin-left: 36px;               /* aligns under the coach bubble, past the avatar */

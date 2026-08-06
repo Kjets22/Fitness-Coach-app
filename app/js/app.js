@@ -206,6 +206,14 @@ OF.app = (function () {
     updateVvh();
     window.addEventListener("resize", updateVvh);
     if (window.visualViewport) visualViewport.addEventListener("resize", updateVvh);
+    // First launch: the free month starts NOW, no account needed — say so.
+    try {
+      if (OF.entitlements && OF.entitlements.installTrialJustStarted() &&
+          OF.util && OF.util.toast) {
+        OF.util.toast("🎉 Your first month is free — AI Coach, photo food " +
+          "logging and physique analysis are unlocked for 30 days.", "ok");
+      }
+    } catch (e) { /* welcome is decorative */ }
     initSheet();
     initKeyboardScroll();
     initKeyboardChrome();

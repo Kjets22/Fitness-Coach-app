@@ -730,10 +730,7 @@ OF.social = (function () {
   function renderAuthSheet() {
     var isUp = st.authMode === "signup";
     var html = '<h2>' + (isUp ? "Create your account" : "Welcome back") + '</h2>' +
-      (isUp ? '<p class="soc-auth-promo">🎉 <strong>Your first month is free</strong> — every new ' +
-        'account gets full access to the Premium AI features (coach, photo food ' +
-        'logging, physique analysis) for a month. No card needed.</p>' +
-        '<p class="muted small soc-auth-note">Community posts are public to other members. ' +
+      (isUp ? '<p class="muted small soc-auth-note">Community posts are public to other members. ' +
         'Your tracking data stays on your device &mdash; you choose every post.</p>' : "") +
       '<form id="soc-auth-form" novalidate>' +
       '<div class="form-row"><label class="grow">Email' +
@@ -905,14 +902,6 @@ OF.social = (function () {
         loadFeed(true);
         loadGyms();
         loadCheckins();
-        // New account = the free month starts NOW — tell them clearly.
-        // (trial_ends_at is set server-side by the profiles DEFAULT.)
-        try {
-          if (OF.util && OF.util.toast) {
-            OF.util.toast("🎉 Welcome! Your first MONTH of Premium is free — " +
-              "AI Coach, photo food logging and physique analysis are all unlocked.", "ok");
-          }
-        } catch (e2) { /* toast is decorative */ }
       }).catch(function (err) {
         btn.disabled = false;
         btn.textContent = "Join the community";

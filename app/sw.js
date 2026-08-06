@@ -15,7 +15,7 @@
    ============================================================ */
 
 /* Bump this string when any shell file changes. */
-var VERSION = "v111"; /* coach: full-screen+job polling+proposals+nutrition; 1-month trial; no-cache precache */
+var VERSION = "v112"; /* free month ships with the app (install trial), account-trial promo reverted */
 var CACHE = "optimalfit-shell-" + VERSION;
 
 var SHELL = [

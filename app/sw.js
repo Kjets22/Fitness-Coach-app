@@ -15,7 +15,7 @@
    ============================================================ */
 
 /* Bump this string when any shell file changes. */
-var VERSION = "v114"; /* coach-recommended per-exercise rest defaults */
+var VERSION = "v115"; /* done-for-today celebration card + greeting */
 var CACHE = "optimalfit-shell-" + VERSION;
 
 var SHELL = [

@@ -2893,6 +2893,19 @@ body.resting main.content { padding-bottom: 76px; }
 }
 .coach-offline-banner .btn.mini { min-height: 32px; margin-left: auto; }
 
+/* Trainer "done for today" celebration card */
+.trainer-done .tr-title { display: flex; align-items: center; gap: 8px; }
+.trainer-done .tr-title .ico { width: 22px; height: 22px; color: var(--good, #22c55e); flex: none; }
+.tr-done-praise { margin: 4px 0 2px; font-size: 0.95rem; }
+.tr-done-note {
+  margin: 2px 0 0; font-size: 0.85rem; font-weight: 600;
+  color: var(--good, #22c55e);
+}
+@keyframes tr-done-in { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: no-preference) {
+  .trainer-done { animation: tr-done-in 260ms ease-out; }
+}
+
 /* Trainer "adjust for today" quick-actions */
 .tr-adapt { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin-top: var(--sp-3); padding-top: var(--sp-3); border-top: 1px solid var(--card-edge); }
 .tr-adapt-lbl { font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-dim); margin-right: 2px; }

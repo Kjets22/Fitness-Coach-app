@@ -522,8 +522,16 @@ OF.coach = (function () {
       try {
         if (OF.trainer && OF.trainer.nextSession) {
           var ns = OF.trainer.nextSession();
-          if (ns) todayLine = '<p class="coach-today">I’m your coach. Today I’ve got you on <strong>' +
-            U.esc(ns.name) + '</strong> — ask me to walk you through it or change anything.</p>';
+          // already trained today: congratulate, don't pitch tomorrow's
+          // session as if it were still on today's docket
+          if (ns && OF.trainer.doneToday && OF.trainer.doneToday()) {
+            todayLine = '<p class="coach-today">Good work today — that session is in the books. ' +
+              '<strong>' + U.esc(ns.name) + '</strong> is up tomorrow; ask me about recovery, ' +
+              'food, or anything else.</p>';
+          } else if (ns) {
+            todayLine = '<p class="coach-today">I’m your coach. Today I’ve got you on <strong>' +
+              U.esc(ns.name) + '</strong> — ask me to walk you through it or change anything.</p>';
+          }
         }
       } catch (e) {}
       html += todayLine ||

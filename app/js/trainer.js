@@ -539,6 +539,16 @@ OF.trainer = (function () {
     return { dayIndex: idx, name: p.days[idx].name, exercises: p.days[idx].slots, program: p };
   }
 
+  /** True when a program session was completed today (drives the
+      "done for today" card + the coach greeting). */
+  function doneToday() {
+    var p = load();
+    return !!(p && p.lastDoneOn === U.todayISO());
+  }
+  // "Train again anyway" override: show the next session today after all
+  // (two-a-day lifters exist). Session-scoped on purpose — tomorrow resets.
+  var trainAnywayDate = null;
+
   /** prescription text for one exercise, e.g. "3×6–10 @ 60 kg". */
   function prescription(ex) {
     if (ex.hold) {
@@ -733,6 +743,10 @@ OF.trainer = (function () {
     } catch (e2) { /* learning must never break progression */ }
     // advance from the day just trained (not a possibly-skipped pointer)
     p.pointer = (dayIndex + 1) % p.days.length;
+    // remember WHAT was finished and WHEN: the dashboard shows a "done for
+    // today" card instead of immediately advertising tomorrow's session
+    p.lastDoneOn = U.todayISO();
+    p.lastDoneName = p.days[dayIndex].name;
     p.updatedAt = new Date().toISOString();
     if (!save(p)) {
       // storage full: nothing persisted — celebrating "weight added" would be a lie
@@ -833,6 +847,34 @@ OF.trainer = (function () {
       return;
     }
     var ns = nextSession();
+    // Trained today already? Celebrate and REST — don't advertise tomorrow's
+    // session as "today" minutes after they racked the last set. A live
+    // in-progress session still wins (they're mid-workout, show resume).
+    if (doneToday() && !hasLiveSession() && trainAnywayDate !== U.todayISO()) {
+      var praise = [
+        "That's the work done. Recovery is where the muscle gets built.",
+        "Consistency like this is what actually moves the needle.",
+        "Strong session. Eat well, sleep well — grow.",
+        "Showed up and did the work. That's the whole game."
+      ][(U.todayISO().split("-").join("") | 0) % 4];
+      els.card.innerHTML =
+        '<div class="card trainer-today trainer-done">' +
+          '<div class="tr-head">' +
+            '<div><div class="tr-kicker">Training complete</div>' +
+            '<h2 class="tr-title">' + OF.icons.get("check") + ' ' +
+              e(load().lastDoneName || "Session") + ' — good job!</h2></div>' +
+          '</div>' +
+          '<p class="tr-done-praise">' + e(praise) + '</p>' +
+          '<p class="tr-done-note">You’ve already trained today — ' +
+            e(ns.name) + ' is up tomorrow.</p>' +
+          '<div class="tr-actions">' +
+            '<button type="button" class="btn ghost" data-tr="program">Program</button>' +
+            '<button type="button" class="btn ghost mini" data-tr="anyway" ' +
+              'title="Show tomorrow’s session now">Train again anyway</button>' +
+          '</div>' +
+        '</div>';
+      return;
+    }
     var rows = ns.exercises.map(function (ex) {
       return '<div class="tr-ex" data-tr="ask" data-exname="' + e(ex.name) + '" role="button" tabindex="0"' +
         ' title="Ask your coach about ' + e(ex.name) + '">' +
@@ -1047,6 +1089,7 @@ OF.trainer = (function () {
         openIntake(); return;
       }
       if (act === "program") { openProgram(); return; }
+      if (act === "anyway") { trainAnywayDate = U.todayISO(); renderCard(); return; }
       if (act === "swap") {
         var dIdx = parseInt(b.getAttribute("data-day"), 10), sIdx = parseInt(b.getAttribute("data-slot"), 10);
         var res = swapSlot(dIdx, sIdx, false);   // plain swap — nothing gets banned
@@ -1185,6 +1228,7 @@ OF.trainer = (function () {
   return {
     isCompoundName: isCompoundName,
     coachRestSec: coachRestSec,
+    doneToday: doneToday,
     init: init,
     refresh: refresh,
     renderCard: renderCard,

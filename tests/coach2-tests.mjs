@@ -599,4 +599,26 @@ section("progression guards");
   check("heavy style pushes compound to 3:00", TR.coachRestSec("Bench Press") === 180);
 }
 
+/* ---------- trainer: done-for-today state ---------- */
+{
+  section("trainer.doneToday");
+  const w = makeWorld();
+  const TR = w.OF.trainer;
+  w.OF.profile.update({ goals: { primary: "muscle" }, prefs: { daysPerWeek: 3 } }, "test");
+  TR.createProgram({ daysPerWeek: 3, equipment: "full-gym" });
+  check("fresh program: not done today", TR.doneToday() === false);
+  const ns = TR.nextSession();
+  const logged = ns.exercises.slice(0, 2).map(x => ({
+    name: x.name, sets: [{ weightKg: 40, reps: 8 }]
+  }));
+  const res = TR.completeSession(ns.dayIndex, logged);
+  check("completeSession returns next name", typeof res.nextName === "string" && res.nextName.length > 0);
+  check("done today after completing", TR.doneToday() === true);
+  check("pointer advanced to a different day", TR.nextSession().dayIndex !== ns.dayIndex);
+  check("lastDoneName recorded", TR.load().lastDoneName === ns.name, TR.load().lastDoneName);
+  // tomorrow: the flag naturally expires (todayISO moves on)
+  w.now = Date.now() + 86400000;
+  check("not done anymore tomorrow", TR.doneToday() === false);
+}
+
 report("coach2-tests");

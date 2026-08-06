@@ -1,30 +1,32 @@
-# OptimalFit — App Store kit (CURRENT: upload 1.7.0 build 52)
+# OptimalFit — App Store kit (CURRENT: upload 1.7.0 build 54)
 
-> **Upload `OptimalFit build 52 UPLOAD THIS`** — the ONLY archive Organizer
-> shows (2026-08-06). It is 1.7.0 (52): everything in build 47 PLUS the
+> **Upload `OptimalFit build 54 UPLOAD THIS`** — the ONLY archive Organizer
+> shows (2026-08-06). It is 1.7.0 (54): everything in build 47 PLUS the
 > 30-day included free month, the background-safe async coach, coach
 > proposals (Apply/Not-now), the nutrition/restaurant coach, full-screen
-> coach UI, and three-tier goals. Build 47 (1.6.0) was already uploaded to
+> coach UI, three-tier goals, coach-recommended per-exercise rest timers
+> (saved forever), and the done-for-today celebration card (no more
+> "next session today" after training). Build 47 (1.6.0) was already uploaded to
 > App Store Connect — that is why this one is 1.7.0: a new upload must have
 > a HIGHER version than the one already in App Store Connect. Superseded
-> archives (incl. build 47) live in
+> archives (incl. builds 47 and 52) live in
 > `~/Library/Developer/Xcode/Archives-superseded/`, invisible to Organizer.
 
 ## HOW TO UPDATE THE APP THAT'S ALREADY IN APP STORE CONNECT (~15 min)
 
 1. **Upload:** Xcode → Window → **Organizer** → Archives → select
-   **OptimalFit build 52 UPLOAD THIS** → **Distribute App** → App Store
+   **OptimalFit build 54 UPLOAD THIS** → **Distribute App** → App Store
    Connect → Upload → accept defaults.
 2. **App Store Connect → My Apps → OptimalFit.** What you do next depends on
    what the current 1.6.0 version says:
    - **"Prepare for Submission" or "Rejected"** (never approved): open that
      version, change the **Version** field at the top from 1.6.0 to
-     **1.7.0**, and once build 52 finishes processing (~15 min) select it
-     in the Build section (replacing 47).
+     **1.7.0**, and once build 54 finishes processing (~15 min) select it
+     in the Build section (replacing 47/52).
    - **"Waiting for Review" / "In Review"**: click **Remove from Review**
      first, then do the step above.
    - **"Ready for Sale"** (already live): click **⊕ Add Version**, enter
-     **1.7.0**, then select build 52 in the Build section.
+     **1.7.0**, then select build 54 in the Build section.
 3. **What's New:** paste the **1.7.0** block from `app-store-listing.md`.
 4. Re-check **App Review Information** is still filled in (demo account from
    `.env.reviewer`, notes, contact) — it usually carries over.
@@ -92,7 +94,7 @@ Send (it appears before anything is transmitted).
 
 ## Assets
 
-- **Archive:** `~/Library/Developer/Xcode/Archives/2026-08-06/OptimalFit-1.7.0-build52.xcarchive` — the ONLY archive in Organizer, labeled "OptimalFit build 52 UPLOAD THIS"
+- **Archive:** `~/Library/Developer/Xcode/Archives/2026-08-06/OptimalFit-1.7.0-build54.xcarchive` — the ONLY archive in Organizer, labeled "OptimalFit build 54 UPLOAD THIS"
 - **Screenshots:** `store/screenshots/iphone67-1290x2796-*.png` (valid set; shows the pre-redesign UI — fine for this compliance resubmission, refresh later via `store/tools/shoot.js` once updated for the new UI)
 - **Demo account:** `.env.reviewer` (gitignored) — premium, pre-populated
 - **Privacy manifest:** `native/ios/App/App/PrivacyInfo.xcprivacy` (new, in the build)

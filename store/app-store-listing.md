@@ -229,8 +229,13 @@ days — the coach proposes it as a one-tap card: apply it or dismiss it, you
 always decide.
 
 Goals now track on three levels: milestones toward the big goal, this
-week's training and weigh-in targets, and today's daily rings. Plus the
-usual round of fixes from hands-on testing.
+week's training and weigh-in targets, and today's daily rings.
+
+In the gym: every exercise remembers its own rest time, and until you set
+one the coach picks it for you — longer for big lifts, shorter for
+isolation work. And when you finish a session, you get the credit ("good
+job — you've already trained today") instead of instantly being shown
+tomorrow's workout. Plus the usual round of fixes from hands-on testing.
 ```
 
 ## What's New (1.6.0 resubmission)

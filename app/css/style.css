@@ -2082,6 +2082,8 @@ body.resting main.content { padding-bottom: 76px; }
   font-size: 0.8rem; font-variant-numeric: tabular-nums;
   border-radius: 999px; white-space: nowrap;
 }
+/* ✦ = coach-recommended rest (no saved override yet); gone once the lifter picks their own */
+.ex-rest-chip .ex-rest-coach { color: var(--g1); font-size: 0.7em; vertical-align: 1px; }
 .ex-add-row {
   display: flex;
   gap: var(--sp-2);

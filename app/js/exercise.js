@@ -386,8 +386,11 @@ OF.exercise = (function () {
           '<span class="ex-item-name">' + U.esc(ex.name) + '</span>' +
           mv +
           '<button type="button" class="btn ex-rest-chip" data-act="ex-rest" data-ex="' + i +
-            '" aria-label="Rest after ' + U.esc(ex.name) + ' sets — tap to change">⏱ ' +
-            fmtRest(restSecFor(ex.name)) + '</button>' +
+            '" aria-label="Rest after ' + U.esc(ex.name) + ' sets — ' +
+            (hasRestOverride(ex.name) ? 'your saved time' : 'coach-recommended') +
+            ', tap to change">⏱ ' + fmtRest(restSecFor(ex.name)) +
+            (hasRestOverride(ex.name) ? '' : ' <span class="ex-rest-coach" aria-hidden="true">✦</span>') +
+            '</button>' +
           pairBtn +
           '<button type="button" class="btn ex-swap" data-act="swap-ex" data-ex="' + i +
             '" aria-label="Swap ' + U.esc(ex.name) + ' for a similar exercise">Swap</button>' +
@@ -881,15 +884,33 @@ OF.exercise = (function () {
       return o && typeof o === "object" && !Array.isArray(o) ? o : {};
     } catch (e) { return {}; }
   }
+  /** True when the lifter explicitly set a rest time for this exercise. */
+  function hasRestOverride(name) {
+    var v = exRestMap()[(name || "").trim().toLowerCase()];
+    return typeof v === "number" && isFinite(v) && v >= 15;
+  }
   function restSecFor(name) {
     var v = exRestMap()[(name || "").trim().toLowerCase()];
-    return (typeof v === "number" && isFinite(v) && v >= 15) ? v : ((T && T.presetSec) || 90);
+    if (typeof v === "number" && isFinite(v) && v >= 15) return v;
+    // no saved choice -> the coach's per-exercise recommendation (compound
+    // lifts rest longer than isolation; evidence-based, goal-aware) so a
+    // fresh Squat starts at 2:30-3:00 and a curl at 1:30 with zero setup
+    try {
+      var c = OF.trainer && OF.trainer.coachRestSec ? OF.trainer.coachRestSec(name) : null;
+      if (typeof c === "number" && isFinite(c) && c >= 15) return c;
+    } catch (e) { /* engines unavailable: fall through */ }
+    return (T && T.presetSec) || 90;
   }
   function cycleExRest(i) {
     var ex = exList[i];
     if (!ex) return;
-    var opts = [60, 90, 120, 180];
-    var next = opts[(opts.indexOf(restSecFor(ex.name)) + 1 + opts.length) % opts.length];
+    var opts = [60, 90, 120, 150, 180];
+    // a coach value between the grid points (e.g. 2:30) cycles to the next
+    // one ABOVE it, so the first tap always changes what the chip shows
+    var cur = restSecFor(ex.name), next = opts[0];
+    for (var k = 0; k < opts.length; k++) {
+      if (opts[k] > cur) { next = opts[k]; break; }
+    }
     var m = exRestMap();
     m[ex.name.trim().toLowerCase()] = next;
     try { localStorage.setItem(EX_REST_KEY, JSON.stringify(m)); } catch (e) { /* stays session-only */ }

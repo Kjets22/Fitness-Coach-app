@@ -1145,7 +1145,46 @@ OF.trainer = (function () {
   }
   function refresh() { renderCard(); }
 
+  /* ---- coach-recommended rest (per exercise, on-device opinion) ----
+     The evidence KB gives rest ranges (compound 2-3 min, isolation 1-2);
+     the coach's "opinion" = compound/isolation read of the lift, pushed to
+     the top of the range for strength-style lifters (heavy prefs or a
+     performance goal), midpoint otherwise. exercise.js uses this whenever
+     the lifter hasn't saved their own time for that exercise. */
+
+  var COMPOUND_NAME_RE = new RegExp(
+    "squat|deadlift|bench|overhead press|shoulder press|leg press|chest press|" +
+    "\\brow\\b|pull-?up|chin-?up|pulldown|\\bdip\\b|lunge|clean|snatch|" +
+    "thruster|hip thrust");
+
+  function isCompoundName(name) {
+    var n = String(name || "").trim().toLowerCase();
+    if (!n) return false;
+    for (var i = 0; i < POOL.length; i++) {
+      if (POOL[i].name.toLowerCase() === n) return !!POOL[i].compound;
+    }
+    return COMPOUND_NAME_RE.test(n);
+  }
+
+  function coachRestSec(name) {
+    var compound = isCompoundName(name);
+    var range;
+    try { range = OF.evidence.restMinutes(compound); }
+    catch (e) { range = compound ? [2, 3] : [1, 2]; }
+    var strengthStyle = false;
+    try {
+      var prefs = (OF.profile && OF.profile.get) ? (OF.profile.get().prefs || {}) : {};
+      var goal = (OF.goals && OF.goals.activeGoal) ? OF.goals.activeGoal() : null;
+      strengthStyle = prefs.style === "heavy" || !!(goal && goal.type === "performance");
+    } catch (e2) { /* no profile/goal: midpoint */ }
+    var mins = strengthStyle ? range[1] : (range[0] + range[1]) / 2;
+    // 15 s grid so the chip shows clean times (2.5 min -> 2:30)
+    return Math.round(mins * 60 / 15) * 15;
+  }
+
   return {
+    isCompoundName: isCompoundName,
+    coachRestSec: coachRestSec,
     init: init,
     refresh: refresh,
     renderCard: renderCard,

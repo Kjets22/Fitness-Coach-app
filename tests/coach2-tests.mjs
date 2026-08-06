@@ -572,4 +572,31 @@ section("progression guards");
   check("bad target falls back to 3", s.workouts.target === 3, s.workouts.target);
 }
 
+/* ---------- trainer: coach-recommended per-exercise rest ---------- */
+{
+  section("trainer.coachRestSec / isCompoundName");
+  const w = makeWorld();
+  const TR = w.OF.trainer;
+
+  check("POOL compound recognized", TR.isCompoundName("Bench Press") === true);
+  check("POOL isolation recognized", TR.isCompoundName("Lateral Raise") === false);
+  check("free-form compound via heuristic", TR.isCompoundName("Front Squat") === true);
+  check("pushdown is NOT a press", TR.isCompoundName("Triceps Pushdown") === false);
+  check("empty name is not compound", TR.isCompoundName("") === false);
+
+  // no goal, no strength prefs -> midpoint of the evidence range
+  check("compound default 2:30", TR.coachRestSec("Barbell Squat") === 150, TR.coachRestSec("Barbell Squat"));
+  check("isolation default 1:30", TR.coachRestSec("Biceps Curl") === 90, TR.coachRestSec("Biceps Curl"));
+
+  // performance goal -> top of the range
+  w.data.goal.push({ type: "performance", date: "2026-08-01" });
+  check("strength goal pushes compound to 3:00", TR.coachRestSec("Deadlift") === 180, TR.coachRestSec("Deadlift"));
+  check("strength goal pushes isolation to 2:00", TR.coachRestSec("Biceps Curl") === 120);
+  w.data.goal.pop();
+
+  // heavy training style preference -> same effect
+  w.OF.profile.update({ prefs: { style: "heavy" } }, "test");
+  check("heavy style pushes compound to 3:00", TR.coachRestSec("Bench Press") === 180);
+}
+
 report("coach2-tests");

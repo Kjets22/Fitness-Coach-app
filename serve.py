@@ -124,6 +124,52 @@ def _strip_proposal(text: str) -> str:
     return stripped if stripped.strip() else (text or "")
 
 
+# Client-supplied job ids (photo endpoints): the app generates the id, so a
+# POST that died mid-flight (iOS backgrounding) can be re-sent with the SAME
+# id and re-attach to the already-running job instead of burning a second
+# LLM call or bouncing off the busy lock.
+_JOB_ID_RE = re.compile(r"^[A-Za-z0-9\-]{6,64}$")
+
+
+def _job_valid(job_id) -> bool:
+    return isinstance(job_id, str) and bool(_JOB_ID_RE.match(job_id))
+
+
+def _job_exists(jid: str) -> bool:
+    with COACH_JOBS_LOCK:
+        return jid in COACH_JOBS
+
+
+def _start_json_job(fn, guard, jid: str | None = None) -> str:
+    """Run fn() -> (result_dict|None, err|None) in a worker; store the dict
+    under the job id for GET /api/coach/result polling. Same store/TTL as
+    coach jobs; guard released by the worker."""
+    if not jid:
+        jid = secrets.token_hex(8)
+    with COACH_JOBS_LOCK:
+        COACH_JOBS[jid] = {"status": "pending", "answer": None,
+                           "result": None, "error": None, "ts": time.time()}
+
+    def work():
+        try:
+            result, err = fn()
+        except Exception as e:        # never leave a job stuck pending
+            result, err = None, "Analysis crashed: %s" % e
+        finally:
+            guard.release()
+        with COACH_JOBS_LOCK:
+            rec = COACH_JOBS.get(jid)
+            if rec:
+                rec["ts"] = time.time()
+                if err:
+                    rec["status"], rec["error"] = "error", err
+                else:
+                    rec["status"], rec["result"] = "done", result
+
+    threading.Thread(target=work, daemon=True).start()
+    return jid
+
+
 def _start_coach_job(question: str, context: dict, guard) -> str:
     jid = secrets.token_hex(8)
     with COACH_JOBS_LOCK:
@@ -1409,8 +1455,12 @@ class Handler(SimpleHTTPRequestHandler):
             elif out["status"] == "pending":
                 self._send_json(200, {"ok": True, "status": "pending"})
             elif out["status"] == "done":
-                self._send_json(200, {"ok": True, "status": "done",
-                                      "answer": out["answer"]})
+                resp = {"ok": True, "status": "done"}
+                if out.get("answer") is not None:      # coach chat jobs
+                    resp["answer"] = out["answer"]
+                if out.get("result") is not None:      # photo-analysis jobs
+                    resp["result"] = out["result"]
+                self._send_json(200, resp)
             else:
                 self._send_json(200, {"ok": False, "status": "error",
                                       "error": out["error"]})
@@ -1583,6 +1633,14 @@ class Handler(SimpleHTTPRequestHandler):
             self._fail(400, "Image data is empty.")
             return
 
+        # Re-sent POST after backgrounding (same client jobId, job already
+        # registered): re-attach WITHOUT a new LLM call, rate slot, or a
+        # bounce off the busy lock — the first request is still computing.
+        if payload.get("wantJob") and _job_valid(payload.get("jobId")) \
+                and _job_exists(payload["jobId"]):
+            self._send_json(200, {"ok": True, "jobId": payload["jobId"]})
+            return
+
         # ---- one CLI call at a time (shared with the coach)
         guard = _LLMGuard()
         if not guard.acquire():
@@ -1602,6 +1660,19 @@ class Handler(SimpleHTTPRequestHandler):
             self.send_header("Content-Length", str(len(body)))
             self.end_headers()
             self.wfile.write(body)
+            return
+        # Background-safe photo estimate: clients that declare wantJob get a
+        # jobId immediately and poll /api/coach/result — leaving the app
+        # mid-analysis no longer loses the answer. Legacy clients keep the
+        # inline response.
+        if payload.get("wantJob"):
+            jid = payload.get("jobId") if _job_valid(payload.get("jobId")) else None
+
+            def est_fn():
+                est, e2 = run_estimate(image_bytes, mime, description)
+                return ({"ok": True, "estimate": est} if e2 is None else None), e2
+            jid = _start_json_job(est_fn, guard, jid)
+            self._send_json(200, {"ok": True, "jobId": jid})
             return
         try:
             estimate, err = run_estimate(image_bytes, mime, description)
@@ -1678,6 +1749,13 @@ class Handler(SimpleHTTPRequestHandler):
                 return
             photos.append((image_bytes, mime, _clean_label(item.get("label"))))
 
+        # Re-sent POST after backgrounding: re-attach to the running job
+        # (see the same block in _post_estimate).
+        if payload.get("wantJob") and _job_valid(payload.get("jobId")) \
+                and _job_exists(payload["jobId"]):
+            self._send_json(200, {"ok": True, "jobId": payload["jobId"]})
+            return
+
         # ---- one CLI call at a time (shared with the coach + estimate)
         guard = _LLMGuard()
         if not guard.acquire():
@@ -1697,6 +1775,16 @@ class Handler(SimpleHTTPRequestHandler):
             self.send_header("Content-Length", str(len(body)))
             self.end_headers()
             self.wfile.write(body)
+            return
+        # Background-safe physique analysis: same job flow as /api/estimate.
+        if payload.get("wantJob"):
+            jid = payload.get("jobId") if _job_valid(payload.get("jobId")) else None
+
+            def phys_fn():
+                ana, e2 = run_physique(photos, description, stats)
+                return ({"ok": True, "analysis": ana} if e2 is None else None), e2
+            jid = _start_json_job(phys_fn, guard, jid)
+            self._send_json(200, {"ok": True, "jobId": jid})
             return
         try:
             analysis, err = run_physique(photos, description, stats)

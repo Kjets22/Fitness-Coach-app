@@ -412,14 +412,14 @@ OF.physique = (function () {
     state = "loading";
     renderModal();
 
-    ctrl = ("AbortController" in window) ? new AbortController() : null;
-    var timer = ctrl ? setTimeout(function () { ctrl.abort(); }, REQUEST_TIMEOUT_MS) : null;
-    var httpStatus = 0;
-
-    fetch(apiUrl("/api/physique"), {
-      method: "POST",
-      headers: apiHeaders({ "Content-Type": "application/json" }),
-      body: JSON.stringify({
+    // Background-safe: server job + poll via OF.aiJob — switching apps
+    // mid-analysis no longer errors; the result is waiting on return.
+    OF.aiJob.request({
+      path: "/api/physique",
+      apiUrl: apiUrl,
+      apiHeaders: apiHeaders,
+      timeoutMs: REQUEST_TIMEOUT_MS,
+      payload: {
         // legacy single-image fields keep an updated app working against an
         // older server; a current server prefers the richer `images` list
         imageBase64: photos[0].b64,
@@ -429,17 +429,10 @@ OF.physique = (function () {
         }),
         description: description,
         stats: bodyStats()   // height/weight/age/sex sharpen the composition estimate
-      }),
-      signal: ctrl ? ctrl.signal : undefined
+      }
     })
-      .then(function (res) {
-        httpStatus = res.status;
-        // 5xx HTML bodies must not masquerade as "no internet"
-        return res.json().catch(function () {
-          return { ok: false, error: "The server hit an error (HTTP " + res.status + "). Try again in a minute." };
-        });
-      })
-      .then(function (j) {
+      .then(function (r) {
+        var httpStatus = r.status, j = r.body;
         if (!isOpen()) return;
         if (httpStatus === 401) {
           state = "error";
@@ -480,8 +473,6 @@ OF.physique = (function () {
         renderModal();
       })
       .then(function () { // finally
-        if (timer) clearTimeout(timer);
-        ctrl = null;
         busy = false;
       });
   }

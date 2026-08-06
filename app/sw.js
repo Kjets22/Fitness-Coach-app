@@ -15,7 +15,7 @@
    ============================================================ */
 
 /* Bump this string when any shell file changes. */
-var VERSION = "v115"; /* done-for-today celebration card + greeting */
+var VERSION = "v116"; /* background-safe photo AI (estimate + physique jobs) */
 var CACHE = "optimalfit-shell-" + VERSION;
 
 var SHELL = [
@@ -35,6 +35,7 @@ var SHELL = [
   "./js/beep-sound.js",
   "./js/food-db.js",
   "./js/coach-config.js",
+  "./js/ai-job.js",
   "./js/food-photo.js",
   "./js/exercise-library.js",
   "./js/exercise.js",

@@ -366,28 +366,22 @@ OF.foodPhoto = (function () {
     state = "loading";
     renderModal();
 
-    ctrl = ("AbortController" in window) ? new AbortController() : null;
-    var timer = ctrl ? setTimeout(function () { ctrl.abort(); }, REQUEST_TIMEOUT_MS) : null;
-    var httpStatus = 0;
-
-    fetch(apiUrl("/api/estimate"), {
-      method: "POST",
-      headers: apiHeaders({ "Content-Type": "application/json" }),
-      body: JSON.stringify({
+    // Background-safe: OF.aiJob turns this into a server job + poll, so
+    // switching apps mid-estimate no longer errors — the answer is waiting
+    // when the user comes back. (Old flow: one fetch, killed by iOS.)
+    OF.aiJob.request({
+      path: "/api/estimate",
+      apiUrl: apiUrl,
+      apiHeaders: apiHeaders,
+      timeoutMs: REQUEST_TIMEOUT_MS,
+      payload: {
         imageBase64: imgB64,
         mime: "image/jpeg",
         description: description
-      }),
-      signal: ctrl ? ctrl.signal : undefined
+      }
     })
-      .then(function (res) {
-        httpStatus = res.status;
-        // 5xx HTML bodies must not masquerade as "no internet"
-        return res.json().catch(function () {
-          return { ok: false, error: "The server hit an error (HTTP " + res.status + "). Try again in a minute." };
-        });
-      })
-      .then(function (j) {
+      .then(function (r) {
+        var httpStatus = r.status, j = r.body;
         server = "ok";         // we reached it — keep the status hint truthful
         renderButton();        // ...including the Food-tab hint under the button
         if (!isOpen()) return; // user closed the panel mid-request
@@ -436,8 +430,6 @@ OF.foodPhoto = (function () {
         renderModal();
       })
       .then(function () { // finally
-        if (timer) clearTimeout(timer);
-        ctrl = null;
         busy = false;
       });
   }

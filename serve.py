@@ -113,6 +113,17 @@ def _prune_jobs() -> None:
             del COACH_JOBS[jid]
 
 
+_PROPOSAL_LINE_RE = re.compile(r"(?:\r?\n)PROPOSAL[ \t]+\{.*\}[ \t]*$")
+
+
+def _strip_proposal(text: str) -> str:
+    """Remove a trailing `PROPOSAL {json}` line for legacy clients (store
+    build 47 / phone builds <= 49) that would render it as raw JSON. Mirrors
+    the client-side regex in coach.js. Never returns an empty answer."""
+    stripped = _PROPOSAL_LINE_RE.sub("", text or "").rstrip()
+    return stripped if stripped.strip() else (text or "")
+
+
 def _start_coach_job(question: str, context: dict, guard) -> str:
     jid = secrets.token_hex(8)
     with COACH_JOBS_LOCK:
@@ -1505,12 +1516,30 @@ class Handler(SimpleHTTPRequestHandler):
             self.end_headers()
             self.wfile.write(body)
             return
-        # Guard + rate slot are held; the worker thread releases the guard.
-        # Returning the job id immediately lets a phone that backgrounds the
-        # app mid-answer re-attach later instead of erroring.
-        _prune_jobs()
-        jid = _start_coach_job(question, context, guard)
-        self._send_json(200, {"ok": True, "jobId": jid})
+        # BACKWARD COMPATIBILITY: only clients that declare wantJob get the
+        # async job flow. Everything already in the field — the App Store
+        # build (47) and phone builds <= 49 — POSTs {question, context} and
+        # expects {ok, answer} inline; handing THEM a jobId would break the
+        # coach for every shipped app until users update. Legacy clients also
+        # can't render a PROPOSAL line, so it is stripped from their answers.
+        if payload.get("wantJob"):
+            # Guard + rate slot are held; the worker thread releases the
+            # guard. Returning the job id immediately lets a phone that
+            # backgrounds the app mid-answer re-attach later than erroring.
+            _prune_jobs()
+            jid = _start_coach_job(question, context, guard)
+            self._send_json(200, {"ok": True, "jobId": jid})
+            return
+        try:
+            answer, err = run_coach(question, context)
+            if err is None:
+                _probe_set(True)   # a real success is the freshest liveness proof
+        finally:
+            guard.release()
+        if err:
+            self._send_json(200, {"ok": False, "error": err})
+        else:
+            self._send_json(200, {"ok": True, "answer": _strip_proposal(answer)})
 
     def _post_estimate(self):
         """POST /api/estimate — {imageBase64, mime, description?} ->

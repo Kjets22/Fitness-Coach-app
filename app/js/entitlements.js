@@ -54,6 +54,10 @@ OF.entitlements = (function () {
       app.js uses it to show the "your first month is free" welcome. */
   function installTrialJustStarted() {
     try {
+      // stamp the clock NOW — on the true first launch the key doesn't exist
+      // yet (nothing has called isPremium()), and the old key-presence check
+      // silently skipped the welcome until the SECOND launch (QA build 52)
+      installedAt();
       if (localStorage.getItem(INSTALL_KEY)) {
         if (localStorage.getItem(INSTALL_KEY + ".welcomed")) return false;
         localStorage.setItem(INSTALL_KEY + ".welcomed", "1");

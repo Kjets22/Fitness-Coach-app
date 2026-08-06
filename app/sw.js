@@ -15,7 +15,7 @@
    ============================================================ */
 
 /* Bump this string when any shell file changes. */
-var VERSION = "v112"; /* free month ships with the app (install trial), account-trial promo reverted */
+var VERSION = "v113"; /* legacy-client compat: wantJob opt-in + proposal strip */
 var CACHE = "optimalfit-shell-" + VERSION;
 
 var SHELL = [

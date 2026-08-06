@@ -877,7 +877,9 @@ OF.coach = (function () {
     fetch(apiUrl("/api/coach"), {
       method: "POST",
       headers: apiHeaders({ "Content-Type": "application/json" }),
-      body: JSON.stringify({ question: question, context: buildContext() })
+      // wantJob: this client understands the async {ok, jobId} reply — the
+      // server keeps answering legacy clients (store build 47) inline
+      body: JSON.stringify({ question: question, context: buildContext(), wantJob: true })
     })
       .then(function (res) {
         httpStatus = res.status;

@@ -101,7 +101,11 @@ OF.cloudSync = (function () {
       // profile (deleting them silently signs B out / paywalls a premium B on
       // the next offline launch) and the coach LAN pairing (device-scoped,
       // not account data).
-      var KEEP = { "optimalfit.social": 1, "optimalfit.social.auth": 1, "optimalfit.pairKey": 1 };
+      var KEEP = { "optimalfit.social": 1, "optimalfit.social.auth": 1, "optimalfit.pairKey": 1,
+                   // the install-trial clock is per DEVICE, not per account —
+                   // switching accounts must never restart the free month
+                   // (nor replay the welcome toast)
+                   "optimalfit.installedAt": 1, "optimalfit.installedAt.welcomed": 1 };
       Object.keys(localStorage)
         .filter(function (k) { return k.indexOf("optimalfit.") === 0 && !KEEP[k]; })
         .forEach(function (k) { localStorage.removeItem(k); });

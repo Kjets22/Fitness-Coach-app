@@ -213,6 +213,26 @@ comments, check-ins, follows, benchmarks, and the account backup.
 
 Hero = #5 (the Receipt differentiator). If uploading fewer than 8, keep #1, #2, #5 at minimum. A matching Google Play set (1080×2160, 2:1) exists at `play-1080x2160-*.png`.
 
+## What's New (1.7.0)
+
+```
+Your first month is on us: every Premium AI feature — the coach, photo food
+logging, physique analysis — is unlocked for 30 days from install. Nothing
+to sign up for.
+
+The coach got a major upgrade. Ask a question, switch apps, come back — the
+answer is waiting (answers no longer die when you leave mid-thought). The
+coach is now a nutrition expert too: meal ideas, simple recipes with macros,
+and help ordering at any restaurant so eating out doesn't derail your goal.
+And when your data says something should change — your goal, your training
+days — the coach proposes it as a one-tap card: apply it or dismiss it, you
+always decide.
+
+Goals now track on three levels: milestones toward the big goal, this
+week's training and weigh-in targets, and today's daily rings. Plus the
+usual round of fixes from hands-on testing.
+```
+
 ## What's New (1.6.0 resubmission)
 
 ```

@@ -1,22 +1,39 @@
-# OptimalFit — App Store resubmission kit (UPLOAD 1.6.0 build 47)
+# OptimalFit — App Store kit (CURRENT: upload 1.7.0 build 52)
 
+> **Upload `OptimalFit build 52 UPLOAD THIS`** — the ONLY archive Organizer
+> shows (2026-08-06). It is 1.7.0 (52): everything in build 47 PLUS the
+> 30-day included free month, the background-safe async coach, coach
+> proposals (Apply/Not-now), the nutrition/restaurant coach, full-screen
+> coach UI, and three-tier goals. Build 47 (1.6.0) was already uploaded to
+> App Store Connect — that is why this one is 1.7.0: a new upload must have
+> a HIGHER version than the one already in App Store Connect. Superseded
+> archives (incl. build 47) live in
+> `~/Library/Developer/Xcode/Archives-superseded/`, invisible to Organizer.
 
+## HOW TO UPDATE THE APP THAT'S ALREADY IN APP STORE CONNECT (~15 min)
 
-> **Upload the newest archive: `OptimalFit-1.6.0-build47`** — it contains the
-> compliance fixes (consent, privacy manifest) PLUS the redesign, widgets,
-> haptics, and the full user-ready sprint. The 1.4.x archives are superseded.
-> Build 42 added `NSHealthUpdateUsageDescription` to Info.plist — build 41's
-> upload was rejected by App Store Connect with ITMS-90683 (missing purpose
-> string; the Health plugin binary references write APIs even though the app
-> only reads). Build 43 adds multi-photo physique analysis and rewrites the
-> camera/photo-library permission strings + in-app privacy copy to be accurate
-> (photos are sent to the coach service and analyzed by Anthropic's Claude —
-> the old "analyzed on your own device" wording was wrong and a 5.1.1 risk).
-> Do NOT upload builds ≤42; superseded archives were moved out of Organizer
-> to `~/Library/Developer/Xcode/Archives-superseded/`.
+1. **Upload:** Xcode → Window → **Organizer** → Archives → select
+   **OptimalFit build 52 UPLOAD THIS** → **Distribute App** → App Store
+   Connect → Upload → accept defaults.
+2. **App Store Connect → My Apps → OptimalFit.** What you do next depends on
+   what the current 1.6.0 version says:
+   - **"Prepare for Submission" or "Rejected"** (never approved): open that
+     version, change the **Version** field at the top from 1.6.0 to
+     **1.7.0**, and once build 52 finishes processing (~15 min) select it
+     in the Build section (replacing 47).
+   - **"Waiting for Review" / "In Review"**: click **Remove from Review**
+     first, then do the step above.
+   - **"Ready for Sale"** (already live): click **⊕ Add Version**, enter
+     **1.7.0**, then select build 52 in the Build section.
+3. **What's New:** paste the **1.7.0** block from `app-store-listing.md`.
+4. Re-check **App Review Information** is still filled in (demo account from
+   `.env.reviewer`, notes, contact) — it usually carries over.
+5. **Submit for Review.** Keep the Mac (coach server) up during review —
+   watchdogs are armed, just don't shut it down.
 
-Everything for the resubmission after the July 16 rejection of 1.0 (3).
-All copy-paste text lives in `store/app-store-listing.md` (updated 2026-07-17).
+Historical context for the original rejection + all copy-paste text:
+`store/app-store-listing.md`. The sections below are from the 1.6.0
+resubmission and remain valid background.
 
 ## What the rejection said, and where each issue stands
 
@@ -75,7 +92,7 @@ Send (it appears before anything is transmitted).
 
 ## Assets
 
-- **Archive:** `~/Library/Developer/Xcode/Archives/2026-08-03/OptimalFit-1.6.0-build47.xcarchive` — the ONLY archive in Organizer, labeled "OptimalFit build 47 UPLOAD THIS"
+- **Archive:** `~/Library/Developer/Xcode/Archives/2026-08-06/OptimalFit-1.7.0-build52.xcarchive` — the ONLY archive in Organizer, labeled "OptimalFit build 52 UPLOAD THIS"
 - **Screenshots:** `store/screenshots/iphone67-1290x2796-*.png` (valid set; shows the pre-redesign UI — fine for this compliance resubmission, refresh later via `store/tools/shoot.js` once updated for the new UI)
 - **Demo account:** `.env.reviewer` (gitignored) — premium, pre-populated
 - **Privacy manifest:** `native/ios/App/App/PrivacyInfo.xcprivacy` (new, in the build)

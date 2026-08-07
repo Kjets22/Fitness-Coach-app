@@ -242,10 +242,8 @@ OF.foodPhoto = (function () {
       '</div>' +
       '<div class="msg-row photo-thinking">' +
         '<span class="coach-avatar" aria-hidden="true">' + OF.icons.get("camera") + '</span>' +
-        '<div class="bubble bubble-coach bubble-thinking">' +
-        '<span id="photo-think-label">Analyzing your meal&hellip;</span> ' +
-        '<span class="dots"><span></span><span></span><span></span></span>' +
-        '<span id="photo-think-elapsed" class="think-elapsed"></span></div>' +
+        '<div class="bubble bubble-coach bubble-thinking">Analyzing your meal&hellip; 10&ndash;60 s ' +
+        '<span class="dots"><span></span><span></span><span></span></span></div>' +
       '</div>' +
       '<div class="form-actions">' +
         '<button type="button" class="btn ghost" data-close-photo>Cancel</button>' +
@@ -367,7 +365,6 @@ OF.foodPhoto = (function () {
     busy = true;
     state = "loading";
     renderModal();
-    startThinkTicker();
 
     // Background-safe: OF.aiJob turns this into a server job + poll, so
     // switching apps mid-estimate no longer errors — the answer is waiting
@@ -433,34 +430,8 @@ OF.foodPhoto = (function () {
         renderModal();
       })
       .then(function () { // finally
-        stopThinkTicker();
         busy = false;
       });
-  }
-
-  /* A photo estimate takes 10-60 s (sometimes longer on a cold model). A
-     static bubble reads as "stuck", so tick the seconds and rotate the
-     label — the same treatment the coach chat uses. */
-  var thinkTimer = null, thinkStart = 0;
-  function startThinkTicker() {
-    stopThinkTicker();
-    thinkStart = Date.now();
-    thinkTimer = setInterval(function () {
-      var secs = Math.round((Date.now() - thinkStart) / 1000);
-      var el = document.getElementById("photo-think-elapsed");
-      var lab = document.getElementById("photo-think-label");
-      if (!el && !lab) return;             // modal closed/re-rendered
-      if (el) el.textContent = secs >= 3 ? " " + secs + "s" : "";
-      if (lab) {
-        lab.textContent = secs < 8 ? "Analyzing your meal\u2026"
-          : secs < 25 ? "Identifying what's on the plate\u2026"
-          : secs < 60 ? "Estimating portions and macros\u2026"
-          : "Still working \u2014 you can leave the app, the answer will be here when you\u2019re back\u2026";
-      }
-    }, 1000);
-  }
-  function stopThinkTicker() {
-    if (thinkTimer) { clearInterval(thinkTimer); thinkTimer = null; }
   }
 
   /* ---------------- fill the real food form ---------------- */

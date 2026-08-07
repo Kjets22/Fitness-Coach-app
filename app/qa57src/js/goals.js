@@ -30,40 +30,6 @@ OF.goals = (function () {
     })[arr.length - 1];
   }
 
-  /* ---- engine autonomy (how much the adaptive loop may change alone) ----
-     Stored in the shared prefs blob so it round-trips with backups. */
-  function autonomy() {
-    var v = null;
-    try { v = OF.units ? OF.units.prefs().engineAutonomy : null; } catch (e) {}
-    return OF.targets.AUTONOMY_LEVELS.indexOf(v) >= 0 ? v : "balanced";
-  }
-  function setAutonomy(v) {
-    if (OF.targets.AUTONOMY_LEVELS.indexOf(v) < 0) return false;
-    try { if (OF.units) OF.units.setPrefs({ engineAutonomy: v }); } catch (e) { return false; }
-    refresh();
-    return true;
-  }
-
-  /* Proposals live in their OWN store: adjTotal() must only ever sum
-     changes that were actually applied, or the targets would move on a
-     suggestion the user never accepted. */
-  function pendingAdapt() {
-    var all = S.getAll("adaptProposal").filter(function (r) { return r && r.status === "pending"; });
-    return all.length ? all[all.length - 1] : null;
-  }
-  /* A declined retune must not come straight back on the next run: the
-     engine waits a full adaptation step before re-testing that idea. */
-  function adaptBlockedUntilDn() {
-    var dn = null;
-    S.getAll("adaptProposal").forEach(function (r) {
-      if (r && r.status === "declined" && r.blockUntilDayNum != null) {
-        var v = Number(r.blockUntilDayNum);
-        if (isFinite(v) && (dn == null || v > dn)) dn = v;
-      }
-    });
-    return dn;
-  }
-
   function calorieAdjs() {
     return S.getAll("adjustments")
       .filter(function (r) { return r && r.kind === "calories" && isFinite(Number(r.delta)); })
@@ -92,7 +58,6 @@ OF.goals = (function () {
       weightKg: OF.targets.latestWeightKg(S.getAll("body")),
       exerciseMinToday: exerciseMinToday(),
       adjTotal: adjTotal(),
-      engineAutonomy: autonomy(),
       bodyFatPct: bf ? bf.pct : null,
       bodyFatSource: bf ? bf.source : null
     });
@@ -168,33 +133,12 @@ OF.goals = (function () {
       });
       var a = T.computeAdaptation(foodF, bodyF, goal, pIso, total);
       if (a.ready && a.fire) {
-        // the user pushed back on a recent retune — hold off re-testing it
-        var blocked = adaptBlockedUntilDn();
-        if (blocked != null && p <= blocked) { p += T.ADJ_STEP_DAYS; continue; }
-        var decision = T.adaptationDecision(a.deltaCal, autonomy());
-        if (decision === "propose") {
-          // one open proposal at a time; don't stack them up
-          if (!pendingAdapt()) {
-            var kgP = T.latestWeightKg(bodyF);
-            var beforeP = T.computeTargets(goal, { weightKg: kgP, adjTotal: total });
-            var afterP = T.computeTargets(goal, { weightKg: kgP, adjTotal: total + a.deltaCal });
-            S.add("adaptProposal", {
-              date: pIso, status: "pending", kind: "calories", delta: a.deltaCal,
-              from: beforeP && beforeP.status === "ok" ? beforeP.calories : null,
-              to: afterP && afterP.status === "ok" ? afterP.calories : null,
-              reason: adaptReason(goal, a)
-            });
-          }
-          p += T.ADJ_STEP_DAYS;
-          continue;
-        }
         var kgAt = T.latestWeightKg(bodyF);
         var before = T.computeTargets(goal, { weightKg: kgAt, adjTotal: total });
         var after = T.computeTargets(goal, { weightKg: kgAt, adjTotal: total + a.deltaCal });
         var rec = S.add("adjustments", {
           date: pIso,
           kind: "calories",
-          auto: true,              // applied by the engine, not by the user
           delta: a.deltaCal,
           from: before && before.status === "ok" ? before.calories : null,
           to: after && after.status === "ok" ? after.calories : null,
@@ -362,59 +306,6 @@ OF.goals = (function () {
     return html + '</div>';
   }
 
-  /* The engine speaks for itself: a retune it WANTS to make (pending
-     proposal) or one it just made on its own (auto adjustment) is shown
-     with the reasoning and a way to push back. */
-  function engineChangeHtml() {
-    var pend = pendingAdapt();
-    if (pend) {
-      return '<div class="eng-change eng-propose">' +
-        '<div class="eng-kicker">' + OF.icons.get("sparkles") + ' Your coach wants to test a change</div>' +
-        '<p class="eng-what">' + e(deltaPhrase(pend.delta)) +
-          (pend.to ? ' \u2014 to <strong>' + e(String(pend.to)) + ' kcal</strong>/day' : '') + '</p>' +
-        (pend.reason ? '<p class="eng-why muted small">' + e(pend.reason) + '</p>' : '') +
-        '<div class="eng-actions">' +
-        '<button type="button" class="btn primary mini" data-eng="apply">Try it</button>' +
-        '<button type="button" class="btn mini" data-eng="decline">No, keep it as is</button>' +
-        '</div></div>';
-    }
-    // a recent AUTO change: tell them what happened and let them revert it
-    var last = calorieAdjs().filter(function (a) { return a.auto && !a.reverted; }).pop();
-    if (last) {
-      var dn = OF.targets.dayNum(last.date), today = OF.targets.dayNum(U.todayISO());
-      if (dn != null && today != null && today - dn <= 14) {
-        return '<div class="eng-change eng-applied">' +
-          '<div class="eng-kicker">' + OF.icons.get("sparkles") + ' Your coach adjusted your plan</div>' +
-          '<p class="eng-what">' + e(deltaPhrase(last.delta)) +
-            (last.to ? ' \u2014 now <strong>' + e(String(last.to)) + ' kcal</strong>/day' : '') + '</p>' +
-          (last.reason ? '<p class="eng-why muted small">' + e(last.reason) + '</p>' : '') +
-          '<div class="eng-actions">' +
-          '<button type="button" class="btn mini" data-eng="revert" data-id="' + e(last.id) + '">Undo this change</button>' +
-          '</div></div>';
-      }
-    }
-    return "";
-  }
-
-  function deltaPhrase(delta) {
-    var d = Math.round(Number(delta) || 0);
-    if (!d) return "No change to your calories";
-    return (d > 0 ? "Raise" : "Lower") + " your daily calories by " + Math.abs(d);
-  }
-
-  /** User pushed back: drop the change (or the proposal) and don't re-test
-      the same idea until a full adaptation window has passed. */
-  function declineAdapt(proposal) {
-    var blockUntil = OF.targets.dayNum(U.todayISO()) + OF.targets.ADJ_STEP_DAYS;
-    if (proposal) {
-      S.update("adaptProposal", proposal.id, { status: "declined", blockUntilDayNum: blockUntil });
-    } else {
-      S.add("adaptProposal", { date: U.todayISO(), status: "declined",
-        kind: "calories", delta: 0, blockUntilDayNum: blockUntil,
-        reason: "You reverted the coach's change." });
-    }
-  }
-
   function goalCardHtml(goal) {
     var T = OF.targets;
     var t = T.GOAL_TYPES[goal.type];
@@ -481,7 +372,6 @@ OF.goals = (function () {
     }
 
     /* intermediate tier: derived checkpoints between today and the goal */
-    html += engineChangeHtml();
     html += milestonesHtml(goal);
 
     /* weekly tier: frequency goals (training, weigh-ins) */
@@ -970,46 +860,6 @@ OF.goals = (function () {
   }
 
   function onAreaClick(evt) {
-    var eng = evt.target.closest("[data-eng]");
-    if (eng) {
-      var act = eng.getAttribute("data-eng");
-      var pend = pendingAdapt();
-      if (act === "apply" && pend) {
-        var ok = S.add("adjustments", {
-          date: U.todayISO(), kind: "calories", auto: false, delta: pend.delta,
-          from: pend.from, to: pend.to, reason: pend.reason
-        });
-        if (ok) {
-          S.update("adaptProposal", pend.id, { status: "applied" });
-          U.toast("Applied — your targets are updated.", "ok");
-          if (OF.haptics && OF.haptics.medium) OF.haptics.medium();
-        } else {
-          U.toast("Could not save — storage is full or blocked.");
-        }
-      } else if (act === "decline") {
-        declineAdapt(pend);
-        U.toast("Kept as is — I won\u2019t retry that for a couple of weeks.", "ok");
-      } else if (act === "revert") {
-        var id = eng.getAttribute("data-id");
-        var rec = S.getAll("adjustments").filter(function (a) { return a.id === id; })[0];
-        if (rec) {
-          // keep the audit trail: mark it reverted and cancel it out, so the
-          // adaptation history still shows what the engine tried and why
-          S.update("adjustments", id, { reverted: true });
-          S.add("adjustments", {
-            date: U.todayISO(), kind: "calories", auto: false, revertOf: id,
-            delta: -Number(rec.delta) || 0, from: rec.to, to: rec.from,
-            reason: "You reverted the coach\u2019s change."
-          });
-          declineAdapt(null);
-          U.toast("Reverted — back to your previous targets.", "ok");
-        }
-      }
-      refresh();
-      if (OF.insights) OF.insights.refresh();
-      if (OF.dashboard) OF.dashboard.refresh();
-      return;
-    }
     var sw = evt.target.closest("[data-goal-switch]");
     if (sw) {
       var g0 = activeGoal();
@@ -1198,8 +1048,6 @@ OF.goals = (function () {
     runAdaptation: runAdaptation,
     coachContext: coachContext,
     applyCoachProposal: applyCoachProposal,
-    autonomy: autonomy,                // settings reads/writes the engine's power
-    setAutonomy: setAutonomy,
     syncProfileGoal: syncProfileGoal   // onboarding reuses the same mirror
   };
 })();

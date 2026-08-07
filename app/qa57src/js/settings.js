@@ -24,27 +24,6 @@ OF.settings = (function () {
     initCoachNotes();
     if (OF.healthImport) OF.healthImport.init();
     initPhoneInfo();
-    initEngineAutonomy();
-  }
-
-  /* ---------- how much power the adaptive engine has ----------
-     Reads/writes the same pref the goal engine consults before it retunes
-     anything (OF.goals.autonomy / setAutonomy). */
-  function initEngineAutonomy() {
-    var sel = document.getElementById("set-engine-autonomy");
-    if (!sel || !OF.goals || !OF.goals.autonomy) return;
-    try { sel.value = OF.goals.autonomy(); } catch (e) {}
-    sel.addEventListener("change", function () {
-      if (!OF.goals.setAutonomy(sel.value)) {
-        OF.util.toast("Could not save that setting.", "warn");
-        return;
-      }
-      OF.util.toast(sel.value === "ask"
-        ? "Your coach will suggest changes and wait for you."
-        : sel.value === "full"
-          ? "Your coach will retune your targets whenever the data says so — and always tell you why."
-          : "Your coach will make small corrections and ask about the big ones.", "ok");
-    });
   }
 
   /* ---------- coach free-text preferences ----------

@@ -248,10 +248,8 @@ OF.physique = (function () {
       thumbsHtml(false) +
       '<div class="msg-row photo-thinking">' +
         '<span class="coach-avatar" aria-hidden="true">' + OF.icons.get("bodyscan") + '</span>' +
-        '<div class="bubble bubble-coach bubble-thinking">' +
-        '<span id="phys-think-label">Assessing your physique&hellip;</span> ' +
-        '<span class="dots"><span></span><span></span><span></span></span>' +
-        '<span id="phys-think-elapsed" class="think-elapsed"></span></div>' +
+        '<div class="bubble bubble-coach bubble-thinking">Assessing your physique&hellip; 10&ndash;60 s ' +
+        '<span class="dots"><span></span><span></span><span></span></span></div>' +
       '</div>' +
       '<div class="form-actions">' +
         '<button type="button" class="btn ghost" data-close-phys>Cancel</button>' +
@@ -413,7 +411,6 @@ OF.physique = (function () {
     busy = true;
     state = "loading";
     renderModal();
-    startThinkTicker();
 
     // Background-safe: server job + poll via OF.aiJob — switching apps
     // mid-analysis no longer errors; the result is waiting on return.
@@ -476,33 +473,8 @@ OF.physique = (function () {
         renderModal();
       })
       .then(function () { // finally
-        stopThinkTicker();
         busy = false;
       });
-  }
-
-  /* Same anti-"stuck" ticker as the meal estimate: seconds + a rotating
-     phase label, so a 60 s multi-photo analysis never looks frozen. */
-  var thinkTimer = null, thinkStart = 0;
-  function startThinkTicker() {
-    stopThinkTicker();
-    thinkStart = Date.now();
-    thinkTimer = setInterval(function () {
-      var secs = Math.round((Date.now() - thinkStart) / 1000);
-      var el = document.getElementById("phys-think-elapsed");
-      var lab = document.getElementById("phys-think-label");
-      if (!el && !lab) return;
-      if (el) el.textContent = secs >= 3 ? " " + secs + "s" : "";
-      if (lab) {
-        lab.textContent = secs < 8 ? "Assessing your physique\u2026"
-          : secs < 25 ? "Reading structure and development\u2026"
-          : secs < 60 ? "Estimating composition\u2026"
-          : "Still working \u2014 you can leave the app, the answer will be here when you\u2019re back\u2026";
-      }
-    }, 1000);
-  }
-  function stopThinkTicker() {
-    if (thinkTimer) { clearInterval(thinkTimer); thinkTimer = null; }
   }
 
   /* ---------------- save the analysis (NO image bytes) ---------------- */

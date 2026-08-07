@@ -703,31 +703,7 @@ OF.targets = (function () {
     };
   }
 
-  /* ---- how much power the engine has ----
-     The adaptive loop can retune calories on its own. How far it may go
-     without asking is the USER'S call, not ours:
-       "ask"      – never change anything silently; every retune is a
-                    proposal the user applies or declines
-       "balanced" – (default) apply small corrections automatically and
-                    tell the user afterwards; propose the big ones
-       "full"     – apply everything, always explain after the fact
-     Pure decision rule so the UI and the tests agree on one definition. */
-  var AUTONOMY_LEVELS = ["ask", "balanced", "full"];
-  var BALANCED_AUTO_KCAL = 150;   // |delta| at or under this is "small"
-
-  function adaptationDecision(deltaCal, autonomy) {
-    var d = Math.abs(Number(deltaCal) || 0);
-    if (d === 0) return "none";
-    if (AUTONOMY_LEVELS.indexOf(autonomy) < 0) autonomy = "balanced";
-    if (autonomy === "full") return "apply";
-    if (autonomy === "ask") return "propose";
-    return d <= BALANCED_AUTO_KCAL ? "apply" : "propose";
-  }
-
   return {
-    AUTONOMY_LEVELS: AUTONOMY_LEVELS,
-    BALANCED_AUTO_KCAL: BALANCED_AUTO_KCAL,
-    adaptationDecision: adaptationDecision,
     GOAL_TYPES: GOAL_TYPES,
     ACTIVITY: ACTIVITY,
     ADJ_STEP_DAYS: ADJ_STEP_DAYS,

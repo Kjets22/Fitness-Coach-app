@@ -492,20 +492,6 @@ body.booted #boot-splash{opacity:0;pointer-events:none;animation:none}
       </div>
 
       <div class="card">
-        <h2>How much can your coach change on its own?</h2>
-        <p class="form-hint">Your coach keeps learning from your data &mdash; if you eat 2,600 kcal for two weeks and your
-          weight doesn&rsquo;t move, it knows your real maintenance and can retune your targets. This is how much of that
-          it may do without asking. Whatever it changes, it always tells you why and you can undo it.</p>
-        <label>Coach autonomy
-          <select id="set-engine-autonomy">
-            <option value="ask">Ask me first &mdash; suggest every change, change nothing on its own</option>
-            <option value="balanced">Balanced &mdash; make small corrections, ask about big ones (recommended)</option>
-            <option value="full">Full control &mdash; retune whenever the data says so, tell me after</option>
-          </select>
-        </label>
-      </div>
-
-      <div class="card">
         <h2>Coach preferences</h2>
         <p class="form-hint">Anything you want the coach to respect that the buttons don't cover &mdash; in your own words. The coach reads this with every answer and program change.</p>
         <textarea id="pref-coach-notes" rows="3" maxlength="300"
@@ -673,7 +659,6 @@ body.booted #boot-splash{opacity:0;pointer-events:none;animation:none}
 <script src="js/physique.js"></script>
 <script src="js/charts.js"></script>
 <script src="js/insights-engine.js"></script>
-<script src="js/next-move.js"></script>
 <script src="js/strength-engine.js"></script>
 <script src="js/targets-engine.js"></script>
 <script src="js/goals.js"></script>

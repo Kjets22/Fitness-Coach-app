@@ -737,4 +737,35 @@ section("progression guards");
     .every(() => true) && !!m.tab);
 }
 
+/* ---------- engine autonomy: how much the coach may change alone ---------- */
+{
+  section("targets.adaptationDecision (engine autonomy)");
+  const w = makeWorld();
+  const T = w.OF.targets;
+  check("levels are the three documented ones",
+    JSON.stringify(T.AUTONOMY_LEVELS) === '["ask","balanced","full"]', T.AUTONOMY_LEVELS);
+
+  // ask: nothing happens without the user
+  check("ask proposes a small change", T.adaptationDecision(100, "ask") === "propose");
+  check("ask proposes a big change", T.adaptationDecision(400, "ask") === "propose");
+
+  // balanced (default): small auto, big asks
+  check("balanced applies a small change", T.adaptationDecision(120, "balanced") === "apply");
+  check("balanced applies at the boundary", T.adaptationDecision(150, "balanced") === "apply");
+  check("balanced proposes past the boundary", T.adaptationDecision(151, "balanced") === "propose");
+  check("balanced treats a big CUT the same as a big raise",
+    T.adaptationDecision(-400, "balanced") === "propose");
+
+  // full: always acts
+  check("full applies a big change", T.adaptationDecision(-500, "full") === "apply");
+
+  // guards
+  check("zero delta is a no-op", T.adaptationDecision(0, "full") === "none");
+  check("garbage delta is a no-op", T.adaptationDecision("abc", "balanced") === "none");
+  check("unknown level falls back to balanced",
+    T.adaptationDecision(400, "wide-open") === "propose" &&
+    T.adaptationDecision(50, "wide-open") === "apply");
+  check("missing level falls back to balanced", T.adaptationDecision(400) === "propose");
+}
+
 report("coach2-tests");

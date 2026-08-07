@@ -621,4 +621,55 @@ section("progression guards");
   check("not done anymore tomorrow", TR.doneToday() === false);
 }
 
+/* ---------- readiness: structured signals + actionable advice ---------- */
+{
+  section("engine.readiness signals + readinessAdvice");
+  const w = makeWorld();
+  const E = w.OF.engine;
+  const today = w.OF.util.todayISO();
+  const day = (off) => w.OF.util.todayISO(off);
+
+  // no data at all -> insufficient, and advice says how to unlock it
+  let r = E.readiness([], []);
+  check("no data -> insufficient", r.status === "insufficient");
+  let adv = E.readinessAdvice(r);
+  check("insufficient advice tells you to log", adv.length === 1 && /log/i.test(adv[0].text));
+
+  // short sleep vs a 8h personal average -> deficit signal + top fix
+  const sleep = [
+    { date: day(-4), durationMin: 480 }, { date: day(-3), durationMin: 480 },
+    { date: day(-2), durationMin: 480 }, { date: today, durationMin: 360, quality: 2 }
+  ];
+  r = E.readiness(sleep, [{ date: day(-3), startTime: "10:00", durationMin: 60 }]);
+  // the personal average includes last night itself (480,480,480,360 -> 450),
+  // so a 6h night is 90 min short of it
+  check("short sleep recorded as a signal", r.signals.sleepShortMin === 90, r.signals.sleepShortMin);
+  check("quality captured", r.signals.quality === 2);
+  adv = E.readinessAdvice(r);
+  check("sleep fix ranked first", /slept about/i.test(adv[0].text), adv[0].text);
+  check("sleep fix is worth its points", adv[0].points === 20 && adv[0].tab === "sleep");
+  check("quality fix included", adv.some(a => /quality was 2/i.test(a.text)));
+
+  // trained many days in a row -> streak signal + rest-day advice
+  const ex = [day(0), day(-1), day(-2), day(-3)].map(d => ({ date: d, startTime: "07:00", durationMin: 60 }));
+  r = E.readiness([{ date: day(-1), durationMin: 450 }], ex, 3);
+  check("streak signal captured", r.signals.streak >= 3, r.signals.streak);
+  check("maxConsecutive carried", r.signals.maxConsecutive === 3);
+  adv = E.readinessAdvice(r);
+  check("rest-day fix present and top-weighted", adv.some(a => a.points === 25 && /rest day/i.test(a.text)));
+
+  // long layoff -> capped score + ease-in advice
+  r = E.readiness([{ date: day(-1), durationMin: 450 }],
+    [{ date: day(-30), startTime: "07:00", durationMin: 60 }]);
+  check("layoff days captured", r.signals.layoffDays >= 25, r.signals.layoffDays);
+  check("layoff score capped at 65", r.score <= 65, r.score);
+  check("ease-in advice given", E.readinessAdvice(r).some(a => /20% lighter/i.test(a.text)));
+
+  // clean slate -> encouragement, never an empty list
+  r = E.readiness([{ date: today, durationMin: 480 }, { date: day(-1), durationMin: 470 },
+    { date: day(-2), durationMin: 475 }], [{ date: day(-2), startTime: "07:00", durationMin: 60 }]);
+  adv = E.readinessAdvice(r);
+  check("advice is never empty", adv.length >= 1 && !!adv[0].text);
+}
+
 report("coach2-tests");

@@ -15,7 +15,7 @@
    ============================================================ */
 
 /* Bump this string when any shell file changes. */
-var VERSION = "v117"; /* boot splash + release-config phone installs */
+var VERSION = "v118"; /* readiness explainer modal */
 var CACHE = "optimalfit-shell-" + VERSION;
 
 var SHELL = [

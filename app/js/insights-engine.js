@@ -456,6 +456,9 @@ OF.engine = (function () {
     var todayNum = dayNum(today);
     var score = 70;
     var factors = [];
+    // structured reasons behind the score — readinessAdvice() turns these
+    // into concrete actions, so the UI never has to parse factor TEXT
+    var signals = {};
 
     // --- last night's sleep vs personal average ---
     var durations = (sleep || []).map(function (s) { return num(s.durationMin); })
@@ -476,14 +479,16 @@ OF.engine = (function () {
     if (lastNight && avgDur != null && durations.length >= 3) {
       var diff = num(lastNight.durationMin) - avgDur;
       if (diff >= 20) { score += 10; factors.push({ good: true, text: "Slept " + U.fmtDuration(num(lastNight.durationMin)) + " — above your " + U.fmtDuration(Math.round(avgDur)) + " average" }); }
-      else if (diff <= -60) { score -= 20; factors.push({ good: false, text: "Slept only " + U.fmtDuration(num(lastNight.durationMin)) + " — well under your " + U.fmtDuration(Math.round(avgDur)) + " average" }); }
+      else if (diff <= -60) { score -= 20; signals.sleepShortMin = Math.round(-diff); factors.push({ good: false, text: "Slept only " + U.fmtDuration(num(lastNight.durationMin)) + " — well under your " + U.fmtDuration(Math.round(avgDur)) + " average" }); }
       else { factors.push({ good: true, text: "Sleep near your average (" + U.fmtDuration(num(lastNight.durationMin)) + ")" }); }
       var q = num(lastNight.quality);
+      signals.quality = q;
       if (q != null && q >= 4) { score += 5; factors.push({ good: true, text: "Sleep quality " + q + "/5" }); }
       else if (q != null && q <= 2) { score -= 10; factors.push({ good: false, text: "Sleep quality only " + q + "/5" }); }
     } else if (lastNight) {
       factors.push({ good: null, text: "Slept " + U.fmtDuration(num(lastNight.durationMin)) + " — a few more logged nights and this gets compared to your average" });
     } else {
+      signals.noSleepLogged = true;
       factors.push({ good: null, text: "No sleep logged for last night — log it for a sharper readiness score" });
     }
 
@@ -496,6 +501,8 @@ OF.engine = (function () {
     var streak = 0;
     var d = trainSet[todayNum] ? todayNum : todayNum - 1;
     while (trainSet[d]) { streak++; d--; }
+    signals.streak = streak;
+    signals.maxConsecutive = maxConsecutive;
     if (streak >= maxConsecutive) {
       score -= 25;
       factors.push({ good: false, text: "Trained " + plural(streak, "day") + " in a row (your data suggests max " + maxConsecutive + ")" });
@@ -520,6 +527,8 @@ OF.engine = (function () {
     if (lastEnd != null) {
       var nowMin = todayNum * 1440 + (new Date().getHours() * 60 + new Date().getMinutes());
       var hoursSince = (nowMin - lastEnd) / 60;
+      if (hoursSince >= 0) signals.hoursSinceLast = hoursSince;
+      if (hoursSince >= 240) signals.layoffDays = Math.round(hoursSince / 24);
       if (hoursSince >= 0 && hoursSince < 8) {
         score -= 15;
         factors.push({ good: false, text: "Last workout ended only " + Math.max(0, Math.round(hoursSince)) + "h ago" });
@@ -541,7 +550,56 @@ OF.engine = (function () {
       : level === "medium" ? "OK to train — keep intensity moderate"
       : "Consider a rest day or light session today";
 
-    return { status: "ok", score: score, level: level, verdict: verdict, factors: factors };
+    return { status: "ok", score: score, level: level, verdict: verdict,
+             factors: factors, signals: signals };
+  }
+
+  /**
+   * Turn a readiness result into CONCRETE things to do — the score is only
+   * useful if it also says how to move it. Ordered most-impactful first,
+   * each item worth roughly the points it would win back.
+   * Pure: takes the readiness object, returns [{text, points, tab?}].
+   */
+  function readinessAdvice(r) {
+    if (!r || r.status !== "ok") {
+      return [{ text: "Log last night's sleep and your workouts — readiness needs a few days of data before it can score you.", points: null, tab: "sleep" }];
+    }
+    var s = r.signals || {};
+    var out = [];
+    if (s.sleepShortMin != null && s.sleepShortMin > 0) {
+      out.push({ points: 20, tab: "sleep",
+        text: "You slept about " + U.fmtDuration(s.sleepShortMin) + " less than your own average. Getting back to your usual hours tonight is the single biggest thing you can do — protect the bedtime, not the wake time." });
+    }
+    if (s.quality != null && s.quality <= 2) {
+      out.push({ points: 10, tab: "sleep",
+        text: "Sleep quality was " + s.quality + "/5. Cut screens and heavy food in the last hour, keep the room cool and dark, and skip caffeine after mid-afternoon." });
+    }
+    if (s.streak != null && s.maxConsecutive != null && s.streak >= s.maxConsecutive) {
+      out.push({ points: 25, tab: "exercise",
+        text: "That's " + s.streak + " training days in a row, and your own logs say performance drops past " + s.maxConsecutive + ". Take a full rest day or do something easy — you'll come back stronger than if you push through." });
+    } else if (s.streak != null && s.maxConsecutive != null && s.streak === s.maxConsecutive - 1) {
+      out.push({ points: 10, tab: "exercise",
+        text: "You're one day short of the point where your performance usually dips. Train today if you feel good, then plan a rest day tomorrow." });
+    }
+    if (s.hoursSinceLast != null && s.hoursSinceLast < 8) {
+      out.push({ points: 15, tab: "exercise",
+        text: "Your last session ended only " + Math.max(0, Math.round(s.hoursSinceLast)) + "h ago. Give it a few more hours before training again, and get a solid meal with protein in between." });
+    }
+    if (s.layoffDays != null && s.layoffDays >= 10) {
+      out.push({ points: null, tab: "exercise",
+        text: "First session back after " + s.layoffDays + " days off — go about 20% lighter than you remember and leave 2 reps in reserve. Soreness after a layoff is what derails comebacks." });
+    }
+    if (s.noSleepLogged) {
+      out.push({ points: null, tab: "sleep",
+        text: "No sleep logged for last night — log it and this score gets a lot sharper." });
+    }
+    if (!out.length) {
+      out.push({ points: null, tab: "exercise",
+        text: r.level === "high"
+          ? "Nothing is holding you back today — this is the day to go after a hard session or a PR attempt."
+          : "Keep sleep steady and respect your rest days; that's what moves this number." });
+    }
+    return out;
   }
 
   /* ============================================================
@@ -881,6 +939,7 @@ OF.engine = (function () {
     sleepPerformance: sleepPerformance,
     restDays: restDays,
     readiness: readiness,
+    readinessAdvice: readinessAdvice,
     foodInsights: foodInsights,
     bodyTrends: bodyTrends,
     weeklyPlan: weeklyPlan,

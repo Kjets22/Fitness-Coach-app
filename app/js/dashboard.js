@@ -84,11 +84,7 @@ OF.dashboard = (function () {
     if (!el) return;
     var nav = el.getAttribute("data-nav");
     if (nav === "readiness") {
-      // touch users can't hover the tooltip — explain the ring in plain words
-      var r = lastReadiness;
-      U.toast(r && r.status === "ok"
-        ? "Readiness " + r.score + "/100 — how ready your body looks for training today, from your recent sleep, workouts and rest days. " + (r.verdict || "")
-        : "Readiness scores how ready your body is to train, from your sleep and training pattern. Log a few nights of sleep to unlock it.", "ok");
+      openReadinessDetail();
       return;
     }
     if (nav === "streak") {
@@ -583,6 +579,59 @@ OF.dashboard = (function () {
     return modalEl;
   }
   function closeModal() { if (modalEl) modalEl.hidden = true; document.body.classList.remove("metric-modal-open"); }
+
+  /** Readiness explainer: the score is useless if it doesn't say WHY it is
+      what it is and WHAT to do about it. Shows the ring, every factor that
+      moved the number, the ranked fixes from the engine, and a one-tap
+      route to the coach for the full conversation. */
+  function openReadinessDetail() {
+    var r = lastReadiness;
+    var m = ensureModal();
+    var ready = !!(r && r.status === "ok");
+    var color = !ready ? "grad" : r.level === "high" ? "var(--accent-2)" :
+      r.level === "medium" ? "var(--warn)" : "var(--danger)";
+    var advice = [];
+    try { advice = OF.engine.readinessAdvice(r); } catch (e) { advice = []; }
+
+    var head = '<div class="rd-head">' +
+      U.progressRing(ready ? r.score / 100 : 0, { size: 92, color: color,
+        value: ready ? String(r.score) : "—", sub: "/100" }) +
+      '<div class="rd-head-txt"><div class="rd-level">' +
+      U.esc(ready ? r.level.toUpperCase() + " READINESS" : "NOT ENOUGH DATA YET") + '</div>' +
+      '<p class="rd-verdict">' + U.esc(ready ? r.verdict
+        : "Readiness reads how prepared your body is to train today.") + '</p></div></div>';
+
+    var explain = '<p class="rd-explain muted small">Every day starts at 70 and moves with ' +
+      'what your own logs say: last night&rsquo;s sleep against <em>your</em> average, sleep quality, ' +
+      'how many days in a row you&rsquo;ve trained, and how long since your last session.</p>';
+
+    var factors = "";
+    if (ready && r.factors && r.factors.length) {
+      factors = '<h3 class="rd-h3">What moved it today</h3><ul class="rd-factors">' +
+        r.factors.map(function (f) {
+          var cls = f.good === true ? "rd-good" : f.good === false ? "rd-bad" : "rd-neutral";
+          var mark = f.good === true ? "+" : f.good === false ? "−" : "·";
+          return '<li class="' + cls + '"><span class="rd-mark">' + mark + '</span>' +
+            U.esc(f.text) + '</li>';
+        }).join("") + '</ul>';
+    }
+
+    var fixes = '<h3 class="rd-h3">How to raise it</h3><ol class="rd-advice">' +
+      advice.map(function (a) {
+        return '<li' + (a.tab ? ' data-nav="' + U.esc(a.tab) + '" role="button" tabindex="0"' : '') + '>' +
+          U.esc(a.text) +
+          (a.points ? ' <span class="rd-pts">+' + a.points + ' pts</span>' : '') + '</li>';
+      }).join("") + '</ol>';
+
+    m.querySelector("#metric-modal-title").textContent = "Readiness";
+    m.querySelector(".metric-stats").innerHTML = head + explain + factors + fixes;
+    m.querySelector(".metric-chart").innerHTML = "";
+    var link = m.querySelector(".metric-modal-link");
+    link.setAttribute("href", "#coach");
+    link.textContent = "Ask my coach about this";
+    m.hidden = false;
+    document.body.classList.add("metric-modal-open");
+  }
 
   function openMetricDetail(metric) {
     var d;

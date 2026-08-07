@@ -213,6 +213,26 @@ comments, check-ins, follows, benchmarks, and the account backup.
 
 Hero = #5 (the Receipt differentiator). If uploading fewer than 8, keep #1, #2, #5 at minimum. A matching Google Play set (1080×2160, 2:1) exists at `play-1080x2160-*.png`.
 
+## What's New (1.8.0)
+
+```
+Your coach is now proactive. A "Do this next" card tells you the one thing
+to do right now — train this session, get your protein in, take the walk,
+go to bed — and it changes through the day as your data does.
+
+Tap your readiness ring and you'll see exactly why it's at that number and
+what to do to raise it, worth the points each change is worth.
+
+Your coach can also retune your calorie targets on its own as it learns how
+your body actually responds — and you decide how much freedom it has. It
+always explains why, and you can undo any change it makes.
+
+Plus: every exercise remembers its own rest time (and the coach picks a
+sensible one until you do), you get credit when a session is done instead of
+being shown tomorrow's workout, photo analysis shows live progress and
+survives leaving the app, and your first 30 days of Premium are included.
+```
+
 ## What's New (1.7.0)
 
 ```

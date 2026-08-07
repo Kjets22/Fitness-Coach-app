@@ -57,7 +57,13 @@ done
 
 echo ">> building for device (team $TEAM)…"
 cd "$APPDIR"
+# RELEASE, not Debug: a Debug build links ~8 unoptimized dynamic frameworks
+# (Capacitor + plugins) that iOS loads and signature-validates on every cold
+# launch — that is the 10-30 s black screen after installing to the phone
+# (2 s on the simulator, which has no such cost). Release is also what App
+# Store users actually run, so the phone now tests the real thing.
 xcodebuild -project App.xcodeproj -scheme App \
+  -configuration Release \
   -destination "id=$DEVID" -derivedDataPath "$DD" \
   -allowProvisioningUpdates \
   DEVELOPMENT_TEAM="$TEAM" CODE_SIGN_STYLE=Automatic \
@@ -67,7 +73,10 @@ xcodebuild -project App.xcodeproj -scheme App \
        echo "!! Xcode (Settings > Accounts, team $TEAM) once; the HealthKit"; \
        echo "!! profile then regenerates automatically and this script self-heals."; exit 1; }
 
-APP=$(/usr/bin/find "$DD/Build/Products" -maxdepth 2 -name "App.app" -path "*iphoneos*" | head -1)
+# Release-iphoneos explicitly: a stale Debug-iphoneos build left in the same
+# derived-data dir must never be the one that ships to the phone.
+APP=$(/usr/bin/find "$DD/Build/Products" -maxdepth 2 -name "App.app" -path "*Release-iphoneos*" | head -1)
+[ -n "$APP" ] || APP=$(/usr/bin/find "$DD/Build/Products" -maxdepth 2 -name "App.app" -path "*iphoneos*" | head -1)
 [ -n "$APP" ] || { echo "!! built app not found under $DD"; exit 1; }
 grep -q "build $BUILD" "$APP/public/js/util.js" || { echo "!! bundle/build mismatch — aborting"; exit 1; }
 

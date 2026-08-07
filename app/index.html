@@ -15,8 +15,35 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="OptimalFit">
 <link rel="stylesheet" href="css/style.css">
+<!-- Boot splash: inline so it paints the moment the WebView starts parsing,
+     long before style.css and the ~50 scripts finish. Without it the app
+     shows an empty dark window during boot, which reads as a crash on a
+     cold launch. app.js adds body.booted once the first tab is rendered;
+     the failsafe animation clears it even if JS never runs. -->
+<style>
+#boot-splash{position:fixed;inset:0;z-index:9999;display:flex;align-items:center;
+justify-content:center;background:#050718;transition:opacity .28s ease;
+animation:boot-splash-failsafe 12s forwards}
+#boot-splash svg{width:96px;height:96px;animation:boot-splash-pulse 1.6s ease-in-out infinite}
+body.booted #boot-splash{opacity:0;pointer-events:none;animation:none}
+@keyframes boot-splash-pulse{0%,100%{opacity:.75;transform:scale(1)}50%{opacity:1;transform:scale(1.06)}}
+@keyframes boot-splash-failsafe{0%,92%{opacity:1}100%{opacity:0;visibility:hidden}}
+@media (prefers-reduced-motion:reduce){#boot-splash svg{animation:none}}
+</style>
 </head>
 <body>
+
+<div id="boot-splash" aria-hidden="true">
+  <svg viewBox="0 0 48 48" aria-hidden="true">
+    <defs><linearGradient id="boot-lg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#8b5cf6"/><stop offset="1" stop-color="#22d3ee"/>
+    </linearGradient></defs>
+    <rect x="2" y="2" width="44" height="44" rx="12" fill="url(#boot-lg)"/>
+    <path d="M13 18v12M9 21v6M35 18v12M39 21v6" stroke="#fff" stroke-width="3" stroke-linecap="round"/>
+    <path d="M15 24h4l2-4 3.5 8 2.5-4h6" stroke="#fff" stroke-width="2.6" fill="none"
+      stroke-linecap="round" stroke-linejoin="round"/>
+  </svg>
+</div>
 
 <!-- ===== App bar: logo + wordmark left, settings right ===== -->
 <header class="app-header">

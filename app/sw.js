@@ -15,7 +15,7 @@
    ============================================================ */
 
 /* Bump this string when any shell file changes. */
-var VERSION = "v116"; /* background-safe photo AI (estimate + physique jobs) */
+var VERSION = "v117"; /* boot splash + release-config phone installs */
 var CACHE = "optimalfit-shell-" + VERSION;
 
 var SHELL = [

@@ -261,6 +261,17 @@ OF.app = (function () {
 
     showTab(currentTabFromHash());
 
+    // The app is painted — drop the boot splash (see the inline style in
+    // index.html). Removing the node after the fade keeps it out of the
+    // accessibility tree and off the compositor.
+    try {
+      document.body.classList.add("booted");
+      setTimeout(function () {
+        var bs = document.getElementById("boot-splash");
+        if (bs && bs.parentNode) bs.parentNode.removeChild(bs);
+      }, 400);
+    } catch (e) { /* splash is decorative; never block boot on it */ }
+
     // First-run welcome tour (no data + no goal + never dismissed).
     if (OF.onboarding) OF.onboarding.init();
   }

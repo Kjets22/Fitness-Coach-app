@@ -209,6 +209,88 @@ OF.dashboard = (function () {
     return parts.slice(0, 3).join(" · ");
   }
 
+  /** Gather the live context and ask the engine for THE next action.
+      Everything here is best-effort: a missing module just drops that
+      signal, it never blocks the card. */
+  function nextMoveCard(readiness) {
+    if (!OF.nextMove) return "";
+    var today = U.todayISO();
+    var ctx = { hour: new Date().getHours(), readiness: readiness,
+                daysSinceLog: daysSinceLastLog() };
+    try {
+      var adv = OF.engine.readinessAdvice(readiness);
+      ctx.topAdvice = adv && adv[0];
+    } catch (e) {}
+    try {
+      // the live logger persists its state per keystroke; a non-empty
+      // exercise list means a session is genuinely in progress
+      var live = JSON.parse(localStorage.getItem("optimalfit.activeWorkout") || "null");
+      ctx.liveSession = !!(live && live.exList && live.exList.length);
+    } catch (e) {}
+    try {
+      ctx.trainedToday = S.getAll("exercise").some(function (r) { return r.date === today; });
+    } catch (e) {}
+    try {
+      // a session already done today is not "today's session" any more
+      if (!ctx.trainedToday && OF.trainer && OF.trainer.nextSession &&
+          !(OF.trainer.doneToday && OF.trainer.doneToday())) {
+        var ns = OF.trainer.nextSession();
+        if (ns) {
+          ctx.sessionName = ns.name;
+          ctx.firstLift = ns.exercises && ns.exercises[0] ? ns.exercises[0].name : null;
+        }
+      }
+    } catch (e) {}
+    try {
+      var t = OF.goals.currentTargets();
+      if (t && t.status === "ok") {
+        ctx.targets = { kcal: t.calories, proteinG: t.proteinG,
+                        waterMl: t.waterMl, steps: t.steps, sleepH: t.sleepH };
+      }
+    } catch (e) {}
+    try {
+      var kcal = 0, prot = 0;
+      S.getAll("food").forEach(function (r) {
+        if (r.date !== today) return;
+        kcal += Number(r.calories) || 0;
+        prot += Number(r.protein) || 0;
+      });
+      var water = 0;
+      S.getAll("water").forEach(function (r) { if (r.date === today) water += Number(r.amountMl) || 0; });
+      var steps = 0;
+      try {
+        var sr = OF.daily && OF.daily.stepsRecordFor ? OF.daily.stepsRecordFor(today) : null;
+        steps = sr ? Number(sr.count) || 0 : 0;
+      } catch (e2) {}
+      ctx.today = { kcal: kcal, proteinG: prot, waterMl: water, steps: steps };
+    } catch (e) {}
+    try {
+      var body = S.getAll("body").filter(function (r) { return r.date && r.weightKg != null; })
+        .sort(function (a, b) { return a.date < b.date ? 1 : -1; });
+      ctx.lastWeighInDays = body.length
+        ? Math.round((new Date(today) - new Date(body[0].date)) / 86400000) : null;
+    } catch (e) {}
+    try {
+      // is the adaptive calorie engine fed enough to retune targets yet?
+      var goal = OF.goals.activeGoal();
+      if (goal && OF.targets && OF.targets.computeAdaptation) {
+        ctx.adaptation = OF.targets.computeAdaptation(
+          S.getAll("food"), S.getAll("body"), goal, today, OF.goals.adjTotal());
+      }
+      var gc = OF.goals.coachContext();
+      if (gc && gc.progress && gc.progress.onTrack === false) ctx.pace = "behind";
+    } catch (e) {}
+
+    var mv;
+    try { mv = OF.nextMove.pick(ctx); } catch (e) { return ""; }
+    if (!mv) return "";
+    return '<div class="card next-move" data-nav="' + U.esc(mv.tab) + '" role="button" tabindex="0">' +
+      '<div class="nm-kicker">' + OF.icons.get("sparkles") + ' Do this next</div>' +
+      '<p class="nm-text">' + U.esc(mv.text) + '</p>' +
+      '<p class="nm-why muted small">' + U.esc(mv.why) + '</p>' +
+      '</div>';
+  }
+
   function renderHero(readiness) {
     lastReadiness = readiness;   // the tap-to-explain handler reads this
     if (!heroEl) return;
@@ -240,7 +322,8 @@ OF.dashboard = (function () {
       '">' + ringHtml + '<span class="hero-ring-label">Readiness' +
       (readiness && readiness.status === "ok" ? ' \u00b7 ' + U.esc(readiness.level) : '') +
       '</span></div>' +
-      '</header>';
+      '</header>' +
+      nextMoveCard(readiness);
     // celebrate a new streak milestone (once)
     try {
       var ms = OF.streak && OF.streak.newMilestone ? OF.streak.newMilestone() : 0;

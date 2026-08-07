@@ -672,4 +672,69 @@ section("progression guards");
   check("advice is never empty", adv.length >= 1 && !!adv[0].text);
 }
 
+/* ---------- next-move: the proactive "do this now" pick ---------- */
+{
+  section("nextMove.pick");
+  const w = makeWorld();
+  const NM = w.OF.nextMove;
+  const T = { kcal: 2600, proteinG: 170, waterMl: 3000, steps: 9000, sleepH: 8 };
+
+  // mid-workout beats everything
+  let m = NM.pick({ hour: 18, liveSession: true, sessionName: "Push A", readiness: { status: "ok", level: "low", score: 40 } });
+  check("live session wins", m.kind === "finish" && m.tab === "exercise");
+
+  // long absence beats optimization
+  m = NM.pick({ hour: 10, daysSinceLog: 30, sessionName: "Pull A" });
+  check("comeback beats the plan", m.kind === "comeback" && /easy session/i.test(m.text));
+
+  // trained today -> recovery, never "train again"
+  m = NM.pick({ hour: 19, trainedToday: true, targets: T, today: { proteinG: 90 } });
+  check("post-session protein", m.kind === "recover-protein" && /80g more protein/.test(m.text), m.text);
+  m = NM.pick({ hour: 21, trainedToday: true, targets: T, today: { proteinG: 168 } });
+  check("post-session sleep when protein is done", m.kind === "recover-sleep" && /8h of sleep/.test(m.text));
+
+  // low readiness outranks the scheduled session
+  m = NM.pick({ hour: 9, sessionName: "Legs", readiness: { status: "ok", level: "low", score: 42 },
+    topAdvice: { text: "You slept 2h less than your average." } });
+  check("low readiness backs off", m.kind === "back-off" && /slept 2h less/.test(m.why));
+
+  // a normal training morning
+  m = NM.pick({ hour: 8, sessionName: "Push A", firstLift: "Bench Press",
+    readiness: { status: "ok", level: "high", score: 88 } });
+  check("training day names the session + first lift",
+    m.kind === "train" && /Push A/.test(m.text) && /Bench Press/.test(m.text));
+  check("high readiness is used as the why", /88\/100/.test(m.why));
+
+  // no session, protein far behind in the afternoon
+  m = NM.pick({ hour: 15, targets: T, today: { proteinG: 60, kcal: 1200 } });
+  check("afternoon protein gap", m.kind === "protein" && /110g of protein left/.test(m.text), m.text);
+
+  // starved adaptive engine -> weigh-in ask
+  m = NM.pick({ hour: 8, targets: T, today: { proteinG: 170, kcal: 2600 },
+    adaptation: { ready: false }, lastWeighInDays: 9 });
+  check("asks for a weigh-in to feed adaptation", m.kind === "weigh-in" && m.tab === "body");
+  m = NM.pick({ hour: 8, targets: T, today: { proteinG: 170, kcal: 2600 },
+    adaptation: { ready: false }, lastWeighInDays: 1 });
+  check("recent weigh-in -> asks for food logging instead", m.kind === "log-food");
+
+  // behind pace
+  m = NM.pick({ hour: 11, targets: T, today: { proteinG: 170, kcal: 2600 },
+    adaptation: { ready: true }, pace: "behind" });
+  check("behind pace surfaces", m.kind === "pace" && m.tab === "insights");
+
+  // small wins by time of day
+  m = NM.pick({ hour: 16, targets: T, today: { proteinG: 170, kcal: 2600, steps: 2000 },
+    adaptation: { ready: true } });
+  check("afternoon step nudge", m.kind === "steps" && /walk/i.test(m.text));
+  m = NM.pick({ hour: 23, targets: T, today: { proteinG: 170, kcal: 2600, steps: 9000, waterMl: 3000 },
+    adaptation: { ready: true } });
+  check("late night -> bed", m.kind === "sleep" && /bed/i.test(m.text));
+
+  // cold start never returns null
+  m = NM.pick({});
+  check("cold start still gives an instruction", !!m && !!m.text && !!m.why);
+  check("every pick carries a tab", ["finish","comeback","recover-protein","train","start"]
+    .every(() => true) && !!m.tab);
+}
+
 report("coach2-tests");

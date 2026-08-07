@@ -15,7 +15,7 @@
    ============================================================ */
 
 /* Bump this string when any shell file changes. */
-var VERSION = "v118"; /* readiness explainer modal */
+var VERSION = "v119"; /* proactive next-move card */
 var CACHE = "optimalfit-shell-" + VERSION;
 
 var SHELL = [
@@ -48,6 +48,7 @@ var SHELL = [
   "./js/physique.js",
   "./js/charts.js",
   "./js/insights-engine.js",
+  "./js/next-move.js",
   "./js/strength-engine.js",
   "./js/targets-engine.js",
   "./js/goals.js",

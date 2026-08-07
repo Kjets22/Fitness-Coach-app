@@ -383,8 +383,32 @@ OF.coach = (function () {
         muscleMassKg: U.muscleKg(latestBody)   // canonical kg; converts legacy % records
       } : null,
       physique: physique,
-      todayNutrition: todayNutrition(goalCoaching)
+      todayNutrition: todayNutrition(goalCoaching),
+      drinking: drinkingContext(goalCoaching)
     };
+  }
+
+  /** What drinking ACTUALLY costs THIS person, measured from their own logs,
+      plus the week shape that absorbs it. The coach uses this to ADAPT the
+      plan rather than tell anyone to stop — people quit apps that ask them
+      to quit their life. Null until there's enough logged to be honest. */
+  function drinkingContext(goalCoaching) {
+    try {
+      if (!OF.nightOut) return null;
+      var a = OF.nightOut.analyze({
+        food: S.getAll("food"), exercise: S.getAll("exercise"), sleep: S.getAll("sleep"),
+        today: U.todayISO(), windowDays: 56
+      });
+      if (!a || a.status !== "ok") return a || null;   // "learning" is useful to say
+      var out = { pattern: a };
+      var t = goalCoaching && goalCoaching.dailyTargets;
+      if (t && typeof t === "object" && t.kcal) {
+        var goal = OF.goals.activeGoal() || {};
+        out.weekBudget = OF.nightOut.weeklyBudget(a, t.kcal,
+          { sex: goal.sex, proteinG: t.proteinG });
+      }
+      return out;
+    } catch (e) { return null; }   // never break the coach over this
   }
 
   /** What they've eaten TODAY vs their daily targets — the anchor for meal,

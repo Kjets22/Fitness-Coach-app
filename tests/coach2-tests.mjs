@@ -868,4 +868,92 @@ section("progression guards");
   check("no runway = no fabricated plan", p.days.length === 0 && p.shortfall === p.totalKcal);
 }
 
+/* ---------- night-out LEARNING: measure the real cost, then absorb it ---------- */
+{
+  section("nightOut.detect / analyze / weeklyBudget");
+  const w = makeWorld();
+  const NO = w.OF.nightOut;
+  const day = (off) => w.OF.util.todayISO(off);
+  const today = day(0);
+
+  // build 8 weeks: sober days at 2000 kcal, Saturday nights at 2000 + drinks + late food
+  const food = [];
+  for (let d = 56; d >= 0; d--) {
+    const date = day(-d);
+    const isDrinkNight = d % 7 === 0 && d > 0;      // one night a week
+    food.push({ date, foodName: "meals", calories: 2000 });
+    if (isDrinkNight) {
+      food.push({ date, foodName: "Beer (12 oz)", calories: 150 });
+      food.push({ date, foodName: "Beer (12 oz)", calories: 150 });
+      food.push({ date, foodName: "Vodka soda", calories: 100 });
+      food.push({ date, foodName: "late night pizza", calories: 600 });
+    }
+  }
+  const drinkNights = food.filter(f => /beer/i.test(f.foodName)).length / 2;
+
+  const events = NO.detect(food);
+  check("detect finds the drinking days", events.length === drinkNights, events.length);
+  check("detect counts drinks, not meals", events[0].drinks === 3, events[0].drinks);
+  check("detect keeps the whole day's calories", events[0].dayKcal === 3000, events[0].dayKcal);
+  check("a dry log yields no events",
+    NO.detect([{ date: today, foodName: "chicken", calories: 500 }]).length === 0);
+
+  // not enough evidence yet -> says so instead of guessing
+  check("too little data is honest",
+    NO.analyze({ food: food.slice(0, 4), today }).status === "learning");
+
+  const a = NO.analyze({ food, today, windowDays: 56,
+    exercise: [], sleep: [] });
+  check("analyze runs", a.status === "ok", a.status);
+  check("cadence ~1 night/week", a.cadencePerWeek >= 0.8 && a.cadencePerWeek <= 1.2, a.cadencePerWeek);
+  check("avg drinks per night learned", a.avgDrinksPerNight === 3, a.avgDrinksPerNight);
+  // the REAL cost is the whole-day overshoot (drinks 400 + pizza 600), not a label
+  check("observed overshoot is the whole day", a.observedOvershootKcal === 1000, a.observedOvershootKcal);
+  check("weekly cost derived from cadence", a.estWeeklyCostKcal >= 800 && a.estWeeklyCostKcal <= 1200,
+    a.estWeeklyCostKcal);
+  check("confidence reported", ["low", "medium", "high"].includes(a.confidence));
+
+  // next-day effect is measured, not assumed
+  const exercise = [];
+  events.forEach((e) => {
+    const dn = new Date(e.date + "T12:00:00Z").getTime() / 86400000;
+    exercise.push({ date: new Date((dn + 1) * 86400000).toISOString().slice(0, 10),
+      performance: 2, durationMin: 45 });
+  });
+  exercise.push({ date: day(-3), performance: 5, durationMin: 60 });
+  exercise.push({ date: day(-10), performance: 5, durationMin: 60 });
+  const a2 = NO.analyze({ food, exercise, today, windowDays: 56 });
+  check("next-day performance measured as worse",
+    a2.nextDay.avgPerfAfter < a2.nextDay.avgPerfOtherDays,
+    [a2.nextDay.avgPerfAfter, a2.nextDay.avgPerfOtherDays]);
+
+  // THE POINT: absorb it into the week, don't ask anyone to stop
+  const b = NO.weeklyBudget(a, 2000, { sex: "m", proteinG: 160 });
+  check("budget produced", b.status === "ok", b.status);
+  check("everyday target drops, drinking night stays normal",
+    b.everydayKcal < 2000 && b.drinkingDayKcal === 2000, [b.everydayKcal, b.drinkingDayKcal]);
+  check("cut is spread over the non-drinking days", b.otherDaysPerWeek === 6, b.otherDaysPerWeek);
+  check("no day cut beyond 15%", b.cutPerOtherDay <= 2000 * 0.15, b.cutPerOtherDay);
+  check("protein preserved in the budget", b.keepProteinG === 160);
+  check("it says what it could NOT absorb", typeof b.residualKcal === "number" && b.residualKcal >= 0);
+  check("residual translated into pace, not guilt",
+    typeof b.slowerKgPerWeek === "number" && !/quit|stop drinking|shouldn/i.test(b.note), b.note);
+
+  // a small habit is fully absorbed -> goal date unchanged
+  const light = { status: "ok", cadencePerWeek: 1, estWeeklyCostKcal: 300 };
+  const lb = NO.weeklyBudget(light, 2400, { sex: "m", proteinG: 170 });
+  check("a light habit costs the goal nothing",
+    lb.residualKcal === 0 && /nothing given up/.test(lb.note), lb.note);
+
+  // floors hold even for a heavy pattern on a small target
+  const heavy = { status: "ok", cadencePerWeek: 3, estWeeklyCostKcal: 6000 };
+  const hb = NO.weeklyBudget(heavy, 1400, { sex: "f", proteinG: 130 });
+  check("never plans below the floor", hb.everydayKcal >= 1200, hb.everydayKcal);
+  check("heavy pattern admits the shortfall honestly", hb.residualKcal > 0 && hb.slowerKgPerWeek > 0);
+
+  // guards
+  check("no targets -> not-ready", NO.weeklyBudget(a, null).status === "not-ready");
+  check("unlearned analysis -> not-ready", NO.weeklyBudget({ status: "learning" }, 2000).status === "not-ready");
+}
+
 report("coach2-tests");

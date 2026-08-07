@@ -15,7 +15,7 @@
    ============================================================ */
 
 /* Bump this string when any shell file changes. */
-var VERSION = "v124"; /* drinking-aware coaching */
+var VERSION = "v125"; /* drinking learning + week budget */
 var CACHE = "optimalfit-shell-" + VERSION;
 
 var SHELL = [

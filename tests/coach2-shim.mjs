@@ -91,7 +91,7 @@ export function makeWorld(data = {}) {
     icons: { get: () => "" }
   };
   // fresh module instances each world (bust require cache)
-  for (const f of ["evidence", "coach-profile", "coach-learn", "trainer", "coach-intake", "targets-engine", "insights-engine", "next-move"]) {
+  for (const f of ["evidence", "coach-profile", "coach-learn", "trainer", "coach-intake", "targets-engine", "insights-engine", "next-move", "night-out"]) {
     delete require.cache[require.resolve(join(ROOT, "app/js", f + ".js"))];
   }
   require(join(ROOT, "app/js/evidence.js"));
@@ -102,6 +102,7 @@ export function makeWorld(data = {}) {
   require(join(ROOT, "app/js/targets-engine.js"));
   require(join(ROOT, "app/js/insights-engine.js"));
   require(join(ROOT, "app/js/next-move.js"));
+  require(join(ROOT, "app/js/night-out.js"));
   world.OF = g.OF;
   world.store = store;
   return world;

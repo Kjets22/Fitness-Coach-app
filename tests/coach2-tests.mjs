@@ -823,4 +823,49 @@ section("progression guards");
   }
 }
 
+/* ---------- night-out: drinking-aware planning ---------- */
+{
+  section("nightOut.estimateDrinks / plan");
+  const w = makeWorld();
+  const NO = w.OF.nightOut;
+
+  // estimates
+  check("known drink types priced", NO.estimateDrinks([{ type: "beer", count: 3 }]) === 459);
+  check("mixed order sums", NO.estimateDrinks([{ type: "spirit-soda", count: 2 }, { type: "margarita", count: 1 }]) === 530);
+  check("unknown type falls back", NO.estimateDrinks([{ type: "unobtainium", count: 2 }]) === 300);
+  check("explicit kcal wins", NO.estimateDrinks([{ kcal: 90, count: 4 }]) === 360);
+  check("a bare number of drinks works", NO.estimateDrinks(4) === 600);
+  check("garbage is zero, not NaN", NO.estimateDrinks(null) === 0 && NO.estimateDrinks("x") === 0);
+
+  // no targets -> honest refusal, never a bogus plan
+  check("no targets is handled", NO.plan({ drinks: 4 }).status === "no-targets");
+
+  // a planned Saturday with runway
+  let p = NO.plan({ drinks: [{ type: "beer", count: 4 }], lateFood: true,
+    dailyKcal: 2400, proteinG: 170, sex: "m", daysBefore: 2, daysAfter: 2, trainingDay: true });
+  check("total = drinks + late food", p.drinkKcal === 612 && p.extraKcal === 700 && p.totalKcal === 1312);
+  check("spread across the days given", p.days.length === 4, p.days.length);
+  check("no day is cut more than 15%", p.days.every(d => d.cut <= 2400 * 0.15));
+  check("banking never exceeds the cost", p.covered <= p.totalKcal, [p.covered, p.totalKcal]);
+  check("protein is held, not cut", p.protein.keepG === 170 && /backwards/.test(p.protein.note));
+  check("day-after training is de-loaded, not skipped", /maintenance day/.test(p.training));
+
+  // an unwinnable night is reported honestly rather than crash-dieted away
+  p = NO.plan({ drinks: 12, lateFood: true, dailyKcal: 1800, proteinG: 150,
+    sex: "f", daysBefore: 1, daysAfter: 1 });
+  check("shortfall is admitted", p.shortfall > 0 && /real dent/.test(p.honest));
+  check("no day drops below the female floor",
+    p.days.every(d => d.kcalTarget >= 1200), p.days.map(d => d.kcalTarget));
+
+  // told at the last minute (no runway before) -> still plans the days after
+  p = NO.plan({ drinks: [{ type: "wine", count: 2 }], dailyKcal: 2200, proteinG: 160,
+    sex: "f", daysBefore: 0, daysAfter: 2 });
+  check("last-minute still plans forward", p.days.length > 0 && p.days.every(d => d.when === "after"));
+  check("a small night is fully covered", p.shortfall === 0 && /costs your goal nothing/.test(p.honest));
+
+  // zero runway at all -> nothing invented
+  p = NO.plan({ drinks: 3, dailyKcal: 2000, proteinG: 150, daysBefore: 0, daysAfter: 0 });
+  check("no runway = no fabricated plan", p.days.length === 0 && p.shortfall === p.totalKcal);
+}
+
 report("coach2-tests");

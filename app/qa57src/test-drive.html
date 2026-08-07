@@ -260,17 +260,17 @@
         item.click();
         await sleep(900);
         var hashAfter = W3.location.hash;
-        var visTab = (function () {
-          var s = D().querySelectorAll("section.tab, .tab-panel, section[id]");
+        var visibleTabs = function () {
           var vis = [];
-          Array.prototype.forEach.call(s, function (el) {
-            if (el.id && !el.hidden && el.offsetParent !== null && /^(dashboard|sleep|food|exercise|body|insights|coach|settings|social)$/.test(el.id)) vis.push(el.id);
+          Array.prototype.forEach.call(D().querySelectorAll("section.tab"), function (el) {
+            if (!el.classList.contains("hidden")) vis.push(el.id);
           });
           return vis.join(",");
-        })();
+        };
+        var visTab = visibleTabs();
         var stillOpen = modalOpen();
         check("tapping the advice item navigates to its tab (" + want + ")",
-          hashAfter === "#" + want || visTab.indexOf(want) >= 0,
+          hashAfter === "#" + want || visTab.indexOf("tab-" + want) >= 0,
           "hash " + (hashBefore || "(none)") + " -> " + (hashAfter || "(none)") + "; visible tab(s)=" + (visTab || "none"));
         check("modal does not stay open blocking the tab", !stillOpen,
           "modal.hidden=" + (modal() ? modal().hidden : "?") + "; body.metal-open=" + D().body.classList.contains("metric-modal-open"));
@@ -280,8 +280,19 @@
           blocker = e2 ? (e2.tagName + (e2.className ? "." + String(e2.className).split(" ")[0] : "")) : "none";
         } catch (e) {}
         log("after tap: topmost element mid-screen = " + blocker);
-        dumpEl.textContent = "hashBefore=" + hashBefore + "\nhashAfter=" + hashAfter +
-          "\nvisibleTabs=" + visTab + "\nmodalOpen=" + stillOpen + "\ntopmostElement=" + blocker;
+        // control: prove the detector works — drive the same navigation directly
+        W3.OF.app.showTab(want);
+        await sleep(400);
+        var visCtl = visibleTabs();
+        check("control: OF.app.showTab(\"" + want + "\") does switch the tab",
+          visCtl.indexOf("tab-" + want) >= 0, "visible after control call = " + visCtl);
+        var stillOpen2 = modalOpen();
+        check("control: modal still on top after the tab really changed", true,
+          "modalOpen=" + stillOpen2 + " (informational)");
+        dumpEl.textContent = "hashBefore=" + (hashBefore || "(empty)") + "\nhashAfter=" + (hashAfter || "(empty)") +
+          "\nvisibleTabsAfterTap=" + visTab + "\nmodalOpenAfterTap=" + stillOpen +
+          "\ntopmostElement=" + blocker + "\nvisibleTabsAfterControlShowTab=" + visCtl +
+          "\nmodalOpenAfterControl=" + stillOpen2;
       }
       blurAll();
       layout(true, false);
@@ -307,9 +318,9 @@
       await sleep(250);
       check("backdrop tap closes the modal", !modalOpen(), "nowOpen=" + modalOpen());
       check("body.metric-modal-open cleared", !D().body.classList.contains("metric-modal-open"), "");
-      var dash = D().getElementById("dashboard");
-      check("dashboard visible again", !!dash && dash.offsetParent !== null && !!D().querySelector(".hero-ring"),
-        "hash=" + W4.location.hash);
+      var dash = D().getElementById("tab-dashboard");
+      check("dashboard visible again", !!dash && !dash.classList.contains("hidden") && !!D().querySelector(".hero-ring"),
+        "tab-dashboard hidden=" + (dash ? dash.classList.contains("hidden") : "missing"));
       blurAll();
       layout(true, false);
     }
@@ -342,10 +353,10 @@
       check('rest chip shows "⏱ 2:30 ✦" for a fresh Bench Press', /2:30/.test(chipTxt) && /✦/.test(chipTxt), 'got "' + chipTxt + '"');
       W5.OF.app.showTab("coach");
       await sleep(700);
-      var coachSec = D().getElementById("coach");
-      check("coach tab renders (no AI call sent)", !!coachSec && coachSec.offsetParent !== null && coachSec.innerText.trim().length > 20,
-        coachSec ? coachSec.innerText.trim().split("\n").slice(0, 3).join(" | ").slice(0, 140) : "no #coach");
-      W5.OF.app.showTab("dashboard");
+      var coachSec = D().getElementById("tab-coach");
+      check("coach tab renders (no AI call sent)", !!coachSec && !coachSec.classList.contains("hidden") && coachSec.innerText.trim().length > 20,
+        coachSec ? coachSec.innerText.trim().split("\n").slice(0, 3).join(" | ").slice(0, 140) : "no #tab-coach");
+      if (QS.get("view") !== "coach") { W5.OF.app.showTab("dashboard"); }
       await sleep(400);
       check("no console/runtime errors during smoke", window.__qa.errors.length === 0,
         window.__qa.errors.slice(0, 6).join(" | ") || "0 errors");
@@ -353,7 +364,7 @@
         "\n\nrestChip: " + chipTxt + "\nversion: " + W5.OF.APP_VERSION +
         "\nerrors: " + (window.__qa.errors.join(" | ") || "none");
       blurAll();
-      layout(false, true);
+      layout(QS.get("view") === "coach", QS.get("view") !== "coach");
     }
 
     /* ---------- 9 : teardown ---------- */
@@ -379,7 +390,8 @@
     if (window.__qa.errors.length) log("errors: " + window.__qa.errors.join(" | "), "bad");
     await cleanupSW();
     finish();
-    if (QS.get("only") === "dump") { logEl.hidden = true; dumpEl.hidden = false; }
+    if (QS.get("only") === "dump") { logEl.hidden = true; dumpEl.hidden = false; frame.hidden = true; frame.style.height = "0px"; }
+    if (QS.get("only") === "log") { logEl.hidden = false; dumpEl.hidden = true; frame.hidden = true; frame.style.height = "0px"; }
     if (stage === "1t" || stage === "2t" || stage === "5" || stage === "9") {
       // text-only stages: hide the frame entirely so the dump gets the screen
       frame.style.height = "0px"; frame.hidden = true;

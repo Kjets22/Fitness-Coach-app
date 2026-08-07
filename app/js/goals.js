@@ -44,19 +44,28 @@ OF.goals = (function () {
     return true;
   }
 
-  /* Proposals live in their OWN store: adjTotal() must only ever sum
-     changes that were actually applied, or the targets would move on a
-     suggestion the user never accepted. */
+  /* Proposals live in the SAME store as applied adjustments but under a
+     distinct kind, so calorieAdjs()/adjTotal() (which match kind
+     "calories") can never drift on a suggestion the user never accepted —
+     and they still round-trip through backup/restore and cloud sync.
+     (storage.js enforces a type whitelist; inventing a new type would
+     throw and take the whole goal card down with it.) */
+  var PROPOSAL_KIND = "calories-proposal";
+  function proposals() {
+    return S.getAll("adjustments").filter(function (r) {
+      return r && r.kind === PROPOSAL_KIND;
+    });
+  }
   function pendingAdapt() {
-    var all = S.getAll("adaptProposal").filter(function (r) { return r && r.status === "pending"; });
+    var all = proposals().filter(function (r) { return r.status === "pending"; });
     return all.length ? all[all.length - 1] : null;
   }
   /* A declined retune must not come straight back on the next run: the
      engine waits a full adaptation step before re-testing that idea. */
   function adaptBlockedUntilDn() {
     var dn = null;
-    S.getAll("adaptProposal").forEach(function (r) {
-      if (r && r.status === "declined" && r.blockUntilDayNum != null) {
+    proposals().forEach(function (r) {
+      if (r.status === "declined" && r.blockUntilDayNum != null) {
         var v = Number(r.blockUntilDayNum);
         if (isFinite(v) && (dn == null || v > dn)) dn = v;
       }
@@ -178,8 +187,8 @@ OF.goals = (function () {
             var kgP = T.latestWeightKg(bodyF);
             var beforeP = T.computeTargets(goal, { weightKg: kgP, adjTotal: total });
             var afterP = T.computeTargets(goal, { weightKg: kgP, adjTotal: total + a.deltaCal });
-            S.add("adaptProposal", {
-              date: pIso, status: "pending", kind: "calories", delta: a.deltaCal,
+            S.add("adjustments", {
+              date: pIso, status: "pending", kind: PROPOSAL_KIND, delta: a.deltaCal,
               from: beforeP && beforeP.status === "ok" ? beforeP.calories : null,
               to: afterP && afterP.status === "ok" ? afterP.calories : null,
               reason: adaptReason(goal, a)
@@ -407,11 +416,11 @@ OF.goals = (function () {
   function declineAdapt(proposal) {
     var blockUntil = OF.targets.dayNum(U.todayISO()) + OF.targets.ADJ_STEP_DAYS;
     if (proposal) {
-      S.update("adaptProposal", proposal.id, { status: "declined", blockUntilDayNum: blockUntil });
+      S.update("adjustments", proposal.id, { status: "declined", blockUntilDayNum: blockUntil });
     } else {
-      S.add("adaptProposal", { date: U.todayISO(), status: "declined",
-        kind: "calories", delta: 0, blockUntilDayNum: blockUntil,
-        reason: "You reverted the coach's change." });
+      S.add("adjustments", { date: U.todayISO(), status: "declined",
+        kind: PROPOSAL_KIND, delta: 0, blockUntilDayNum: blockUntil,
+        reason: "You reverted the coach\u2019s change." });
     }
   }
 
@@ -980,7 +989,7 @@ OF.goals = (function () {
           from: pend.from, to: pend.to, reason: pend.reason
         });
         if (ok) {
-          S.update("adaptProposal", pend.id, { status: "applied" });
+          S.update("adjustments", pend.id, { status: "applied" });
           U.toast("Applied — your targets are updated.", "ok");
           if (OF.haptics && OF.haptics.medium) OF.haptics.medium();
         } else {

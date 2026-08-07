@@ -43,8 +43,37 @@ export function makeWorld(data = {}) {
       toast: () => {}
     },
     storage: {
-      getAll: (t) => world.data[t] || [],
-      add: (t, r) => { const rec = { ...r, id: "t" + Math.random() }; (world.data[t] = world.data[t] || []).push(rec); return rec; }
+      // Mirror the REAL storage.js contract: it enforces a type whitelist and
+      // THROWS on anything else. A permissive stub hid a bug where goals.js
+      // wrote to an unregistered type and took the goal card down at render.
+      TYPES: ["sleep", "food", "exercise", "body", "water", "steps", "goal",
+              "adjustments", "physique", "activeEnergy"],
+      _assert(t) {
+        if (this.TYPES.indexOf(t) === -1) throw new Error("Unknown record type: " + t);
+      },
+      getAll(t) { this._assert(t); return world.data[t] || []; },
+      add(t, r) {
+        this._assert(t);
+        const rec = { ...r, id: "t" + Math.random() };
+        (world.data[t] = world.data[t] || []).push(rec);
+        return rec;
+      },
+      update(t, id, patch) {
+        this._assert(t);
+        const arr = world.data[t] || [];
+        const i = arr.findIndex((x) => x.id === id);
+        if (i < 0) return false;
+        arr[i] = { ...arr[i], ...patch };
+        return true;
+      },
+      remove(t, id) {
+        this._assert(t);
+        const arr = world.data[t] || [];
+        const i = arr.findIndex((x) => x.id === id);
+        if (i < 0) return false;
+        arr.splice(i, 1);
+        return true;
+      }
     },
     goals: { activeGoal: () => world.data.goal[world.data.goal.length - 1] || null },
     exerciseLibrary: {

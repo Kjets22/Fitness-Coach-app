@@ -67,8 +67,10 @@ PRIVATE BY ARCHITECTURE, NOT BY PROMISE
 IMPORT YOUR EXISTING HISTORY
 Bring in steps, weight, sleep and water from an Apple Health export (the file you create in the Health app) or Samsung Health CSV files — processed entirely on your device.
 
-OPTIONAL AI COACH — ON YOUR OWN TERMS
-Run the free companion program on your own computer and pair your phone over your home Wi-Fi. Answers grounded in your actual logs, meal-photo macro estimates, supportive physique feedback — all on your own machines, never our servers. With a community account, the coach can also pull anonymous benchmark percentiles to show how your numbers compare.
+AI COACH — WITH CLEAR CONSENT
+An AI coach that answers from your own logged data: what to train today, what to eat to hit your targets, what to order at a restaurant, and why your readiness is where it is. It can also read a photo of your meal to estimate macros, or your progress photos for body-composition feedback.
+
+This is the one part of the app that leaves your device. When you use it, your question, a compact summary of your recent stats, and any photo you explicitly submit are sent to our coach service and processed by Anthropic's Claude to produce the answer — used for that request and not stored. You're asked to agree before anything is ever sent, and declining leaves every other feature fully usable. Your first 30 days of these AI features are included with the app.
 
 HONEST LIMITS
 OptimalFit is a fitness tool, not a medical device. Its insights are statistics, not medical advice — check with a professional before big changes. Back up your local data with the built-in export.
@@ -113,7 +115,7 @@ sleep,calorie,macro,workout,offline,private,tracker,social,receipts,gym,log,diet
 
 - Health & Fitness is collected ONLY for signed-in users (private per-account backup, deleted with the account). Never-signed-in users: nothing is collected at all.
 - AI requests (coach questions, photo meal/physique analysis) send the question, a compact stats summary, and any submitted photo to the developer-operated coach service, processed transiently by Anthropic's Claude and NOT retained — disclosed and consented in-app before first use (5.1.1(i)/5.1.2(i)), described in the privacy policy. Not declared as a collected data type because it is ephemeral processing (not retained beyond servicing the request).
-- No HealthKit APIs are used (file import only) — no HealthKit privacy strings or entitlements involved.
+- HealthKit IS used (read-only, opt-in): with the user's permission the app reads steps, weight, sleep and active energy from Apple Health to save re-typing. The HealthKit entitlement and BOTH purpose strings (NSHealthShareUsageDescription and NSHealthUpdateUsageDescription — the plugin binary references write APIs even though the app only reads) are in the build. Health data read this way stays on the device under the same rules as everything else; it is never used for advertising and never shared with third parties. File import from an Apple Health export is still supported separately.
 
 ⚠️ If a future version adds analytics, crash reporting, or new server-bound data, update this label BEFORE release.
 

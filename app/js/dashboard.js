@@ -656,7 +656,19 @@ OF.dashboard = (function () {
       '<a class="btn ghost metric-modal-link" href="#">Open full tab</a></div>';
     document.body.appendChild(modalEl);
     modalEl.addEventListener("click", function (e) {
-      if (e.target.closest("[data-close-metric]") || e.target.closest(".metric-modal-link")) closeModal();
+      if (e.target.closest("[data-close-metric]") || e.target.closest(".metric-modal-link")) {
+        closeModal();
+        return;
+      }
+      // Readiness advice items deep-link to the tab where you act on them.
+      // The modal is mounted on <body>, so the hero's [data-nav] delegate
+      // never sees these clicks — handle them here, and close first so the
+      // destination isn't hidden behind the panel.
+      var nav = e.target.closest("[data-nav]");
+      if (nav) {
+        closeModal();
+        try { OF.app.showTab(nav.getAttribute("data-nav")); } catch (err) {}
+      }
     });
     document.addEventListener("keydown", function (e) { if (e.key === "Escape" && !modalEl.hidden) closeModal(); });
     return modalEl;
@@ -707,7 +719,9 @@ OF.dashboard = (function () {
       }).join("") + '</ol>';
 
     m.querySelector("#metric-modal-title").textContent = "Readiness";
-    m.querySelector(".metric-stats").innerHTML = head + explain + factors + fixes;
+    var statsEl = m.querySelector(".metric-stats");
+    statsEl.classList.add("rd-stats");   // prose layout, not the pill grid
+    statsEl.innerHTML = head + explain + factors + fixes;
     m.querySelector(".metric-chart").innerHTML = "";
     var link = m.querySelector(".metric-modal-link");
     link.setAttribute("href", "#coach");
@@ -722,7 +736,9 @@ OF.dashboard = (function () {
     if (!d) return;
     var m = ensureModal();
     m.querySelector("#metric-modal-title").textContent = d.title;
-    m.querySelector(".metric-stats").innerHTML = d.statsHtml || "";
+    var ms = m.querySelector(".metric-stats");
+    ms.classList.remove("rd-stats");     // back to the stat-pill grid
+    ms.innerHTML = d.statsHtml || "";
     m.querySelector(".metric-chart").innerHTML = d.chartHtml || "";
     var link = m.querySelector(".metric-modal-link");
     link.setAttribute("href", "#" + d.tab);

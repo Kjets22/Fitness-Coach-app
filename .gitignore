@@ -75,3 +75,7 @@ Thumbs.db
 # Tailscale funnel certs (secrets, never commit)
 *.ts.net.crt
 *.ts.net.key
+
+# QA harnesses are scratch — they must never be committed or shipped
+app/test-drive.html
+app/qa*src/

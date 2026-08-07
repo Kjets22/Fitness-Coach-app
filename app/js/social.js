@@ -172,9 +172,12 @@ OF.social = (function () {
       series.forEach(function (p) { if (best == null || p.e1rm > best) best = p.e1rm; });
       if (best != null) {
         bits.metric = U.fmtWeight(best, 1) + " e1RM";
+        // UTC-noon epoch day, matching every other module. The local-midnight
+        // form this used to have is a day off in UTC+13/+14, which skewed the
+        // "in N weeks" figure on shared PR posts.
         var dn = function (iso) {
           var m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(iso || ""));
-          return m ? Math.round(new Date(+m[1], +m[2] - 1, +m[3]).getTime() / 86400000) : null;
+          return m ? Math.floor(Date.UTC(+m[1], +m[2] - 1, +m[3], 12) / 86400000) : null;
         };
         var d0 = dn(series[0] && series[0].day), d1 = dn(series[series.length - 1] && series[series.length - 1].day);
         var weeks = (d0 != null && d1 != null) ? Math.max(1, Math.round((d1 - d0) / 7)) : null;

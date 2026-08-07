@@ -32,7 +32,7 @@ OF.foodPhoto = (function () {
   var description = "";       // survives re-renders
   var estimate = null;        // last parsed estimate from the server
   var errorMsg = "";
-  var ctrl = null;            // in-flight AbortController
+  var reqSeq = 0;             // stale-result guard (see doEstimate/doAnalyze)
 
   var MAX_SIDE = 1600;        // longest side after re-encode
   var JPEG_QUALITY = 0.85;
@@ -344,7 +344,11 @@ OF.foodPhoto = (function () {
   }
 
   function closeModal() {
-    if (ctrl) { try { ctrl.abort(); } catch (e) { /* ignore */ } ctrl = null; }
+    // abandon anything in flight: bump the sequence so a late result is
+    // dropped, and kill the 1 Hz label ticker (it used to run until the job
+    // settled, and in the resend-pending state that could be forever)
+    reqSeq++;
+    stopThinkTicker();
     busy = false;
     els.modal.classList.add("hidden");
     els.modal.innerHTML = "";
@@ -368,6 +372,11 @@ OF.foodPhoto = (function () {
     state = "loading";
     renderModal();
     startThinkTicker();
+    // Closing the modal used to cancel nothing (the AbortController here was
+    // never actually assigned), so an old job could resolve over a NEWER
+    // photo and attribute the wrong macros to it. Every request now carries
+    // a sequence number and a stale one is dropped on arrival.
+    var seq = ++reqSeq;
 
     // Background-safe: OF.aiJob turns this into a server job + poll, so
     // switching apps mid-estimate no longer errors — the answer is waiting
@@ -376,7 +385,6 @@ OF.foodPhoto = (function () {
       path: "/api/estimate",
       apiUrl: apiUrl,
       apiHeaders: apiHeaders,
-      timeoutMs: REQUEST_TIMEOUT_MS,
       payload: {
         imageBase64: imgB64,
         mime: "image/jpeg",
@@ -384,6 +392,7 @@ OF.foodPhoto = (function () {
       }
     })
       .then(function (r) {
+        if (seq !== reqSeq) return;      // a newer request supersedes this one
         var httpStatus = r.status, j = r.body;
         server = "ok";         // we reached it — keep the status hint truthful
         renderButton();        // ...including the Food-tab hint under the button
@@ -419,6 +428,7 @@ OF.foodPhoto = (function () {
         renderModal();
       })
       .catch(function (e) {
+        if (seq !== reqSeq) return;
         var aborted = e && e.name === "AbortError";
         if (!aborted) { server = "no-server"; renderButton(); }
         if (!isOpen()) return;
@@ -433,6 +443,7 @@ OF.foodPhoto = (function () {
         renderModal();
       })
       .then(function () { // finally
+        if (seq !== reqSeq) return;      // don't unlock/stop a newer request
         stopThinkTicker();
         busy = false;
       });

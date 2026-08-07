@@ -80,8 +80,13 @@ class _LLMGuard:
     def __init__(self):
         self._lock = None
     def acquire(self) -> bool:
-        self._lock = COACH_LOCK if llm_config()["mode"] == "cli" else API_SEMAPHORE
-        return self._lock.acquire(blocking=False)
+        lock = COACH_LOCK if llm_config()["mode"] == "cli" else API_SEMAPHORE
+        # only take ownership on success — holding a reference to a lock we
+        # do NOT hold is one careless edit away from releasing someone else's
+        if not lock.acquire(blocking=False):
+            return False
+        self._lock = lock
+        return True
     def release(self) -> None:
         if self._lock is not None:
             self._lock.release()
@@ -113,7 +118,7 @@ def _prune_jobs() -> None:
             del COACH_JOBS[jid]
 
 
-_PROPOSAL_LINE_RE = re.compile(r"(?:\r?\n)PROPOSAL[ \t]+\{.*\}[ \t]*$")
+_PROPOSAL_LINE_RE = re.compile(r"(?:^|\r?\n)PROPOSAL[ \t]+\{.*\}[ \t]*$", re.M)
 
 
 def _strip_proposal(text: str) -> str:
@@ -140,6 +145,24 @@ def _job_exists(jid: str) -> bool:
         return jid in COACH_JOBS
 
 
+def _job_claim(jid: str) -> bool:
+    """Atomically reserve a client-supplied job id. True = we own it and must
+    run the work; False = someone already registered it (a re-sent POST after
+    the phone was backgrounded), so the caller re-attaches instead.
+
+    Checking existence and registering in two steps left a window as wide as
+    the body read (up to 10 MB over a phone uplink), in which a re-send could
+    start a SECOND paid LLM call for the same job."""
+    now = time.time()
+    with COACH_JOBS_LOCK:
+        rec = COACH_JOBS.get(jid)
+        if rec is not None and now - rec["ts"] <= JOB_TTL_S:
+            return False
+        COACH_JOBS[jid] = {"status": "pending", "answer": None,
+                           "result": None, "error": None, "ts": now}
+        return True
+
+
 def _start_json_job(fn, guard, jid: str | None = None) -> str:
     """Run fn() -> (result_dict|None, err|None) in a worker; store the dict
     under the job id for GET /api/coach/result polling. Same store/TTL as
@@ -147,8 +170,11 @@ def _start_json_job(fn, guard, jid: str | None = None) -> str:
     if not jid:
         jid = secrets.token_hex(8)
     with COACH_JOBS_LOCK:
-        COACH_JOBS[jid] = {"status": "pending", "answer": None,
-                           "result": None, "error": None, "ts": time.time()}
+        # _job_claim may already have reserved this id; never clobber a
+        # record (that would orphan a running worker's result)
+        if jid not in COACH_JOBS:
+            COACH_JOBS[jid] = {"status": "pending", "answer": None,
+                               "result": None, "error": None, "ts": time.time()}
 
     def work():
         try:
@@ -166,7 +192,16 @@ def _start_json_job(fn, guard, jid: str | None = None) -> str:
                 else:
                     rec["status"], rec["result"] = "done", result
 
-    threading.Thread(target=work, daemon=True).start()
+    try:
+        threading.Thread(target=work, daemon=True).start()
+    except BaseException:
+        # The worker owns the guard's release; if it never starts, nothing
+        # ever releases COACH_LOCK and EVERY AI feature is dead until the
+        # server restarts. Hand the guard back and drop the orphan job.
+        guard.release()
+        with COACH_JOBS_LOCK:
+            COACH_JOBS.pop(jid, None)
+        raise
     return jid
 
 
@@ -194,7 +229,13 @@ def _start_coach_job(question: str, context: dict, guard) -> str:
                 else:
                     rec["status"], rec["answer"] = "done", answer
 
-    threading.Thread(target=work, daemon=True).start()
+    try:
+        threading.Thread(target=work, daemon=True).start()
+    except BaseException:
+        guard.release()          # see _start_json_job: a leak bricks the coach
+        with COACH_JOBS_LOCK:
+            COACH_JOBS.pop(jid, None)
+        raise
     return jid
 
 
@@ -1636,10 +1677,14 @@ class Handler(SimpleHTTPRequestHandler):
         # Re-sent POST after backgrounding (same client jobId, job already
         # registered): re-attach WITHOUT a new LLM call, rate slot, or a
         # bounce off the busy lock — the first request is still computing.
-        if payload.get("wantJob") and _job_valid(payload.get("jobId")) \
-                and _job_exists(payload["jobId"]):
-            self._send_json(200, {"ok": True, "jobId": payload["jobId"]})
-            return
+        # The claim is ATOMIC, so two racing re-sends can never both run.
+        _prune_jobs()
+        claimed_jid = None
+        if payload.get("wantJob") and _job_valid(payload.get("jobId")):
+            if not _job_claim(payload["jobId"]):
+                self._send_json(200, {"ok": True, "jobId": payload["jobId"]})
+                return
+            claimed_jid = payload["jobId"]
 
         # ---- one CLI call at a time (shared with the coach)
         guard = _LLMGuard()
@@ -1666,7 +1711,7 @@ class Handler(SimpleHTTPRequestHandler):
         # mid-analysis no longer loses the answer. Legacy clients keep the
         # inline response.
         if payload.get("wantJob"):
-            jid = payload.get("jobId") if _job_valid(payload.get("jobId")) else None
+            jid = claimed_jid
 
             def est_fn():
                 est, e2 = run_estimate(image_bytes, mime, description)
@@ -1751,10 +1796,13 @@ class Handler(SimpleHTTPRequestHandler):
 
         # Re-sent POST after backgrounding: re-attach to the running job
         # (see the same block in _post_estimate).
-        if payload.get("wantJob") and _job_valid(payload.get("jobId")) \
-                and _job_exists(payload["jobId"]):
-            self._send_json(200, {"ok": True, "jobId": payload["jobId"]})
-            return
+        _prune_jobs()
+        claimed_jid = None
+        if payload.get("wantJob") and _job_valid(payload.get("jobId")):
+            if not _job_claim(payload["jobId"]):
+                self._send_json(200, {"ok": True, "jobId": payload["jobId"]})
+                return
+            claimed_jid = payload["jobId"]
 
         # ---- one CLI call at a time (shared with the coach + estimate)
         guard = _LLMGuard()
@@ -1778,7 +1826,7 @@ class Handler(SimpleHTTPRequestHandler):
             return
         # Background-safe physique analysis: same job flow as /api/estimate.
         if payload.get("wantJob"):
-            jid = payload.get("jobId") if _job_valid(payload.get("jobId")) else None
+            jid = claimed_jid
 
             def phys_fn():
                 ana, e2 = run_physique(photos, description, stats)

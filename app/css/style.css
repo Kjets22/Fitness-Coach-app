@@ -749,6 +749,7 @@ input[type="checkbox"], input[type="radio"] { -webkit-appearance: auto; appearan
 .metric-modal-head h2 { margin: 0; font-size: 1.15rem; }
 .metric-modal-close { background: transparent; border: none; color: var(--text-dim); font-size: 1.7rem; line-height: 1; min-width: 44px; min-height: 44px; cursor: pointer; }
 .metric-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(74px, 1fr)); gap: 8px; margin-bottom: var(--sp-3); }
+.metric-stats.rd-stats { display: block; }   /* prose panel, not a pill grid */
 .metric-stat { background: var(--bg-2); border: 1px solid var(--card-edge); border-radius: var(--r-md); padding: 8px 6px; text-align: center; }
 .metric-stat-val { font-weight: 800; font-size: 1rem; font-variant-numeric: tabular-nums; letter-spacing: -0.01em; }
 .metric-stat-lbl { color: var(--text-dim); font-size: 0.68rem; font-weight: 600; margin-top: 2px; }

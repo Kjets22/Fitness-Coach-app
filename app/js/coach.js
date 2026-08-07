@@ -48,7 +48,7 @@ OF.coach = (function () {
      back — even after a full reload. */
   var JOB_STORE = "optimalfit.coachJob";     // {jobId, question, ts}
   var POLL_MS = 2500;
-  var JOB_MAX_AGE_MS = 10 * 60 * 1000;       // give up resuming after 10 min
+  var JOB_MAX_AGE_MS = 16 * 60 * 1000;  // must outlive the server 15-min job TTL
   var pollTimer = null;
   var pollMisses = 0;
   var pendingSend = null;   // question whose POST died because the app was
@@ -952,7 +952,14 @@ OF.coach = (function () {
   function pollJob() {
     stopPolling();
     var job = loadJob();
-    if (!job) { setBusy(false); renderLog(); return; }
+    if (!job) {
+      // loadJob() also returns null for an EXPIRED record — the thinking
+      // state used to just evaporate, leaving the question with no reply
+      // and a stale job in localStorage
+      if (busy) { clearJob(); finishJob("error", "That answer took too long — ask again."); }
+      else { setBusy(false); renderLog(); }
+      return;
+    }
 
     fetch(apiUrl("/api/coach/result?id=" + encodeURIComponent(job.jobId)),
       { cache: "no-store", headers: apiHeaders() })

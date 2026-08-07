@@ -659,6 +659,12 @@ OF.trainer = (function () {
         return isFinite(v) && v > 0;
       });
       if (anyLoad) return;              // real load present → weight progression below
+      // A LOADED lift logged with the weight field left blank is a missing
+      // entry, not bodyweight work. Ratcheting its rep target made the
+      // prescription silently harder ("4x8-12 @ 60 kg") for forgetting to
+      // type the weight — and repeats climbed to the 40/50-rep caps on a
+      // barbell lift. Only genuinely bodyweight slots progress by reps.
+      if (ex.weightKg != null && Number(ex.incKg) > 0) return;
       bwProgressed[ex.name.toLowerCase()] = true;
       var top = loggedBw.filter(function (s2) { return Number(s2.reps) >= 1; })
         .sort(function (a, b) { return Number(b.reps) - Number(a.reps); }).slice(0, ex.sets);
@@ -1248,8 +1254,6 @@ OF.trainer = (function () {
     addAvoid: addAvoid,
     unavoid: unavoid,
     swapSlot: swapSlot,
-    hasProgram: hasProgram,
-    load: load,
     EQUIP_ALLOW: EQUIP_ALLOW,
     SPLITS: SPLITS
   };

@@ -36,7 +36,7 @@ OF.physique = (function () {
   var description = "";        // survives re-renders
   var analysis = null;         // last parsed analysis from the server
   var errorMsg = "";
-  var ctrl = null;             // in-flight AbortController
+  var reqSeq = 0;             // stale-result guard (see doEstimate/doAnalyze)
 
   var MAX_SIDE = 1600;
   var JPEG_QUALITY = 0.85;
@@ -364,7 +364,11 @@ OF.physique = (function () {
   }
 
   function closeModal() {
-    if (ctrl) { try { ctrl.abort(); } catch (e) { /* ignore */ } ctrl = null; }
+    // abandon anything in flight: bump the sequence so a late result is
+    // dropped, and kill the 1 Hz label ticker (it used to run until the job
+    // settled, and in the resend-pending state that could be forever)
+    reqSeq++;
+    stopThinkTicker();
     busy = false;
     els.modal.classList.add("hidden");
     els.modal.innerHTML = "";
@@ -414,6 +418,11 @@ OF.physique = (function () {
     state = "loading";
     renderModal();
     startThinkTicker();
+    // Closing the modal used to cancel nothing (the AbortController here was
+    // never actually assigned), so an old job could resolve over a NEWER
+    // photo and attribute the wrong macros to it. Every request now carries
+    // a sequence number and a stale one is dropped on arrival.
+    var seq = ++reqSeq;
 
     // Background-safe: server job + poll via OF.aiJob — switching apps
     // mid-analysis no longer errors; the result is waiting on return.
@@ -421,7 +430,6 @@ OF.physique = (function () {
       path: "/api/physique",
       apiUrl: apiUrl,
       apiHeaders: apiHeaders,
-      timeoutMs: REQUEST_TIMEOUT_MS,
       payload: {
         // legacy single-image fields keep an updated app working against an
         // older server; a current server prefers the richer `images` list
@@ -435,6 +443,7 @@ OF.physique = (function () {
       }
     })
       .then(function (r) {
+        if (seq !== reqSeq) return;      // a newer request supersedes this one
         var httpStatus = r.status, j = r.body;
         if (!isOpen()) return;
         if (httpStatus === 401) {
@@ -464,6 +473,7 @@ OF.physique = (function () {
         renderModal();
       })
       .catch(function (e) {
+        if (seq !== reqSeq) return;
         if (!isOpen()) return;
         state = "error";
         errorMsg = (e && e.name === "AbortError")
@@ -476,6 +486,7 @@ OF.physique = (function () {
         renderModal();
       })
       .then(function () { // finally
+        if (seq !== reqSeq) return;      // don't unlock/stop a newer request
         stopThinkTicker();
         busy = false;
       });

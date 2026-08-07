@@ -35,14 +35,29 @@ OF.aiJob = (function () {
   var MAX_RESENDS = 3;
 
   function uid() {
-    return Date.now().toString(36) + "-" + Math.random().toString(36).slice(2, 9);
+    // job ids are the handle to a stored analysis, so prefer a CSPRNG;
+    // Math.random is only the fallback for ancient webviews
+    try {
+      var a = new Uint8Array(16);
+      crypto.getRandomValues(a);
+      return Array.prototype.map.call(a, function (b) {
+        return ("0" + b.toString(16)).slice(-2);
+      }).join("");
+    } catch (e) {
+      return Date.now().toString(36) + "-" + Math.random().toString(36).slice(2, 9);
+    }
   }
 
   function request(opts) {
     var path = opts.path;
     var apiUrl = opts.apiUrl;
     var apiHeaders = opts.apiHeaders;
-    var timeoutMs = opts.timeoutMs || 240000;
+    // NOTE: this deadline is wall-clock and includes time the app spent
+    // backgrounded — the exact case this module exists to survive. It must
+    // therefore track the SERVER's job TTL (15 min), not the per-request
+    // CLI budget (120 s), or a finished answer expires client-side while
+    // it is sitting on the server waiting to be collected.
+    var timeoutMs = opts.timeoutMs || 15 * 60 * 1000;
     var jobId = uid();
     var payload = Object.assign({}, opts.payload, { wantJob: true, jobId: jobId });
 
@@ -114,12 +129,32 @@ OF.aiJob = (function () {
 
       function poll() {
         if (settled || timedOut()) return;
+        var pollStatus = 0;
         fetch(apiUrl("/api/coach/result?id=" + encodeURIComponent(jobId)),
               { cache: "no-store", headers: apiHeaders({}) })
-          .then(function (res) { return res.json(); })
+          .then(function (res) {
+            pollStatus = res.status;
+            // a 5xx from the tunnel edge carries an HTML body — without this
+            // the parse failure looked like a dropped connection and the user
+            // was told "check your internet" for a server-side fault
+            return res.json().catch(function () {
+              return { ok: false, httpError: true, error: res.ok
+                ? "The server returned an unreadable response — try again."
+                : "The server hit an error (HTTP " + res.status + "). Try again in a minute." };
+            });
+          })
           .then(function (j) {
             if (settled) return;
             misses = 0;
+            // 401 is terminal: the caller has real pairing/key handling for it
+            if (pollStatus === 401) {
+              settle(resolve, { status: 401, body: j || { ok: false } });
+              return;
+            }
+            if (j && j.httpError) {
+              settle(resolve, { status: pollStatus, body: j });
+              return;
+            }
             if (j && j.status === "pending") {
               pollTimer = setTimeout(poll, POLL_MS);
             } else if (j && j.status === "done" && j.result) {

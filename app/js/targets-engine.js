@@ -395,8 +395,14 @@ OF.targets = (function () {
       if (goal.targetDate && dayNum(goal.targetDate) != null) {
         var endDn = dayNum(goal.targetDate);
         var slack = Math.max(14, Math.round((endDn - startDn) * 0.15));
-        out.onTrack = out.reached === true ||
-          (out.projectedDate != null && dayNum(out.projectedDate) <= endDn + slack);
+        // onTrack must stay NULL when we simply can't tell — callers treat
+        // false as "behind pace" (amber ring, "tighten your calories"), and
+        // an empty 28-day rate window is not evidence of being behind. A
+        // user 50% done in 33% of the timeline was being told off for it.
+        out.onTrack = out.reached === true ? true
+          : (out.projectedDate != null
+              ? dayNum(out.projectedDate) <= endDn + slack
+              : null);
       } else if (rate != null) {
         var wantRate = metric === "muscle"
           ? MUSCLE_TYPICAL_KG_WK

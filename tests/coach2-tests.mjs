@@ -768,4 +768,59 @@ section("progression guards");
   check("missing level falls back to balanced", T.adaptationDecision(400) === "propose");
 }
 
+/* ---------- regressions from the 2026-08-07 deep-dive audit ---------- */
+{
+  section("audit regressions");
+  const w = makeWorld();
+  const T = w.OF.targets, TR = w.OF.trainer;
+  const iso = (d) => w.OF.util.todayISO(d);
+
+  // AUDIT #2: an empty 28-day rate window is NOT evidence of being behind.
+  // onTrack must stay null ("unknown"), because callers render false as
+  // "behind pace" (amber ring + "tighten your calories this week").
+  let p = T.goalProgress(
+    { date: iso(-40), type: "cut", targetAmountKg: 10, targetDate: iso(80) },
+    [{ date: iso(-40), weightKg: 90 }, { date: iso(0), weightKg: 85 }]);
+  check("50% done in 33% of the timeline is not 'behind'", p.onTrack === null, p.onTrack);
+  check("...and the progress itself is still reported", p.pct === 0.5 && p.achievedKg === 5);
+  // with a mid weigh-in the rate exists again and the verdict returns
+  p = T.goalProgress(
+    { date: iso(-40), type: "cut", targetAmountKg: 10, targetDate: iso(80) },
+    [{ date: iso(-40), weightKg: 90 }, { date: iso(-14), weightKg: 87 }, { date: iso(0), weightKg: 85 }]);
+  check("a usable rate window yields a real verdict", p.onTrack === true, p.onTrack);
+
+  // AUDIT #3: a LOADED lift logged with blank weights is a missing entry,
+  // not bodyweight work — it must not ratchet the rep target.
+  w.OF.profile.update({ goals: { primary: "muscle" }, prefs: { daysPerWeek: 3 } }, "test");
+  TR.createProgram({ daysPerWeek: 3, equipment: "full-gym" });
+  // load() re-parses from storage, so the baseline weight must be written
+  // back through the store, not set on the returned copy
+  const prog = TR.load();
+  const slotIdx = prog.days[0].slots.findIndex((x) => !x.hold && x.incKg > 0);
+  prog.days[0].slots[slotIdx].weightKg = 60;
+  w.store["optimalfit.trainerProgram"] = JSON.stringify(prog);
+  const slot = TR.load().days[0].slots[slotIdx];
+  const beforeHigh = slot.repHigh;
+  check("baseline weight persisted for the test", slot.weightKg === 60, slot.weightKg);
+  const res = TR.completeSession(0, [{
+    name: slot.name,
+    sets: Array.from({ length: slot.sets }, () => ({ weightKg: null, reps: slot.repHigh + 2 }))
+  }]);
+  check("blank-weight sets do not ratchet a loaded lift's reps",
+    TR.load().days[0].slots.find((x) => x.name === slot.name).repHigh === beforeHigh,
+    TR.load().days[0].slots.find((x) => x.name === slot.name).repHigh);
+  check("...and no reps-up change is reported",
+    !(res.changes || []).some((c) => c.name === slot.name && c.kind === "reps-up"));
+
+  // a genuinely bodyweight slot still progresses by reps
+  const bw = TR.load().days.flatMap((d) => d.slots).find((x) => !x.hold && x.incKg === 0);
+  if (bw) {
+    const bwBefore = bw.repHigh;
+    TR.completeSession(TR.load().days.findIndex((d) => d.slots.some((x) => x.name === bw.name)),
+      [{ name: bw.name, sets: Array.from({ length: bw.sets }, () => ({ weightKg: null, reps: bw.repHigh + 1 })) }]);
+    const after = TR.load().days.flatMap((d) => d.slots).find((x) => x.name === bw.name);
+    check("bodyweight work still progresses by reps", after.repHigh > bwBefore, after.repHigh);
+  }
+}
+
 report("coach2-tests");

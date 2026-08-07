@@ -3,6 +3,87 @@
 > Persistent shared memory for the manager + agent loop. Every agent MUST read this
 > before working and append findings to the relevant branch + Loop Log before finishing.
 
+---
+
+## ⚡ CURRENT STATE (2026-08-07, v1.8.0 build 61) — read this first
+
+Everything below this box is HISTORY (Phase 2/3 era, written around build 50) and
+contains stale paths and claims. Where they disagree, THIS box wins.
+
+**Where things are**
+- Repo: `/Users/krishjetly/Fitness-Coach-app` (macOS). Web app in `app/`,
+  Capacitor wrapper in `native/` (`native/www/` is GENERATED — never edit).
+- Version truth: `app/js/util.js` `OF.APP_VERSION`, mirrored into
+  `native/ios/App/App.xcodeproj/project.pbxproj` (MARKETING_VERSION +
+  CURRENT_PROJECT_VERSION, all 4 configs) and `native/android/app/build.gradle`.
+  Bump `app/sw.js` VERSION on ANY shell change.
+- Tests: `node tests/coach2-tests.mjs` (214) + `node tests/coach2-eval.mjs` (45).
+  The storage stub in `tests/coach2-shim.mjs` mirrors the REAL storage contract
+  (type whitelist that THROWS) — a permissive stub once hid a crash-level bug.
+
+**The coach is a HOSTED service, not a PC companion** (supersedes the old
+"zero API spend / pairs with your PC" framing): `serve.py` runs on this Mac
+behind a tailscale funnel; the shipped app has the URL+key baked into
+`app/js/coach-config.js`, which is **skip-worktree** — the COMMITTED copy has
+empty url/key and the live key has never entered git history (verified). LLM
+route is either the Claude CLI (`mode: "cli"`, single-flight `COACH_LOCK`) or a
+paid Anthropic API key (`mode: "api"`, semaphore of 4).
+
+**AI request contract (builds 50-61)** — the part most likely to bite:
+- `POST /api/coach|/api/estimate|/api/physique` answer INLINE `{ok, answer|estimate|
+  analysis}` unless the client sends `wantJob: true`. Old shipped apps (App Store
+  build 47, phone ≤49) depend on that. NEVER make the endpoints unconditionally
+  async — it bricks every installed copy.
+- With `wantJob`, they return `{ok, jobId}` and the client polls
+  `GET /api/coach/result?id=…` until `{status:"done"}`. Jobs live 15 min in
+  `COACH_JOBS`. A re-sent POST carrying the SAME client `jobId` re-attaches
+  (atomic `_job_claim`) instead of paying for a second LLM call.
+- Client side: `app/js/ai-job.js` (photo flows) and the job path inside
+  `app/js/coach.js`. Both survive iOS suspending the app mid-answer.
+- `_strip_proposal()` removes the trailing `PROPOSAL {json}` line for old
+  clients that would render raw JSON.
+
+**Modules added since the old map** (all registered in BOTH `app/index.html`
+and the `app/sw.js` SHELL — that pairing is enforced, verify it for any new file):
+- `ai-job.js` — background-safe AI request wrapper.
+- `next-move.js` — pure "Do this next" picker (readiness + session + targets vs
+  eaten + goal pace + time of day). Rendered under the dashboard hero.
+- `insights-engine.js` — `readiness()` now also returns structured `signals`
+  (sleepShortMin, quality, streak, maxConsecutive, hoursSinceLast, layoffDays)
+  and `readinessAdvice()` turns them into ranked actions. Tapping the hero ring
+  opens the explainer modal (`openReadinessDetail` in `dashboard.js`; it sets
+  `.rd-stats` so the shared `.metric-stats` PILL GRID doesn't shred the prose).
+- `trainer.js` — `coachRestSec()`/`isCompoundName()` (per-exercise rest defaults,
+  user overrides in `optimalfit.exRest`), `doneToday()` + program
+  `lastDoneOn`/`lastDoneName` (the done-for-today celebration card).
+- `entitlements.js` — 30-day install trial: `optimalfit.installedAt` (+
+  `.welcomed`), device-local, kept on account switch by `cloud-sync.js` KEEP.
+- `targets-engine.js` — `adaptationDecision(delta, autonomy)` +
+  `AUTONOMY_LEVELS`; `goals.js` proposes vs auto-applies calorie retunes
+  accordingly. Proposals are stored in the **adjustments** store under kind
+  `calories-proposal` (storage.js enforces a TYPE WHITELIST and throws on
+  unknown types — never invent one).
+- `index.html` — inline boot splash (`#boot-splash`), cleared by `app.js` after
+  the first tab renders; CSS failsafe hides it at 12 s.
+
+**Phone installs build RELEASE** (`native/ios/install-to-phone.sh`). A Debug
+build loads ~8 unoptimized dynamic frameworks and black-screens for ~30 s on a
+real device; the simulator shows ~2 s, so sim QA cannot catch it.
+
+**QA harnesses are scratch.** `app/test-drive.html` and any `app/qa*src/` are
+gitignored; they were once committed and staged inside the shippable bundle.
+Always confirm `git status` is clean of them before an archive.
+
+**localStorage keys not documented elsewhere:** `optimalfit.installedAt`(+`.welcomed`),
+`optimalfit.exRest`, `optimalfit.ownerUid`, `optimalfit.prMeta`, `optimalfit.streakMeta`,
+`optimalfit.trainerStats`, `optimalfit.valuestrip.dismissed`, `optimalfit.coachJob`,
+and `prefs` sub-keys `engineAutonomy`, `aiConsent`, `introSeen`.
+
+**Known-good conventions:** epoch day = `Math.floor(Date.UTC(y,m-1,d,12)/86400000)`
+(UTC noon) in EVERY module — a local-midnight copy is a day off in UTC+13/+14.
+
+---
+
 ## 🎯 Root: OptimalFit — personal fitness optimization app
 
 An app that tracks sleep, food, exercise, weight, body fat %, and muscle mass %,

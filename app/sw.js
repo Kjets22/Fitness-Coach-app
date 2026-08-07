@@ -15,7 +15,7 @@
    ============================================================ */
 
 /* Bump this string when any shell file changes. */
-var VERSION = "v122"; /* audit fixes: readiness modal, stale results, poll honesty */
+var VERSION = "v123"; /* sleep-tab refresh + unknown-goal message */
 var CACHE = "optimalfit-shell-" + VERSION;
 
 var SHELL = [

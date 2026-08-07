@@ -54,6 +54,12 @@ OF.app = (function () {
     if (name === "community" && OF.social) OF.social.onEnter();
     if (name === "food" && OF.foodPhoto) OF.foodPhoto.onEnter(); // photo-estimate server check
     if (name === "body" && OF.physique) OF.physique.onEnter();   // physique-photo server check
+    // The tracker lists only re-rendered from their own add/edit paths, so
+    // records arriving from a Health import or cloud sync while the tab was
+    // already mounted left a stale list (or "nothing logged yet").
+    if (name === "sleep" && OF.sleep && OF.sleep.renderList) {
+      try { OF.sleep.renderList(); } catch (e) {}
+    }
   }
 
   function currentTabFromHash() {

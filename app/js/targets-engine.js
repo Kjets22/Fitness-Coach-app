@@ -168,7 +168,16 @@ OF.targets = (function () {
    * Returns null (no/unknown goal) or {status:"no-weight"...} or the target set.
    */
   function computeTargets(goal, opts) {
-    if (!goal || !GOAL_TYPES[goal.type]) return null;
+    if (!goal) return null;
+    if (!GOAL_TYPES[goal.type]) {
+      // A goal record with an unrecognised type can only arrive from a
+      // restored backup or cloud sync (the UI can't make one). Returning a
+      // bare null blanked the goal card AND every daily target with no
+      // message at all — say what happened instead.
+      return { status: "unknown-type",
+        message: "This goal's type (\u201c" + String(goal.type || "missing") +
+          "\u201d) isn't one this version knows. Edit your goal to pick a current one." };
+    }
     var t = GOAL_TYPES[goal.type];
     opts = opts || {};
     var kg = num(opts.weightKg);

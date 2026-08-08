@@ -27,8 +27,8 @@ OF.foodPhoto = (function () {
   var server = null;          // null (unknown) | "ok" | "no-server"
   var state = "pick";         // pick | loading | result | nonfood | error
   var busy = false;
-  var imgB64 = null;          // raw base64 of the re-encoded JPEG
-  var previewUrl = null;      // data: URL for the thumbnail
+  var photos = [];            // [{b64, url}] — one meal, up to MAX_PHOTOS dishes
+  var MAX_PHOTOS = 4;
   var description = "";       // survives re-renders
   var estimate = null;        // last parsed estimate from the server
   var errorMsg = "";
@@ -133,7 +133,7 @@ OF.foodPhoto = (function () {
     // (A disabled button reads as "pressed it and nothing happened" — never again.)
     var hint = server === "no-server"
       ? 'Your computer looks offline &mdash; you can still snap the photo and retry'
-      : 'Snap your meal, get the macros prefilled';
+      : 'Snap your meal — add a photo per dish and get the macros prefilled';
     els.area.innerHTML =
       '<button type="button" class="btn photo-btn" id="photo-open">' + OF.icons.get("camera") +
       '<span>Estimate from photo</span></button>' +
@@ -213,14 +213,17 @@ OF.foodPhoto = (function () {
     return '<h2>Estimate from photo</h2>' +
       '<div id="photo-note-slot">' + serverNoticeHtml() + '</div>' +
       '<div class="photo-pick-row">' +
-        '<label class="btn photo-file-btn">' + OF.icons.get("camera") +
-          '<span>' + (previewUrl ? 'Change photo' : 'Take / choose photo') + '</span>' +
-          '<input type="file" id="photo-file" accept="image/*" hidden>' +
-        '</label>' +
+        (photos.length < MAX_PHOTOS
+          ? '<label class="btn photo-file-btn">' + OF.icons.get("camera") +
+            '<span>' + (photos.length ? 'Add another dish' : 'Take / choose photo') + '</span>' +
+            '<input type="file" id="photo-file" accept="image/*" multiple hidden>' +
+            '</label>'
+          : '<span class="muted small">' + MAX_PHOTOS + ' photos is the max for one meal.</span>') +
       '</div>' +
-      '<div class="photo-preview" id="photo-preview">' +
-        (previewUrl ? '<img src="' + U.esc(previewUrl) + '" alt="Selected meal photo">' : '') +
-      '</div>' +
+      thumbsHtml() +
+      (photos.length > 1
+        ? '<p class="muted small photo-multi-note">All ' + photos.length +
+          ' dishes are estimated together as one meal.</p>' : '') +
       '<label class="photo-desc-label">Details (optional)' +
         '<textarea id="photo-desc" maxlength="500" rows="2" ' +
         'placeholder="Add details to improve the estimate: portion size, cooking oil, sauces…">' +
@@ -230,16 +233,30 @@ OF.foodPhoto = (function () {
         U.esc(errorMsg) + '</p>' +
       '<div class="form-actions">' +
         '<button type="button" class="btn primary" id="photo-estimate"' +
-          (imgB64 ? '' : ' disabled') + '>Estimate</button>' +
+          (photos.length ? '' : ' disabled') + '>Estimate</button>' +
         '<button type="button" class="btn ghost" data-close-photo>Cancel</button>' +
       '</div>';
   }
 
+  /** Thumbnail strip. withRemove=false for the loading/result states, where
+      the photos are no longer editable. */
+  function thumbsHtml(withRemove) {
+    if (!photos.length) return '<div class="photo-preview" id="photo-preview"></div>';
+    if (withRemove === undefined) withRemove = true;
+    return '<div class="photo-thumbs">' + photos.map(function (p, i) {
+      return '<div class="photo-thumb">' +
+        '<img src="' + U.esc(p.url) + '" alt="Dish ' + (i + 1) + '">' +
+        (withRemove
+          ? '<button type="button" class="photo-thumb-x" data-rm-photo="' + i +
+            '" aria-label="Remove dish ' + (i + 1) + '">&times;</button>'
+          : '') +
+        '</div>';
+    }).join("") + '</div>';
+  }
+
   function loadingHtml() {
     return '<h2>Estimate from photo</h2>' +
-      '<div class="photo-preview">' +
-        (previewUrl ? '<img src="' + U.esc(previewUrl) + '" alt="Selected meal photo">' : '') +
-      '</div>' +
+      thumbsHtml(false) +
       '<div class="msg-row photo-thinking">' +
         '<span class="coach-avatar" aria-hidden="true">' + OF.icons.get("camera") + '</span>' +
         '<div class="bubble bubble-coach bubble-thinking">' +
@@ -333,8 +350,7 @@ OF.foodPhoto = (function () {
 
   function openModal() {
     state = "pick";
-    imgB64 = null;
-    previewUrl = null;
+    photos = [];
     description = "";
     estimate = null;
     errorMsg = "";
@@ -366,7 +382,7 @@ OF.foodPhoto = (function () {
   }
 
   function doEstimate() {
-    if (busy || !imgB64) return;
+    if (busy || !photos.length) return;
     saveDesc();
     busy = true;
     state = "loading";
@@ -386,8 +402,13 @@ OF.foodPhoto = (function () {
       apiUrl: apiUrl,
       apiHeaders: apiHeaders,
       payload: {
-        imageBase64: imgB64,
+        // legacy single-image fields keep an updated app working against an
+        // older server; a current server prefers the richer `images` list
+        imageBase64: photos[0].b64,
         mime: "image/jpeg",
+        images: photos.map(function (p) {
+          return { imageBase64: p.b64, mime: "image/jpeg" };
+        }),
         description: description
       }
     })
@@ -514,27 +535,29 @@ OF.foodPhoto = (function () {
   /* ---------------- wiring ---------------- */
 
   function onFilePicked(input) {
-    var file = input.files && input.files[0];
-    if (!file) return;
+    var files = input.files ? Array.prototype.slice.call(input.files) : [];
+    if (!files.length) return;
     errorMsg = "";
-    // Invalidate the PREVIOUS photo right away: tapping Estimate while the new
-    // one is still re-encoding must not silently analyze the old image.
-    imgB64 = null;
+    var room = MAX_PHOTOS - photos.length;
+    if (files.length > room) {
+      files = files.slice(0, room);
+      errorMsg = "Only " + MAX_PHOTOS + " photos per meal — the extras were skipped.";
+    }
     saveDesc();
     renderModal();
-    reencode(file, function (b64, dataUrl, err) {
-      if (!isOpen() || state !== "pick") return;
-      if (err) {
-        imgB64 = null;
-        previewUrl = null;
-        errorMsg = err;
-      } else {
-        imgB64 = b64;
-        previewUrl = dataUrl;
-      }
-      saveDesc();
-      renderModal();
+    var pending = files.length;
+    files.forEach(function (file) {
+      reencode(file, function (b64, dataUrl, err) {
+        pending--;
+        if (!isOpen() || state !== "pick") return;
+        if (err) errorMsg = err;
+        else if (photos.length < MAX_PHOTOS) photos.push({ b64: b64, url: dataUrl });
+        if (pending === 0) { saveDesc(); renderModal(); }
+      });
     });
+    // the input keeps its selection, so picking the SAME file again would be
+    // ignored — clear it so "add another" works for a re-shot dish
+    try { input.value = ""; } catch (e) {}
   }
 
   function init() {
@@ -551,6 +574,16 @@ OF.foodPhoto = (function () {
     });
 
     els.modal.addEventListener("click", function (e) {
+      var rm = e.target.closest("[data-rm-photo]");
+      if (rm) {
+        var idx = parseInt(rm.getAttribute("data-rm-photo"), 10);
+        if (idx >= 0 && idx < photos.length) {
+          photos.splice(idx, 1);
+          saveDesc();
+          renderModal();
+        }
+        return;
+      }
       if (e.target.closest("[data-close-photo]")) { closeModal(); return; }
       if (e.target.closest("#photo-estimate")) { doEstimate(); return; }
       if (e.target.closest("#photo-use")) { useValues(); return; }

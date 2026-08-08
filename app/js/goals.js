@@ -543,7 +543,11 @@ OF.goals = (function () {
           live.message;
       }
       html += '<p class="goal-note muted small">' + e(maintTxt) + '</p>';
-    } else if (targets && targets.status === "no-weight") {
+    } else if (targets && (targets.status === "no-weight" ||
+                           targets.status === "unknown-type")) {
+      // unknown-type computed an accurate explanation but nothing rendered it,
+      // so the card fell through to "log your weight to start tracking" — told
+      // users to do something they had already done and hid the real cause
       html += '<div class="goal-reality">' + e(targets.message) + '</div>';
     }
 

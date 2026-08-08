@@ -215,6 +215,25 @@ comments, check-ins, follows, benchmarks, and the account backup.
 
 Hero = #5 (the Receipt differentiator). If uploading fewer than 8, keep #1, #2, #5 at minimum. A matching Google Play set (1080×2160, 2:1) exists at `play-1080x2160-*.png`.
 
+## What's New (1.10.0)
+
+```
+Eating out is now the easy part. Photograph every dish — up to four — and
+get one set of macros for the whole meal. Name the restaurant and your coach
+looks up the real menu and tells you what to order for your goal.
+
+Your coach also understands drinking. Tell it you're out Saturday and it
+plans the days around it; catch it mid-night and it'll tell you what to
+order next. It learns what your nights out actually cost you and reshapes
+your week to absorb them — you never have to give anything up to keep
+progressing.
+
+Plus: tap your readiness ring to see exactly why it's at that number and how
+to raise it, a "Do this next" card that tells you the one thing to do right
+now and changes through the day, per-exercise rest timers, and credit when
+a session is done instead of tomorrow's workout in your face.
+```
+
 ## What's New (1.8.0)
 
 ```

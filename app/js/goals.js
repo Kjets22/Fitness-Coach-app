@@ -485,8 +485,17 @@ OF.goals = (function () {
             fmtDateShort(progress.baseDate) + ": " + U.fmtWeightDelta(progress.deltaKg) +
             (t.dir === 0 ? " (goal: keep it steady)" : "")) + '</p>';
       }
-    } else {
+    } else if (T.GOAL_TYPES[goal.type]) {
       html += '<p class="goal-note muted">No body measurements yet — log your weight on the Body tab to start tracking progress.</p>';
+    }
+    // An unrecognised goal type makes goalProgress() null, which used to fall
+    // into the branch above and blame missing weigh-ins the user had already
+    // logged. Say the real thing, FIRST, where they'll actually read it.
+    if (!T.GOAL_TYPES[goal.type]) {
+      html += '<div class="goal-reality">' +
+        e((targets && targets.message) ||
+          "This goal's type isn't one this version knows. Edit your goal to pick a current one.") +
+        '</div>';
     }
 
     /* intermediate tier: derived checkpoints between today and the goal */
@@ -543,11 +552,7 @@ OF.goals = (function () {
           live.message;
       }
       html += '<p class="goal-note muted small">' + e(maintTxt) + '</p>';
-    } else if (targets && (targets.status === "no-weight" ||
-                           targets.status === "unknown-type")) {
-      // unknown-type computed an accurate explanation but nothing rendered it,
-      // so the card fell through to "log your weight to start tracking" — told
-      // users to do something they had already done and hid the real cause
+    } else if (targets && targets.status === "no-weight") {
       html += '<div class="goal-reality">' + e(targets.message) + '</div>';
     }
 

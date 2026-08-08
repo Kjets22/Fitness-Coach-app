@@ -29,6 +29,7 @@ OF.foodPhoto = (function () {
   var busy = false;
   var photos = [];            // [{b64, url}] — one meal, up to MAX_PHOTOS dishes
   var MAX_PHOTOS = 4;
+  var pickSeq = 0;            // invalidates in-flight decodes when the modal closes
   var description = "";       // survives re-renders
   var estimate = null;        // last parsed estimate from the server
   var errorMsg = "";
@@ -364,6 +365,7 @@ OF.foodPhoto = (function () {
     // dropped, and kill the 1 Hz label ticker (it used to run until the job
     // settled, and in the resend-pending state that could be forever)
     reqSeq++;
+    pickSeq++;          // a decode still running belongs to the closed meal
     stopThinkTicker();
     busy = false;
     els.modal.classList.add("hidden");
@@ -545,14 +547,25 @@ OF.foodPhoto = (function () {
     }
     saveDesc();
     renderModal();
+    // Decode into FIXED slots and commit once they're all in: pushing on
+    // completion put a mixed multi-select in decode order, not pick order.
+    // The sequence guard stops a decode that finishes after the user closed
+    // and reopened the modal from landing in the NEXT meal's photos.
+    var seq = pickSeq;
+    var slots = new Array(files.length);
     var pending = files.length;
-    files.forEach(function (file) {
+    files.forEach(function (file, i) {
       reencode(file, function (b64, dataUrl, err) {
         pending--;
-        if (!isOpen() || state !== "pick") return;
+        if (seq !== pickSeq || !isOpen() || state !== "pick") return;
         if (err) errorMsg = err;
-        else if (photos.length < MAX_PHOTOS) photos.push({ b64: b64, url: dataUrl });
-        if (pending === 0) { saveDesc(); renderModal(); }
+        else slots[i] = { b64: b64, url: dataUrl };
+        if (pending !== 0) return;
+        slots.forEach(function (ph) {
+          if (ph && photos.length < MAX_PHOTOS) photos.push(ph);
+        });
+        saveDesc();
+        renderModal();
       });
     });
     // the input keeps its selection, so picking the SAME file again would be

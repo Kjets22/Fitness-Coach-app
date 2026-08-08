@@ -15,7 +15,7 @@
    ============================================================ */
 
 /* Bump this string when any shell file changes. */
-var VERSION = "v127"; /* multi-photo meal estimates */
+var VERSION = "v128"; /* unknown-type copy + photo decode order */
 var CACHE = "optimalfit-shell-" + VERSION;
 
 var SHELL = [

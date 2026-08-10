@@ -30,7 +30,8 @@ if [ "${QA_SKIP:-0}" != "1" ]; then
   echo ">> QA gate: running test suites…"
   ( cd /Users/krishjetly/Fitness-Coach-app \
     && node tests/coach2-tests.mjs >/tmp/of-qa-tests.log 2>&1 \
-    && node tests/coach2-eval.mjs >>/tmp/of-qa-tests.log 2>&1 ) \
+    && node tests/coach2-eval.mjs >>/tmp/of-qa-tests.log 2>&1 \
+    && node tests/storage-recovery.mjs >>/tmp/of-qa-tests.log 2>&1 ) \
     || { echo "!! QA GATE FAILED — tests are red (see /tmp/of-qa-tests.log). NOT installing."; exit 1; }
   # every shipped JS file must at least parse
   for jf in /Users/krishjetly/Fitness-Coach-app/app/js/*.js; do

@@ -54,11 +54,15 @@ OF.app = (function () {
     if (name === "community" && OF.social) OF.social.onEnter();
     if (name === "food" && OF.foodPhoto) OF.foodPhoto.onEnter(); // photo-estimate server check
     if (name === "body" && OF.physique) OF.physique.onEnter();   // physique-photo server check
-    // The tracker lists only re-rendered from their own add/edit paths, so
-    // records arriving from a Health import or cloud sync while the tab was
-    // already mounted left a stale list (or "nothing logged yet").
-    if (name === "sleep" && OF.sleep && OF.sleep.renderList) {
-      try { OF.sleep.renderList(); } catch (e) {}
+    // EVERY tracker list only re-rendered from its OWN add/edit path, so
+    // records arriving any other way — a cloud sync from another device, an
+    // Apple Health import, an undo-restore — left the list showing stale
+    // content (or "nothing logged yet") until the app was relaunched. The
+    // tab you just opened must always show what is actually stored.
+    var LIST_TABS = { sleep: "sleep", food: "food", exercise: "exercise", body: "body" };
+    var mod = LIST_TABS[name] && OF[LIST_TABS[name]];
+    if (mod && mod.renderList) {
+      try { mod.renderList(); } catch (e) {}
     }
   }
 

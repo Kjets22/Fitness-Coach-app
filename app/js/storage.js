@@ -549,8 +549,67 @@ OF.storage = (function () {
     return { imported: imported, skipped: skipped };
   }
 
+
+  /* ---------------- last-resort recovery ----------------
+     Anything that can DESTROY local records (an account-switch wipe, a
+     "replace" restore) takes a full snapshot first. Storage is the only
+     copy of a user's logs, so a bad decision here loses real work — this
+     makes every destructive path reversible from inside the app.
+     One slot, deliberately: the newest snapshot is the one worth having,
+     and a second copy risks the quota that caused the trouble. */
+  var RECOVERY_KEY = PREFIX + "recovery";
+
+  function snapshotForRecovery(reason) {
+    try {
+      var payload = exportAll();
+      var count = countAll();
+      if (!count) return false;              // nothing worth saving
+      localStorage.setItem(RECOVERY_KEY, JSON.stringify({
+        at: new Date().toISOString(), reason: String(reason || "unknown"),
+        records: count, data: payload
+      }));
+      return true;
+    } catch (e) {
+      // quota is the usual cause; never let this block the caller
+      console.error("OF.storage.snapshotForRecovery failed", e);
+      return false;
+    }
+  }
+
+  /** {at, reason, records} for the stored snapshot, or null. */
+  function recoveryInfo() {
+    try {
+      var raw = localStorage.getItem(RECOVERY_KEY);
+      if (!raw) return null;
+      var o = JSON.parse(raw);
+      if (!o || !o.data) return null;
+      return { at: o.at, reason: o.reason, records: Number(o.records) || 0 };
+    } catch (e) { return null; }
+  }
+
+  /** Merge the snapshot back in — local always wins, so restoring can only
+      ADD records back, never overwrite anything newer. Returns how many
+      records were recovered, or -1 on failure. */
+  function restoreFromRecovery() {
+    try {
+      var raw = localStorage.getItem(RECOVERY_KEY);
+      if (!raw) return -1;
+      var o = JSON.parse(raw);
+      if (!o || !o.data) return -1;
+      var before = countAll();
+      importAll(o.data, "merge");
+      return countAll() - before;
+    } catch (e) {
+      console.error("OF.storage.restoreFromRecovery failed", e);
+      return -1;
+    }
+  }
+
   return {
     onChange: onChange,
+    snapshotForRecovery: snapshotForRecovery,
+    recoveryInfo: recoveryInfo,
+    restoreFromRecovery: restoreFromRecovery,
     TYPES: TYPES,
     getAll: getAll,
     get: get,

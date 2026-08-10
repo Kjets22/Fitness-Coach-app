@@ -25,6 +25,44 @@ OF.settings = (function () {
     if (OF.healthImport) OF.healthImport.init();
     initPhoneInfo();
     initEngineAutonomy();
+    initRecovery();
+  }
+
+  /* ---------- recover data a destructive sync removed ----------
+     storage.snapshotForRecovery() runs before anything that can delete
+     records (account-switch wipe, "replace" restore). The card only
+     appears when such a snapshot exists, so it is invisible to everyone
+     whose data was never at risk. Restoring MERGES (local wins), so it
+     can only add records back — never overwrite something newer. */
+  function initRecovery() {
+    var card = document.getElementById("recovery-card");
+    var hint = document.getElementById("recovery-hint");
+    var btn = document.getElementById("recovery-restore");
+    if (!card || !hint || !btn || !OF.storage.recoveryInfo) return;
+    var info = null;
+    try { info = OF.storage.recoveryInfo(); } catch (e) {}
+    if (!info || !info.records) { card.hidden = true; return; }
+    var when = info.at ? new Date(info.at) : null;
+    hint.textContent = "A safety copy of " + info.records + " record" +
+      (info.records === 1 ? "" : "s") +
+      (when && !isNaN(when) ? " was kept on " + when.toLocaleString() : " was kept") +
+      " before a sync replaced this device's data. If anything you logged is " +
+      "missing, put it back — this only ADDS records, it never overwrites " +
+      "anything you have now.";
+    card.hidden = false;
+    if (btn._bound) return;
+    btn._bound = true;
+    btn.addEventListener("click", function () {
+      var n = OF.storage.restoreFromRecovery();
+      if (n > 0) {
+        OF.util.toast("Restored " + n + " record" + (n === 1 ? "" : "s") + ".", "ok");
+        refreshAllViews();
+      } else if (n === 0) {
+        OF.util.toast("Nothing was missing — you already have all of it.", "ok");
+      } else {
+        OF.util.toast("That safety copy could not be read.", "warn");
+      }
+    });
   }
 
   /* ---------- how much power the adaptive engine has ----------

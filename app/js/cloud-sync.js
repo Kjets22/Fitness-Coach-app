@@ -96,6 +96,9 @@ OF.cloudSync = (function () {
       signed in). Mirrors the Settings "clear" wipe, minus the sign-out. */
   function wipeForeignData() {
     restoring = true;
+    // This deletes the ONLY copy of the previous account's logs. Take a
+    // recoverable snapshot first so a wrong call is never permanent.
+    try { S.snapshotForRecovery("account-switch"); } catch (e) {}
     try {
       // NOT wiped: the NEW user's just-persisted Supabase session + cached
       // profile (deleting them silently signs B out / paywalls a premium B on
@@ -105,7 +108,9 @@ OF.cloudSync = (function () {
                    // the install-trial clock is per DEVICE, not per account —
                    // switching accounts must never restart the free month
                    // (nor replay the welcome toast)
-                   "optimalfit.installedAt": 1, "optimalfit.installedAt.welcomed": 1 };
+                   "optimalfit.installedAt": 1, "optimalfit.installedAt.welcomed": 1,
+                   // the safety snapshot must survive the wipe it protects
+                   "optimalfit.recovery": 1 };
       Object.keys(localStorage)
         .filter(function (k) { return k.indexOf("optimalfit.") === 0 && !KEEP[k]; })
         .forEach(function (k) { localStorage.removeItem(k); });
@@ -126,9 +131,13 @@ OF.cloudSync = (function () {
     a.pullBackup().then(function (backup) {
       pullAttempts = 0;
       var owner = ownerUid();
-      if (owner && owner !== uid) wipeForeignData();
-      var before = 0;
-      try { before = S.countAll(); } catch (e) {}
+      var foreign = !!(owner && owner !== uid);
+      // Wipe ONLY when the account really changed AND we have this account's
+      // data in hand. Wiping first meant an empty/failed pull left the user
+      // with nothing — their logs deleted and no backup to put back.
+      if (foreign && backup && backup.data) wipeForeignData();
+      var before = 0, countOk = true;
+      try { before = S.countAll(); } catch (e) { countOk = false; }
       if (backup && backup.data) {
         restoring = true;
         try {
@@ -137,10 +146,27 @@ OF.cloudSync = (function () {
           // importAll look for records one level too deep (restored nothing).
           // Fresh device (reinstall): full replace so prefs/app-state return
           // too. Device with data: merge — local always wins.
-          S.importAll(backup.data, deviceIsFresh(before) ? "replace" : "merge");
+          var mode = (countOk && deviceIsFresh(before)) ? "replace" : "merge";
+          // a replace can drop local state the backup doesn't carry
+          if (mode === "replace") { try { S.snapshotForRecovery("cloud-replace"); } catch (e3) {} }
+          S.importAll(backup.data, mode);
           var after = 0;
           try { after = S.countAll(); } catch (e) {}
           var added = after - before;
+          if (added < 0 && U.toast) {
+            // should be impossible (merge only adds) — but if it ever
+            // happens, the user must not discover it silently
+            U.toast("Sync removed " + (-added) + " item" + (added === -1 ? "" : "s") +
+              " — tap to put them back.", "warn", {
+                label: "Restore",
+                fn: function () {
+                  var back = S.restoreFromRecovery();
+                  U.toast(back > 0 ? "Restored " + back + " item" + (back === 1 ? "" : "s") + "."
+                                   : "Nothing left to restore.", back > 0 ? "ok" : "warn");
+                  if (OF.settings && OF.settings.refreshAll) { try { OF.settings.refreshAll(); } catch (e4) {} }
+                }
+              });
+          }
           if (added > 0 && U.toast) {
             U.toast(before === 0
               ? "Welcome back — restored your data from your account."

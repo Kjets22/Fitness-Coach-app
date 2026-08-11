@@ -1,7 +1,7 @@
-# OptimalFit — App Store kit (CURRENT: upload 1.10.0 build 67)
+# OptimalFit — App Store kit (CURRENT: upload 1.11.0 build 69)
 
 > **Upload `OptimalFit build 67 UPLOAD THIS`** — the ONLY archive Organizer
-> shows (2026-08-08). It is 1.10.0 (67): everything in build 47 PLUS the
+> shows (2026-08-08). It is 1.11.0 (69): everything in build 47 PLUS the
 > 30-day included free month, the background-safe async coach, coach
 > proposals (Apply/Not-now), the nutrition/restaurant coach, full-screen
 > coach UI, three-tier goals, coach-recommended per-exercise rest timers
@@ -14,6 +14,58 @@
 > archives (47 through 60) live in
 > `~/Library/Developer/Xcode/Archives-superseded/`, invisible to Organizer.
 
+
+## ⚠️ REJECTION OF 1.7.0 (52) — 11 Aug 2026 — BOTH ISSUES FIXED IN 1.11.0 (69)
+
+Submission ID 5696fb93-41c5-4a12-b9ac-dd30e0aeb661, reviewed on iPad Air 11-inch (M3).
+
+**1.4.1 — health info without citations.** Fixed in-app: a "Science & sources"
+section in Settings, plus a citation link directly under the calorie/protein
+targets on the goal card AND under the dashboard "Today vs targets" rings, so
+the source is one tap from every health number. Includes an explicit
+not-medical-advice disclaimer.
+
+**1.5 — Support URL was the GitHub repo.** A real support page is now live:
+`https://kjets22.github.io/Fitness-Coach-app/store/support.html`
+
+### YOU MUST DO THIS IN APP STORE CONNECT (not just upload the build)
+In **App Information → Support URL**, replace
+`https://github.com/Kjets22/Fitness-Coach-app` with
+**`https://kjets22.github.io/Fitness-Coach-app/store/support.html`**
+The 1.5 issue is a metadata field — it is NOT fixed by the new binary alone.
+
+### Reply to paste into the App Store Connect message thread
+
+```
+Thank you for the detailed review. Version 1.11.0 addresses both issues.
+
+Guideline 1.4.1: The app now cites the sources for every health and nutrition
+number it produces. A new "Science & sources" section (Settings → Science &
+sources) states the method behind each recommendation and links to the source:
+the Mifflin-St Jeor equation for resting energy expenditure, the Dietary
+Guidelines for Americans for activity factors and calorie needs, the NIH Body
+Weight Planner for rate of weight change, the International Society of Sports
+Nutrition position stand for protein intake, WHO guidance for physical
+activity, and Schoenfeld et al. for resistance-training volume. The same
+screen lists all 33 entries of the app's evidence base with their references
+and an honest evidence grade for each.
+
+To make the citations easy to find, as the guideline requires, a "How these
+targets are calculated · sources" link appears directly beneath the daily
+calorie and protein targets on the goal screen, and a "Where these targets
+come from · sources" link appears beneath the "Today vs targets" rings on the
+dashboard — so a user reading a calorie number is one tap from its source. The
+section also carries an explicit statement that the app is not a medical
+device and does not provide medical advice, and recommends consulting a
+qualified healthcare professional.
+
+Guideline 1.5: The Support URL has been updated to a functional support page:
+https://kjets22.github.io/Fitness-Coach-app/store/support.html
+It provides a contact email, guidance on what to include when reporting a
+problem, and answers to common questions (data storage, export and deletion,
+recovering data, what the AI features transmit, and subscriptions).
+```
+
 ## HOW TO UPDATE THE APP THAT'S ALREADY IN APP STORE CONNECT (~15 min)
 
 1. **Upload:** Xcode → Window → **Organizer** → Archives → select
@@ -23,13 +75,13 @@
    what the current 1.6.0 version says:
    - **"Prepare for Submission" or "Rejected"** (never approved): open that
      version, change the **Version** field at the top from 1.6.0 to
-     **1.10.0**, and once build 67 finishes processing (~15 min) select it
+     **1.11.0**, and once build 69 finishes processing (~15 min) select it
      in the Build section (replacing 47/52/54).
    - **"Waiting for Review" / "In Review"**: click **Remove from Review**
      first, then do the step above.
    - **"Ready for Sale"** (already live): click **⊕ Add Version**, enter
-     **1.10.0**, then select build 67 in the Build section.
-3. **What's New:** paste the **1.10.0** block from `app-store-listing.md`.
+     **1.11.0**, then select build 69 in the Build section.
+3. **What's New:** paste the **1.11.0** block from `app-store-listing.md`.
 4. Re-check **App Review Information** is still filled in (demo account from
    `.env.reviewer`, notes, contact) — it usually carries over.
 5. **Submit for Review.** Keep the Mac (coach server) up during review —
@@ -63,7 +115,7 @@ resubmission and remain valid background.
    - Notes: paste the **RESUBMISSION NOTES** block from `app-store-listing.md`.
    - Contact: Qualixo22@gmail.com + your name + phone.
 5. **URLs** — Privacy Policy: `https://kjets22.github.io/Fitness-Coach-app/store/privacy-policy.html`
-   · Support: `https://github.com/Kjets22/Fitness-Coach-app`
+   · Support: `https://kjets22.github.io/Fitness-Coach-app/store/support.html`
 6. **Reply to the rejection thread** in App Store Connect (message below), then **Submit for Review**.
 
 ## Reply to Apple (paste into the rejection thread)
@@ -96,7 +148,7 @@ Send (it appears before anything is transmitted).
 
 ## Assets
 
-- **Archive:** `~/Library/Developer/Xcode/Archives/2026-08-08/OptimalFit-1.10.0-build67.xcarchive` — the ONLY archive in Organizer, labeled "OptimalFit build 67 UPLOAD THIS"
+- **Archive:** `~/Library/Developer/Xcode/Archives/2026-08-11/OptimalFit-1.11.0-build69.xcarchive` — the ONLY archive in Organizer, labeled "OptimalFit build 67 UPLOAD THIS"
 - **Screenshots:** `store/screenshots/iphone67-1290x2796-*.png` (valid set; shows the pre-redesign UI — fine for this compliance resubmission, refresh later via `store/tools/shoot.js` once updated for the new UI)
 - **Demo account:** `.env.reviewer` (gitignored) — premium, pre-populated
 - **Privacy manifest:** `native/ios/App/App/PrivacyInfo.xcprivacy` (new, in the build)

@@ -336,5 +336,6 @@ OF.settings = (function () {
     }
   });
 
-  return { init: init, refreshAll: refreshAllViews, loadDemo: loadDemo };
+  return { init: init, refreshAll: refreshAllViews, loadDemo: loadDemo,
+           initRecovery: initRecovery };
 })();

@@ -1725,7 +1725,7 @@ OF.exercise = (function () {
       var t0 = r.type || "other";
       var title = t0.charAt(0).toUpperCase() + t0.slice(1) + " · " + r.durationMin + " min";
       var sub = U.fmtDate(r.date) + " " + r.startTime +
-        " · intensity " + r.intensity + "/5" + (r.notes ? " · " + r.notes : "");
+        (r.intensity != null ? " · intensity " + r.intensity + "/5" : "") + (r.notes ? " · " + r.notes : "");
       var perf = "perf " + r.performance + "/5";
       return '<div class="entry" data-id="' + U.esc(r.id) + '" role="button" tabindex="0" title="Tap to edit">' +
         '<span class="entry-ico">' + OF.icons.get("dumbbell") + '</span>' +

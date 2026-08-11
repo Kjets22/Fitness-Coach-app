@@ -667,7 +667,10 @@ OF.dashboard = (function () {
       var nav = e.target.closest("[data-nav]");
       if (nav) {
         closeModal();
-        try { OF.app.showTab(nav.getAttribute("data-nav")); } catch (err) {}
+        // set the HASH rather than calling showTab directly: the hashchange
+        // handler switches the tab AND a later refresh returns to where the
+        // user actually is (showTab alone left the hash on #dashboard)
+        try { location.hash = nav.getAttribute("data-nav"); } catch (err) {}
       }
     });
     document.addEventListener("keydown", function (e) { if (e.key === "Escape" && !modalEl.hidden) closeModal(); });

@@ -59,6 +59,13 @@ OF.app = (function () {
     // Apple Health import, an undo-restore — left the list showing stale
     // content (or "nothing logged yet") until the app was relaunched. The
     // tab you just opened must always show what is actually stored.
+    // Settings hosts the "Recover lost data" card, and the wipe that creates
+    // a recovery snapshot happens IN-SESSION (account switch / cloud replace)
+    // with no reload — so the card has to be re-evaluated on tab entry or the
+    // user never sees it when they need it most.
+    if (name === "settings" && OF.settings && OF.settings.initRecovery) {
+      try { OF.settings.initRecovery(); } catch (e) {}
+    }
     var LIST_TABS = { sleep: "sleep", food: "food", exercise: "exercise", body: "body" };
     var mod = LIST_TABS[name] && OF[LIST_TABS[name]];
     if (mod && mod.renderList) {

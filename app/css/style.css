@@ -3194,3 +3194,34 @@ body.kb-open #stepper-strip { bottom: calc(8px + env(safe-area-inset-bottom, 0px
 /* one-tap goal switch on the goal card */
 .goal-switch-row { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 8px 0 4px; }
 .goal-switch-on { border-color: var(--accent); color: var(--accent); opacity: 1 !important; }
+
+/* Science & sources (App Store guideline 1.4.1: citations must be easy to find) */
+.src-link {
+  background: none; border: none; padding: 4px 0; cursor: pointer;
+  color: var(--g1); font-size: 0.8rem; font-weight: 600; text-align: left;
+  text-decoration: underline; text-underline-offset: 2px; min-height: 32px;
+}
+.goal-sources { margin: 6px 0 0; }
+.src-intro { font-size: 0.92rem; line-height: 1.5; margin: 0 0 var(--sp-3); }
+.src-item { padding: 10px 0; border-top: 1px solid var(--card-edge); }
+.src-what { font-size: 0.95rem; margin: 0 0 4px; }
+.src-how { font-size: 0.86rem; line-height: 1.5; color: var(--text-dim); margin: 0 0 6px; }
+.src-cites { margin: 0; padding-left: 1.1rem; display: grid; gap: 4px; }
+.src-cites li { font-size: 0.8rem; line-height: 1.4; }
+.src-cites a { color: var(--g1); }
+.src-details { margin-top: var(--sp-3); }
+.src-details summary { cursor: pointer; font-weight: 600; font-size: 0.88rem; padding: 8px 0; }
+.src-ev { padding: 8px 0; border-top: 1px solid var(--card-edge); }
+.src-ev-head { display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap; font-size: 0.86rem; }
+.src-grade {
+  font-size: 0.68rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.04em;
+  padding: 2px 6px; border-radius: 999px; background: var(--bg-2); color: var(--text-dim);
+}
+.src-grade-strong { color: var(--good, #22c55e); }
+.src-why { margin: 4px 0; }
+.src-disclaimer {
+  margin: var(--sp-3) 0 0; padding: 10px 12px; border-radius: var(--r-md);
+  background: var(--bg-2); border: 1px solid var(--card-edge);
+  font-size: 0.8rem; line-height: 1.5; color: var(--text-dim);
+}
+.src-body { max-height: 70vh; overflow-y: auto; }

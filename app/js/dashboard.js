@@ -825,7 +825,12 @@ OF.dashboard = (function () {
         waterMl / t.waterMl, waterMl >= t.waterMl ? "var(--accent-2)" : "var(--accent)", "daily") +
       targetCell("Steps", steps.toLocaleString() + " / " + t.steps.toLocaleString(),
         steps / t.steps, steps >= t.steps ? "var(--accent-2)" : "var(--accent)", "daily") +
-      '</div></div>';
+      '</div>' +
+      // guideline 1.4.1: the source of these health numbers must be one tap
+      // away from the numbers themselves
+      (OF.sources ? '<p class="goal-sources">' +
+        OF.sources.linkHtml("Where these targets come from · sources") + '</p>' : '') +
+      '</div>';
   }
 
   /* ---------------- charts ---------------- */

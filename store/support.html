@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>OptimalFit — Support</title>
+<style>
+  :root {
+    --bg: #ffffff; --fg: #1a2233; --muted: #5b6577; --card: #f4f6fa;
+    --accent: #7c4dff; --accent2: #0891b2; --border: #e3e7ef; --warn: #b45309;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0a0e17; --fg: #e8ecf4; --muted: #9aa5b8; --card: #131c30;
+      --accent: #8b5cf6; --accent2: #22d3ee; --border: #24304a; --warn: #f59e0b;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--fg);
+    font: 16px/1.65 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  }
+  .wrap { max-width: 760px; margin: 0 auto; padding: 32px 20px 64px; }
+  header { margin-bottom: 8px; }
+  .logo {
+    display: inline-block; padding: 6px 14px; border-radius: 999px;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    color: #fff; font-weight: 700; letter-spacing: .3px; font-size: 14px;
+  }
+  h1 { font-size: 32px; margin: 14px 0 4px; }
+  .meta { color: var(--muted); font-size: 14px; margin-bottom: 24px; }
+  .tldr {
+    background: var(--card); border: 1px solid var(--border);
+    border-left: 4px solid var(--accent); border-radius: 12px;
+    padding: 16px 20px; margin: 0 0 20px;
+  }
+  .tldr strong { color: var(--accent2); }
+  .changed {
+    background: var(--card); border: 1px solid var(--border);
+    border-left: 4px solid var(--warn); border-radius: 12px;
+    padding: 16px 20px; margin: 0 0 32px;
+  }
+  .changed strong { color: var(--warn); }
+  h2 { font-size: 22px; margin: 36px 0 10px; }
+  ul { padding-left: 22px; }
+  li { margin: 6px 0; }
+  code, .kbd { background: var(--card); border: 1px solid var(--border); border-radius: 6px; padding: 1px 6px; font-size: 14px; }
+  .contact {
+    background: var(--card); border: 1px solid var(--border); border-radius: 12px;
+    padding: 16px 20px; margin-top: 12px;
+  }
+  footer { margin-top: 48px; color: var(--muted); font-size: 13px; border-top: 1px solid var(--border); padding-top: 16px; }
+  a { color: var(--accent2); }
+</style>
+</head>
+<body>
+<div class="wrap">
+<header>
+  <div class="logo">OptimalFit</div>
+  <h1>Support</h1>
+  <p class="muted">Help, contact, and answers for OptimalFit: Train &amp; Track.</p>
+</header>
+
+<div class="card">
+  <h2>Contact us</h2>
+  <p><strong>Email:</strong> <a href="mailto:Qualixo22@gmail.com?subject=OptimalFit%20Support">Qualixo22@gmail.com</a></p>
+  <p>We answer every message, usually within 2 business days. To help us fix things
+  fast, please include:</p>
+  <ul>
+    <li>Your device (e.g. iPhone 15, iPad Air) and iOS version</li>
+    <li>The app version — find it in <strong>Settings</strong>, at the bottom of the screen</li>
+    <li>What you expected to happen, and what happened instead</li>
+    <li>A screenshot if you have one</li>
+  </ul>
+</div>
+
+<h2>Frequently asked questions</h2>
+
+<h3>Where is my data stored?</h3>
+<p>Your logs are stored on your own device. If you create an optional account, a private
+backup is kept so you can restore after reinstalling or move to a new phone. See the
+<a href="privacy-policy.html">Privacy Policy</a> for the full detail.</p>
+
+<h3>How do I export or delete my data?</h3>
+<p>Open <strong>Settings → Backup</strong> and tap <strong>Export</strong> to save a copy of everything.
+To erase it, use <strong>Settings → Danger zone → Clear all data</strong>. If you have an account,
+<strong>Delete account</strong> in the Community tab removes everything you have shared from our
+servers as well.</p>
+
+<h3>Something I logged is missing. Can I get it back?</h3>
+<p>Open <strong>Settings</strong> and look for a <strong>Recover lost data</strong> card. It appears only when a
+safety copy exists, and restoring only adds records back — it never overwrites anything
+newer. If the card is not there, email us and we will help.</p>
+
+<h3>How are my calorie and macro targets calculated?</h3>
+<p>They come from published, peer-reviewed methods, not guesswork. Tap
+<strong>Settings → Science &amp; sources</strong> in the app to see the exact equations, the safety limits
+we apply, and links to every source. A short summary is on this page under
+<a href="#sources">Where our numbers come from</a>.</p>
+
+<h3>What does the AI coach send off my device?</h3>
+<p>Only when you use it: your question, a compact summary of your recent stats, and any
+photo you explicitly submit. These go to our coach service and are processed by
+Anthropic's Claude to produce the answer, then discarded. You are asked to agree before
+anything is ever sent, and declining leaves every other feature working.</p>
+
+<h3>How do I cancel or manage a subscription?</h3>
+<p>Your first 30 days of the Premium AI features are included with the app — there is
+nothing to cancel. Any future subscription would be managed in
+<strong>iOS Settings → your name → Subscriptions</strong>.</p>
+
+<h3>Do I need an account?</h3>
+<p>No. Every tracking and insight feature works without one. An account only adds the
+optional community and cloud backup.</p>
+
+<h3>Is OptimalFit medical advice?</h3>
+<p><strong>No.</strong> OptimalFit is a fitness and wellness tool. Its insights are statistics computed
+from what you log, and its guidance is general fitness and nutrition information — not
+medical advice, diagnosis, or treatment. Talk to a qualified healthcare professional
+before making significant changes to your diet or exercise, especially if you are
+pregnant, under 18, or have a medical condition. If you feel unwell while exercising,
+stop and seek medical help.</p>
+
+<h2 id="sources">Where our numbers come from</h2>
+<p>Calorie and macronutrient targets in OptimalFit are derived from published methods and
+are bounded by widely used safety limits:</p>
+<ul>
+  <li><strong>Resting energy expenditure</strong> — Mifflin-St Jeor equation.
+    <a href="https://pubmed.ncbi.nlm.nih.gov/?term=Mifflin+St+Jeor+resting+energy+expenditure+healthy+individuals+1990">Find on PubMed</a></li>
+  <li><strong>Daily energy needs and activity factors</strong> — Dietary Guidelines for Americans.
+    <a href="https://www.dietaryguidelines.gov/">dietaryguidelines.gov</a></li>
+  <li><strong>Rate of weight change and calorie deficits</strong> — NIH Body Weight Planner.
+    <a href="https://www.niddk.nih.gov/bwp">niddk.nih.gov/bwp</a></li>
+  <li><strong>Protein intake for active people</strong> — International Society of Sports Nutrition position stand on protein and exercise.
+    <a href="https://pubmed.ncbi.nlm.nih.gov/?term=International+Society+of+Sports+Nutrition+position+stand+protein+and+exercise">Find on PubMed</a></li>
+  <li><strong>Physical activity</strong> — World Health Organization guidelines on physical activity and sedentary behaviour.
+    <a href="https://www.who.int/news-room/fact-sheets/detail/physical-activity">who.int</a></li>
+  <li><strong>Resistance-training volume and progression</strong> — Schoenfeld, Ogborn &amp; Krieger, dose-response of weekly volume and muscle mass.
+    <a href="https://pubmed.ncbi.nlm.nih.gov/?term=Schoenfeld+Ogborn+Krieger+dose-response+weekly+volume+muscle+hypertrophy">Find on PubMed</a></li>
+</ul>
+<p>The complete list, with the specific numbers each source supports and how confident the
+evidence is, is inside the app under <strong>Settings → Science &amp; sources</strong>.</p>
+<p class="muted">OptimalFit applies safety floors regardless of what any calculation returns:
+targets are never set below 1,500 kcal/day for men or 1,200 kcal/day for women, and weight-change
+goals faster than 1% of body weight per week are flagged as unrealistic rather than followed.</p>
+
+<h2>Other links</h2>
+<ul>
+  <li><a href="privacy-policy.html">Privacy Policy</a></li>
+  <li><a href="terms-of-service.html">Terms of Service</a></li>
+</ul>
+
+<p class="muted" style="margin-top:32px">OptimalFit — last updated 11 August 2026.</p>
+</div>
+</body>
+</html>

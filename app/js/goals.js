@@ -535,6 +535,14 @@ OF.goals = (function () {
           (targets.weeklyTargetKg
             ? " · pace " + U.fmtWeightDelta(targets.weeklyTargetKg) + "/wk"
             : "")) + '</p>';
+      // App Store guideline 1.4.1: health/nutrition numbers must carry
+      // citations the user can easily find. These targets are the app's most
+      // consequential health output, so the source link sits directly under
+      // them — not buried in a menu.
+      if (OF.sources) {
+        html += '<p class="goal-sources">' +
+          OF.sources.linkHtml("How these targets are calculated · sources") + '</p>';
+      }
       var maintTxt;
       if (live.ready) {
         maintTxt = "Estimated maintenance: ~" + live.blendedMaintenance +

@@ -266,6 +266,7 @@ OF.app = (function () {
     safeInit("insights", function () { OF.insights.init(); });
     safeInit("coach", function () { OF.coach.init(); });
     safeInit("settings", function () { OF.settings.init(); });
+    if (OF.sources) safeInit("sources", function () { OF.sources.init(); });
     if (OF.healthSync) safeInit("healthSync", function () { OF.healthSync.init(); });
     if (OF.social) safeInit("social", function () { OF.social.init(); });
 

@@ -15,7 +15,7 @@
    ============================================================ */
 
 /* Bump this string when any shell file changes. */
-var VERSION = "v129"; /* data-loss fixes: list refresh + recovery */
+var VERSION = "v130"; /* citations (1.4.1) + support page (1.5) */
 var CACHE = "optimalfit-shell-" + VERSION;
 
 var SHELL = [
@@ -48,6 +48,7 @@ var SHELL = [
   "./js/physique.js",
   "./js/charts.js",
   "./js/insights-engine.js",
+  "./js/sources.js",
   "./js/next-move.js",
   "./js/night-out.js",
   "./js/strength-engine.js",

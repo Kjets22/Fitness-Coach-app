@@ -32,12 +32,30 @@ if (!fs.existsSync(path.join(SRC, "index.html"))) {
   process.exit(1);
 }
 
+// QA scaffolding must NEVER reach a build. The sim-QA harness writes
+// app/test-drive.html while it runs, and a build kicked off during a QA pass
+// mirrored it into www, into the iOS bundle, and into a signed App Store
+// archive. It is gitignored, so `git status` looked clean and nothing caught
+// it — the exclusion has to live HERE, where the bundle is actually made.
+var EXCLUDE = /(^|[\\/])(test-drive\.html|qa[^\\/]*src)([\\/]|$)/i;
+
 // Mirror: wipe www entirely, then copy fresh (removes files deleted from app/).
 fs.rmSync(DEST, { recursive: true, force: true });
-fs.cpSync(SRC, DEST, { recursive: true });
+fs.cpSync(SRC, DEST, {
+  recursive: true,
+  filter: function (src) { return !EXCLUDE.test(src); }
+});
 
 // Neutralize the service worker in the native copy.
 fs.writeFileSync(path.join(DEST, "sw.js"), NOOP_SW, "utf8");
+
+// Fail LOUD if scaffolding somehow survived — better a broken build than a
+// debug harness shipped to the App Store.
+var leaked = fs.readdirSync(DEST).filter(function (f) { return EXCLUDE.test(f); });
+if (leaked.length) {
+  console.error("copy-web: QA scaffolding leaked into www: " + leaked.join(", "));
+  process.exit(1);
+}
 
 // Quick sanity report.
 const count = (dir) =>

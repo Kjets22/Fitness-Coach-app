@@ -514,7 +514,10 @@ OF.food = (function () {
     }
     var shown = arr.slice(0, listLimit);
     els.list.innerHTML = shown.map(function (r) {
-      var sub = U.fmtDate(r.date) + " " + r.time + (macroLine(r) ? " · " + macroLine(r) : "") +
+      // Food is the highest-volume tracker and Health/cloud import is exactly
+      // the path that produces records with no time — printing it raw gave
+      // "Tue, Aug 11 undefined" on the list Krish reads most.
+      var sub = U.fmtDate(r.date) + (r.time ? " " + r.time : "") + (macroLine(r) ? " · " + macroLine(r) : "") +
         (r.notes ? " · " + r.notes : "");
       return '<div class="entry" data-id="' + U.esc(r.id) + '" role="button" tabindex="0" title="Tap to edit">' +
         '<span class="entry-ico">' + OF.icons.get("apple") + '</span>' +

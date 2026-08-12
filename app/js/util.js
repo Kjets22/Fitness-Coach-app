@@ -5,7 +5,7 @@
    ============================================================ */
 
 window.OF = window.OF || {};
-OF.APP_VERSION = "1.11.0 (build 71)";  // bump every build; shown to the owner only
+OF.APP_VERSION = "1.11.1 (build 72)";  // bump every build; shown to the owner only
 
 OF.util = (function () {
   "use strict";

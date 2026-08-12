@@ -1728,7 +1728,9 @@ OF.exercise = (function () {
       // raw printed "Tue, Aug 11 undefined" (same family as intensity below)
       var sub = U.fmtDate(r.date) + (r.startTime ? " " + r.startTime : "") +
         (r.intensity != null ? " · intensity " + r.intensity + "/5" : "") + (r.notes ? " · " + r.notes : "");
-      var perf = "perf " + r.performance + "/5";
+      // same family as the date/intensity guards above: a synced or
+      // imported record may carry no performance rating
+      var perf = r.performance != null ? "perf " + r.performance + "/5" : "";
       return '<div class="entry" data-id="' + U.esc(r.id) + '" role="button" tabindex="0" title="Tap to edit">' +
         '<span class="entry-ico">' + OF.icons.get("dumbbell") + '</span>' +
         '<div class="entry-main">' +

@@ -1,7 +1,7 @@
-# OptimalFit — App Store kit (CURRENT: upload 1.11.0 build 71)
+# OptimalFit — App Store kit (CURRENT: upload 1.11.1 build 72)
 
 > **Upload `OptimalFit build 67 UPLOAD THIS`** — the ONLY archive Organizer
-> shows (2026-08-08). It is 1.11.0 (71): everything in build 47 PLUS the
+> shows (2026-08-12). It is 1.11.1 (72): everything in build 47 PLUS the
 > 30-day included free month, the background-safe async coach, coach
 > proposals (Apply/Not-now), the nutrition/restaurant coach, full-screen
 > coach UI, three-tier goals, coach-recommended per-exercise rest timers
@@ -15,7 +15,7 @@
 > `~/Library/Developer/Xcode/Archives-superseded/`, invisible to Organizer.
 
 
-## ⚠️ REJECTION OF 1.7.0 (52) — 11 Aug 2026 — BOTH ISSUES FIXED IN 1.11.0 (71)
+## ⚠️ REJECTION OF 1.7.0 (52) — 11 Aug 2026 — BOTH ISSUES FIXED IN 1.11.1 (72)
 
 Submission ID 5696fb93-41c5-4a12-b9ac-dd30e0aeb661, reviewed on iPad Air 11-inch (M3).
 
@@ -75,13 +75,13 @@ recovering data, what the AI features transmit, and subscriptions).
    what the current 1.6.0 version says:
    - **"Prepare for Submission" or "Rejected"** (never approved): open that
      version, change the **Version** field at the top from 1.6.0 to
-     **1.11.0**, and once build 71 finishes processing (~15 min) select it
+     **1.11.1**, and once build 72 finishes processing (~15 min) select it
      in the Build section (replacing 47/52/54).
    - **"Waiting for Review" / "In Review"**: click **Remove from Review**
      first, then do the step above.
    - **"Ready for Sale"** (already live): click **⊕ Add Version**, enter
-     **1.11.0**, then select build 71 in the Build section.
-3. **What's New:** paste the **1.11.0** block from `app-store-listing.md`.
+     **1.11.1**, then select build 72 in the Build section.
+3. **What's New:** paste the **1.11.1** block from `app-store-listing.md`.
 4. Re-check **App Review Information** is still filled in (demo account from
    `.env.reviewer`, notes, contact) — it usually carries over.
 5. **Submit for Review.** Keep the Mac (coach server) up during review —
@@ -148,7 +148,7 @@ Send (it appears before anything is transmitted).
 
 ## Assets
 
-- **Archive:** `~/Library/Developer/Xcode/Archives/2026-08-11/OptimalFit-1.11.0-build71.xcarchive` — the ONLY archive in Organizer, labeled "OptimalFit build 67 UPLOAD THIS"
+- **Archive:** `~/Library/Developer/Xcode/Archives/2026-08-12/OptimalFit-1.11.1-build72.xcarchive` — the ONLY archive in Organizer, labeled "OptimalFit build 67 UPLOAD THIS"
 - **Screenshots:** `store/screenshots/iphone67-1290x2796-*.png` (valid set; shows the pre-redesign UI — fine for this compliance resubmission, refresh later via `store/tools/shoot.js` once updated for the new UI)
 - **Demo account:** `.env.reviewer` (gitignored) — premium, pre-populated
 - **Privacy manifest:** `native/ios/App/App/PrivacyInfo.xcprivacy` (new, in the build)
